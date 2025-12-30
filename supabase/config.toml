@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.verify-domain]
 verify_jwt = true
+
+[functions.check-subdomain-availability]
+verify_jwt = false

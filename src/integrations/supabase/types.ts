@@ -1766,6 +1766,59 @@ export type Database = {
           },
         ]
       }
+      subdomain_change_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          current_subdomain: string
+          id: string
+          reason: string | null
+          requested_by: string
+          requested_subdomain: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["subdomain_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          current_subdomain: string
+          id?: string
+          reason?: string | null
+          requested_by: string
+          requested_subdomain: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["subdomain_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          current_subdomain?: string
+          id?: string
+          reason?: string | null
+          requested_by?: string
+          requested_subdomain?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["subdomain_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subdomain_change_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_access: {
         Row: {
           access_level: string | null
@@ -2182,6 +2235,10 @@ export type Database = {
         Returns: boolean
       }
       can_view_reports: { Args: { _company_id: string }; Returns: boolean }
+      check_subdomain_availability: {
+        Args: { subdomain_to_check: string }
+        Returns: boolean
+      }
       company_can_add_employee: {
         Args: { _company_id: string }
         Returns: boolean
@@ -2342,6 +2399,7 @@ export type Database = {
         | "suspicious_activity"
         | "permission_denied"
         | "data_export"
+      subdomain_request_status: "pending" | "approved" | "rejected"
       subscription_status:
         | "active"
         | "past_due"
@@ -2524,6 +2582,7 @@ export const Constants = {
         "permission_denied",
         "data_export",
       ],
+      subdomain_request_status: ["pending", "approved", "rejected"],
       subscription_status: [
         "active",
         "past_due",
