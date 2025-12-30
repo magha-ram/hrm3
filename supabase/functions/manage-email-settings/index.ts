@@ -55,31 +55,33 @@ serve(async (req) => {
       });
     }
 
-    const method = req.method;
-    const url = new URL(req.url);
-    const companyId = url.searchParams.get('company_id');
+    // Parse body for all requests (POST method from supabase.functions.invoke)
+    const body = await req.json().catch(() => ({}));
+    const action = body.action || 'save'; // 'get', 'save', or 'delete'
+    const companyId = body.company_id;
+
+    if (!companyId) {
+      return new Response(JSON.stringify({ error: 'company_id is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verify user is company admin
+    const { data: isAdmin } = await supabaseAdmin.rpc('is_active_company_admin', {
+      _user_id: user.id,
+      _company_id: companyId,
+    });
+
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: 'Not authorized' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // GET - Fetch settings
-    if (method === 'GET') {
-      if (!companyId) {
-        return new Response(JSON.stringify({ error: 'company_id is required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Verify user is company admin
-      const { data: isAdmin } = await supabaseAdmin.rpc('is_active_company_admin', {
-        _user_id: user.id,
-        _company_id: companyId,
-      });
-
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: 'Not authorized' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (action === 'get') {
 
       const { data: settings, error } = await supabaseAdmin
         .from('company_email_settings')
@@ -105,41 +107,18 @@ serve(async (req) => {
       });
     }
 
-    // POST - Create or update settings
-    if (method === 'POST') {
-      const body: EmailSettingsRequest = await req.json();
-      const targetCompanyId = body.company_id;
-
-      if (!targetCompanyId) {
-        return new Response(JSON.stringify({ error: 'company_id is required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Verify user is company admin
-      const { data: isAdmin } = await supabaseAdmin.rpc('is_active_company_admin', {
-        _user_id: user.id,
-        _company_id: targetCompanyId,
-      });
-
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: 'Not authorized' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
+    // SAVE - Create or update settings
+    if (action === 'save') {
       // Check if settings exist
       const { data: existing } = await supabaseAdmin
         .from('company_email_settings')
         .select('id, smtp_password, api_key, aws_secret_access_key')
-        .eq('company_id', targetCompanyId)
+        .eq('company_id', companyId)
         .single();
 
       // Prepare update data - don't overwrite passwords with masked values
       const updateData: Record<string, unknown> = {
-        company_id: targetCompanyId,
+        company_id: companyId,
         use_platform_default: body.use_platform_default ?? true,
         provider: body.provider,
         from_email: body.from_email,
@@ -207,7 +186,7 @@ serve(async (req) => {
         aws_secret_access_key: result.aws_secret_access_key ? '••••••••' : null,
       };
 
-      console.log(`Email settings ${existing ? 'updated' : 'created'} for company ${targetCompanyId}`);
+      console.log(`Email settings ${existing ? 'updated' : 'created'} for company ${companyId}`);
 
       return new Response(JSON.stringify({ settings: maskedResult }), {
         status: 200,
@@ -216,27 +195,7 @@ serve(async (req) => {
     }
 
     // DELETE - Remove settings (revert to platform default)
-    if (method === 'DELETE') {
-      if (!companyId) {
-        return new Response(JSON.stringify({ error: 'company_id is required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Verify user is company admin
-      const { data: isAdmin } = await supabaseAdmin.rpc('is_active_company_admin', {
-        _user_id: user.id,
-        _company_id: companyId,
-      });
-
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: 'Not authorized' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
+    if (action === 'delete') {
       const { error } = await supabaseAdmin
         .from('company_email_settings')
         .delete()
@@ -252,8 +211,8 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
+    return new Response(JSON.stringify({ error: 'Invalid action' }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
