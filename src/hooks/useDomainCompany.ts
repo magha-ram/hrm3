@@ -30,34 +30,27 @@ export function useDomainCompany(): UseDomainCompanyResult {
         return;
       }
 
-      // Check for subdomain pattern: {subdomain}.hrplatform.com or {subdomain}.lovable.app
+      // Auto-detect base domain from running environment
       const parts = hostname.split('.');
       
-      // Get base domain from platform settings (fallback to common patterns)
-      const { data: baseDomainSetting } = await supabase
-        .from('platform_settings')
-        .select('value')
-        .eq('key', 'base_domain')
-        .maybeSingle();
-      
-      const baseDomain = baseDomainSetting?.value ? 
-        String(baseDomainSetting.value).replace(/"/g, '') : 
-        'hrplatform.com';
-
       let detectedSubdomain: string | null = null;
       let customDomain: string | null = null;
 
-      // Check if it's a subdomain of the base domain
-      if (parts.length >= 2) {
-        const potentialBase = parts.slice(-2).join('.');
-        if (potentialBase === baseDomain || hostname.endsWith('.lovable.app')) {
-          // It's a subdomain
+      // Check if it's a subdomain pattern
+      if (parts.length >= 3) {
+        // For patterns like: company.app.lovable.app or company.hrplatform.com
+        if (hostname.endsWith('.lovable.app')) {
+          // On Lovable: first part is the subdomain
           detectedSubdomain = parts[0];
           setSubdomain(detectedSubdomain);
         } else {
-          // It's potentially a custom domain
-          customDomain = hostname;
+          // On custom domain: first part is the subdomain
+          detectedSubdomain = parts[0];
+          setSubdomain(detectedSubdomain);
         }
+      } else if (parts.length === 2) {
+        // This is a root domain (e.g., hrplatform.com) - could be a custom domain lookup
+        customDomain = hostname;
       }
 
       // Try to find company by subdomain first
