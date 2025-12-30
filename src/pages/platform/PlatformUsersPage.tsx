@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Users, Building2, Save, Loader2 } from "lucide-react";
+import { Search, Users, Building2, Save, Loader2, Clock, CheckCircle, XCircle, Inbox } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 interface UserWithCompanyCount {
   id: string;
@@ -20,6 +21,17 @@ interface UserWithCompanyCount {
   companies: { name: string; role: string }[];
 }
 
+interface MultiCompanyRequest {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  requested_count: number;
+  reason: string;
+  status: string;
+  created_at: string;
+}
+
 export default function PlatformUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -27,10 +39,24 @@ export default function PlatformUsersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch pending requests
+  const { data: pendingRequests, isLoading: requestsLoading } = useQuery({
+    queryKey: ["platform-multi-company-requests"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("multi_company_requests")
+        .select("*")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as MultiCompanyRequest[];
+    },
+  });
+
   const { data: users, isLoading } = useQuery({
     queryKey: ["platform-users", searchQuery],
     queryFn: async () => {
-      // First get profiles
       let query = supabase
         .from("profiles")
         .select("id, email, first_name, last_name, max_companies")
@@ -45,7 +71,6 @@ export default function PlatformUsersPage() {
       if (profilesError) throw profilesError;
       if (!profiles) return [];
 
-      // Get company counts for each user
       const userIds = profiles.map((p) => p.id);
       const { data: companyUsers, error: companyError } = await supabase
         .from("company_users")
@@ -60,7 +85,6 @@ export default function PlatformUsersPage() {
 
       if (companyError) throw companyError;
 
-      // Map company data to users
       const usersWithCounts: UserWithCompanyCount[] = profiles.map((profile) => {
         const userCompanies = (companyUsers || []).filter(
           (cu) => cu.user_id === profile.id
@@ -106,6 +130,72 @@ export default function PlatformUsersPage() {
     },
   });
 
+  const approveRequest = useMutation({
+    mutationFn: async ({ requestId, userId, requestedCount }: { requestId: string; userId: string; requestedCount: number }) => {
+      // Update user's max_companies
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ max_companies: requestedCount })
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+
+      // Update request status
+      const { error: requestError } = await supabase
+        .from("multi_company_requests")
+        .update({
+          status: "approved",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", requestId);
+
+      if (requestError) throw requestError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-multi-company-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["platform-users"] });
+      toast({
+        title: "Request Approved",
+        description: "User's company limit has been updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rejectRequest = useMutation({
+    mutationFn: async ({ requestId }: { requestId: string }) => {
+      const { error } = await supabase
+        .from("multi_company_requests")
+        .update({
+          status: "rejected",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", requestId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-multi-company-requests"] });
+      toast({
+        title: "Request Rejected",
+        description: "The request has been rejected.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEdit = (user: UserWithCompanyCount) => {
     setEditingUserId(user.id);
     setEditingValue(user.max_companies);
@@ -131,6 +221,83 @@ export default function PlatformUsersPage() {
           Manage user permissions and multi-company access limits
         </p>
       </div>
+
+      {/* Pending Requests Section */}
+      {pendingRequests && pendingRequests.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Inbox className="h-5 w-5 text-orange-600" />
+              Pending Access Requests
+              <Badge variant="secondary" className="ml-2">
+                {pendingRequests.length}
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              Users requesting multi-company access. Review and approve or reject these requests.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {pendingRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="flex items-start justify-between gap-4 p-4 bg-background rounded-lg border"
+                >
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{request.user_name || "Unknown"}</span>
+                      <span className="text-muted-foreground">({request.user_email})</span>
+                      <Badge variant="outline">
+                        <Clock className="mr-1 h-3 w-3" />
+                        {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+                      </Badge>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Requesting: </span>
+                      <strong>{request.requested_count} companies</strong>
+                    </div>
+                    <div className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                      <strong>Reason:</strong> {request.reason}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => approveRequest.mutate({
+                        requestId: request.id,
+                        userId: request.user_id,
+                        requestedCount: request.requested_count,
+                      })}
+                      disabled={approveRequest.isPending}
+                    >
+                      {approveRequest.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="mr-1 h-4 w-4" />
+                      )}
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => rejectRequest.mutate({ requestId: request.id })}
+                      disabled={rejectRequest.isPending}
+                    >
+                      {rejectRequest.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <XCircle className="mr-1 h-4 w-4" />
+                      )}
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
