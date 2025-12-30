@@ -79,7 +79,7 @@ export default function Onboarding() {
       
       await refreshUserContext();
       toast.success('Company created successfully!');
-      navigate('/dashboard', { replace: true });
+      navigate('/app/dashboard', { replace: true });
     } catch (err) {
       console.error('Error creating company:', err);
       toast.error('Failed to create company. Please try again.');

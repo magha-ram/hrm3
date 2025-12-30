@@ -30,7 +30,7 @@ export default function Auth() {
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       if (currentCompanyId) {
-        navigate('/dashboard', { replace: true });
+        navigate('/app/dashboard', { replace: true });
       } else {
         navigate('/onboarding', { replace: true });
       }

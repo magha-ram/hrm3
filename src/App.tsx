@@ -2,24 +2,46 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { TenantProvider } from "@/contexts/TenantContext";
+import { lazy, Suspense } from "react";
+
+// Core pages (not lazy - needed immediately)
+import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import Unauthorized from "./pages/Unauthorized";
+import { RootRedirect } from "@/components/RootRedirect";
+
+// App layout
+import { AppLayout } from "@/components/layout/AppLayout";
 
 // Lazy load app pages
-import { lazy, Suspense } from "react";
+const DashboardPage = lazy(() => import("./pages/app/DashboardPage"));
+const EmployeesPage = lazy(() => import("./pages/app/EmployeesPage"));
+const DepartmentsPage = lazy(() => import("./pages/app/DepartmentsPage"));
+const LeavePage = lazy(() => import("./pages/app/LeavePage"));
+const TimePage = lazy(() => import("./pages/app/TimePage"));
 const PayrollPage = lazy(() => import("./pages/app/PayrollPage"));
+const RecruitmentPage = lazy(() => import("./pages/app/RecruitmentPage"));
+const PerformancePage = lazy(() => import("./pages/app/PerformancePage"));
+const DocumentsPage = lazy(() => import("./pages/app/DocumentsPage"));
+const SettingsPage = lazy(() => import("./pages/app/SettingsPage"));
 const AuditLogPage = lazy(() => import("./pages/app/AuditLogPage"));
 const CompliancePage = lazy(() => import("./pages/app/CompliancePage"));
 const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
+
+// Settings sub-pages
+const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
+const BillingSettingsPage = lazy(() => import("./pages/app/settings/BillingSettingsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
       retry: (failureCount, error) => {
-        // Don't retry on permission errors
         if (error instanceof Error && error.message.includes('permission')) {
           return false;
         }
@@ -46,17 +68,50 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/payroll" element={<PayrollPage />} />
-              <Route path="/audit" element={<AuditLogPage />} />
-              <Route path="/compliance" element={<CompliancePage />} />
-              <Route path="/integrations" element={<IntegrationsPage />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+          <AuthProvider>
+            <TenantProvider>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<RootRedirect />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/unauthorized" element={<Unauthorized />} />
+
+                  {/* Protected app routes */}
+                  <Route path="/app" element={<AppLayout />}>
+                    <Route index element={<Navigate to="/app/dashboard" replace />} />
+                    <Route path="dashboard" element={<DashboardPage />} />
+                    <Route path="employees" element={<EmployeesPage />} />
+                    <Route path="departments" element={<DepartmentsPage />} />
+                    <Route path="leave" element={<LeavePage />} />
+                    <Route path="time" element={<TimePage />} />
+                    <Route path="payroll" element={<PayrollPage />} />
+                    <Route path="recruitment" element={<RecruitmentPage />} />
+                    <Route path="performance" element={<PerformancePage />} />
+                    <Route path="documents" element={<DocumentsPage />} />
+                    <Route path="audit" element={<AuditLogPage />} />
+                    <Route path="compliance" element={<CompliancePage />} />
+                    <Route path="integrations" element={<IntegrationsPage />} />
+                    <Route path="settings" element={<SettingsPage />}>
+                      <Route path="company" element={<CompanySettingsPage />} />
+                      <Route path="billing" element={<BillingSettingsPage />} />
+                    </Route>
+                  </Route>
+
+                  {/* Legacy redirects for old routes */}
+                  <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+                  <Route path="/payroll" element={<Navigate to="/app/payroll" replace />} />
+                  <Route path="/audit" element={<Navigate to="/app/audit" replace />} />
+                  <Route path="/compliance" element={<Navigate to="/app/compliance" replace />} />
+                  <Route path="/integrations" element={<Navigate to="/app/integrations" replace />} />
+
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </TenantProvider>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
