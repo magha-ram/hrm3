@@ -313,9 +313,9 @@ export default function CompanySettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="id-separator">Separator</Label>
               <Select
-                value={employeeIdSettings.separator}
-                onValueChange={(value: '' | '-' | '_') => {
-                  setEmployeeIdSettings(prev => ({ ...prev, separator: value }));
+                value={employeeIdSettings.separator || 'none'}
+                onValueChange={(value) => {
+                  setEmployeeIdSettings(prev => ({ ...prev, separator: value === 'none' ? '' : value as '-' | '_' }));
                   setHasIdSettingsChanges(true);
                 }}
                 disabled={!canEdit}
@@ -324,7 +324,7 @@ export default function CompanySettingsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="-">Hyphen (-)</SelectItem>
                   <SelectItem value="_">Underscore (_)</SelectItem>
                 </SelectContent>
