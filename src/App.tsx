@@ -43,6 +43,7 @@ const BillingSettingsPage = lazy(() => import("./pages/app/settings/BillingSetti
 const UsersSettingsPage = lazy(() => import("./pages/app/settings/UsersSettingsPage"));
 const InviteUsersPage = lazy(() => import("./pages/app/settings/InviteUsersPage"));
 const SecuritySettingsPage = lazy(() => import("./pages/app/settings/SecuritySettingsPage"));
+const EmailSettingsPage = lazy(() => import("./pages/app/settings/EmailSettingsPage"));
 
 // Utility pages
 const HelpPage = lazy(() => import("./pages/app/HelpPage"));
@@ -142,6 +143,7 @@ const App = () => (
                       <Route path="users" element={<UsersSettingsPage />} />
                       <Route path="users/invite" element={<InviteUsersPage />} />
                       <Route path="security" element={<SecuritySettingsPage />} />
+                      <Route path="email" element={<EmailSettingsPage />} />
                     </Route>
                     <Route path="email-logs" element={<EmailLogsPage />} />
                     <Route path="help" element={<HelpPage />} />

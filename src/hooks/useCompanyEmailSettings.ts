@@ -46,10 +46,11 @@ export interface EmailSettingsFormData {
   aws_secret_access_key: string;
 }
 
+export type EmailProvider = 'smtp' | 'resend' | 'mailersend' | 'sendgrid' | 'ses';
+
 export function useCompanyEmailSettings() {
-  const { currentCompany } = useTenant();
+  const { companyId } = useTenant();
   const queryClient = useQueryClient();
-  const companyId = currentCompany?.company_id;
 
   const { data: settings, isLoading, error } = useQuery({
     queryKey: ['company-email-settings', companyId],
