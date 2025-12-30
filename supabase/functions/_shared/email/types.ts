@@ -55,7 +55,12 @@ export type EmailTemplateType =
   | 'payroll_processed'
   | 'subscription_expiring'
   | 'company_frozen'
-  | 'suspicious_login';
+  | 'suspicious_login'
+  | 'trial_expiring_7_days'
+  | 'trial_expiring_3_days'
+  | 'trial_expiring_1_day'
+  | 'trial_extension_approved'
+  | 'trial_extension_rejected';
 
 export interface EmailTemplateData {
   user_invitation: {
@@ -115,5 +120,41 @@ export interface EmailTemplateData {
     ipAddress: string;
     reason: string;
     secureAccountUrl: string;
+  };
+  trial_expiring_7_days: {
+    companyName: string;
+    daysRemaining: number;
+    upgradeUrl: string;
+    extensionUrl: string;
+    canRequestExtension: boolean;
+    userName: string;
+  };
+  trial_expiring_3_days: {
+    companyName: string;
+    daysRemaining: number;
+    upgradeUrl: string;
+    extensionUrl: string;
+    canRequestExtension: boolean;
+    userName: string;
+  };
+  trial_expiring_1_day: {
+    companyName: string;
+    daysRemaining: number;
+    upgradeUrl: string;
+    extensionUrl: string;
+    canRequestExtension: boolean;
+    userName: string;
+  };
+  trial_extension_approved: {
+    companyName: string;
+    extensionDays: number;
+    newTrialEndDate: string;
+    userName: string;
+  };
+  trial_extension_rejected: {
+    companyName: string;
+    reason: string;
+    upgradeUrl: string;
+    userName: string;
   };
 }

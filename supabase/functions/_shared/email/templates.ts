@@ -266,6 +266,114 @@ const templates: Record<EmailTemplateType, (data: any) => RenderedTemplate> = {
     `, 'Security Alert - Suspicious Login'),
     text: `Security Alert\n\nHi ${data.userName},\n\nWe detected a suspicious login to your account:\n\nWhen: ${data.loginTime}\nBrowser: ${data.browser}\nLocation: ${data.location}\nIP Address: ${data.ipAddress}\nReason: ${data.reason}\n\nIf this wasn't you, please secure your account immediately: ${data.secureAccountUrl}`
   }),
+
+  trial_expiring_7_days: (data: EmailTemplateData['trial_expiring_7_days']) => ({
+    subject: `📅 7 days left in your ${data.companyName} trial`,
+    html: wrapTemplate(`
+      <div class="header">
+        <h1>📅 7 Days Left</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p>You have <strong>7 days</strong> left to explore all the features of your <strong>${data.companyName}</strong> trial.</p>
+        <p>Ready to commit? Upgrade today and keep all your data!</p>
+        <p style="text-align: center;">
+          <a href="${data.upgradeUrl}" class="button">Upgrade Now</a>
+        </p>
+        ${data.canRequestExtension ? `<p>Need more time? <a href="${data.extensionUrl}">Request an extension</a>.</p>` : ''}
+      </div>
+      <div class="footer">
+        <p>Questions? Contact our support team.</p>
+      </div>
+    `, 'Trial Reminder'),
+    text: `Hi ${data.userName},\n\nYou have 7 days left in your ${data.companyName} trial.\n\nUpgrade now: ${data.upgradeUrl}\n\n${data.canRequestExtension ? `Need more time? Request an extension: ${data.extensionUrl}` : ''}`
+  }),
+
+  trial_expiring_3_days: (data: EmailTemplateData['trial_expiring_3_days']) => ({
+    subject: `⏰ Only 3 days left in your ${data.companyName} trial`,
+    html: wrapTemplate(`
+      <div class="header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+        <h1>⏰ 3 Days Left</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p>Your trial of <strong>${data.companyName}</strong> is ending soon. Upgrade now to ensure uninterrupted access to all features.</p>
+        <p style="text-align: center;">
+          <a href="${data.upgradeUrl}" class="button" style="background: #f59e0b;">Upgrade Now</a>
+        </p>
+        ${data.canRequestExtension ? `<p>Need more time? <a href="${data.extensionUrl}">Request an extension</a>.</p>` : ''}
+      </div>
+      <div class="footer">
+        <p>Questions? Contact our support team.</p>
+      </div>
+    `, 'Trial Ending Soon'),
+    text: `Hi ${data.userName},\n\nOnly 3 days left in your ${data.companyName} trial.\n\nUpgrade now: ${data.upgradeUrl}\n\n${data.canRequestExtension ? `Need more time? Request an extension: ${data.extensionUrl}` : ''}`
+  }),
+
+  trial_expiring_1_day: (data: EmailTemplateData['trial_expiring_1_day']) => ({
+    subject: `⚠️ Last Day: Your ${data.companyName} trial ends today!`,
+    html: wrapTemplate(`
+      <div class="header" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
+        <h1>⚠️ Last Day!</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p><strong>Your trial ends today!</strong> Upgrade now to continue using <strong>${data.companyName}</strong> without interruption.</p>
+        <p style="text-align: center;">
+          <a href="${data.upgradeUrl}" class="button" style="background: #dc2626;">Upgrade Now</a>
+        </p>
+        ${data.canRequestExtension ? `<p>Need more time? <a href="${data.extensionUrl}">Request an extension</a>.</p>` : ''}
+      </div>
+      <div class="footer">
+        <p>Questions? Contact our support team.</p>
+      </div>
+    `, 'Trial Ends Today'),
+    text: `Hi ${data.userName},\n\nYour ${data.companyName} trial ends today!\n\nUpgrade now: ${data.upgradeUrl}\n\n${data.canRequestExtension ? `Need more time? Request an extension: ${data.extensionUrl}` : ''}`
+  }),
+
+  trial_extension_approved: (data: EmailTemplateData['trial_extension_approved']) => ({
+    subject: `✅ Trial Extension Approved for ${data.companyName}`,
+    html: wrapTemplate(`
+      <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        <h1>✅ Extension Approved!</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p>Great news! Your trial extension request for <strong>${data.companyName}</strong> has been approved.</p>
+        <div class="highlight" style="border-left-color: #10b981;">
+          <p><strong>Extension:</strong> ${data.extensionDays} additional days</p>
+          <p><strong>New trial end date:</strong> ${data.newTrialEndDate}</p>
+        </div>
+        <p>Enjoy exploring the platform!</p>
+      </div>
+      <div class="footer">
+        <p>Questions? Contact our support team.</p>
+      </div>
+    `, 'Trial Extension Approved'),
+    text: `Hi ${data.userName},\n\nYour trial extension for ${data.companyName} has been approved!\n\nExtension: ${data.extensionDays} additional days\nNew trial end date: ${data.newTrialEndDate}\n\nEnjoy exploring the platform!`
+  }),
+
+  trial_extension_rejected: (data: EmailTemplateData['trial_extension_rejected']) => ({
+    subject: `Trial Extension Request for ${data.companyName}`,
+    html: wrapTemplate(`
+      <div class="header">
+        <h1>Extension Request Update</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p>Unfortunately, your trial extension request for <strong>${data.companyName}</strong> could not be approved at this time.</p>
+        ${data.reason ? `<div class="highlight"><p><strong>Reason:</strong> ${data.reason}</p></div>` : ''}
+        <p>You can still upgrade to continue using all features:</p>
+        <p style="text-align: center;">
+          <a href="${data.upgradeUrl}" class="button">View Plans</a>
+        </p>
+      </div>
+      <div class="footer">
+        <p>Questions? Contact our support team.</p>
+      </div>
+    `, 'Trial Extension Update'),
+    text: `Hi ${data.userName},\n\nYour trial extension request for ${data.companyName} could not be approved.\n\n${data.reason ? `Reason: ${data.reason}\n\n` : ''}View plans: ${data.upgradeUrl}`
+  }),
 };
 
 export function renderTemplate<T extends EmailTemplateType>(
