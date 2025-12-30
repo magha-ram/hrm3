@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
+import Setup from "./pages/Setup";
 import { RootRedirect } from "@/components/RootRedirect";
 
 // App layout
@@ -85,6 +86,7 @@ const App = () => (
                   {/* Public routes */}
                   <Route path="/" element={<RootRedirect />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/setup" element={<Setup />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/unauthorized" element={<Unauthorized />} />
 
