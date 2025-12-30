@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Clock, Play, Square, CheckCircle2, Loader2, Calendar } from 'lucide-react';
+import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ModuleGate, WriteGate, RoleGate } from '@/components/PermissionGate';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useTenant } from '@/contexts/TenantContext';
 import { 
   useTodayEntry, 
   useClockIn, 
@@ -25,6 +27,7 @@ function formatHours(hours: number): string {
 }
 
 export default function TimePage() {
+  const { employeeId } = useTenant();
   const { isHROrAbove, isManager } = useUserRole();
   const { data: todayEntry, isLoading: todayLoading } = useTodayEntry();
   const { todayHours, weekHours, monthHours } = useTimeSummary();
@@ -37,6 +40,7 @@ export default function TimePage() {
   const [activeTab, setActiveTab] = useState('my');
 
   const isClockedIn = todayEntry?.clock_in && !todayEntry?.clock_out;
+  const hasEmployeeRecord = !!employeeId;
 
   const handleClockAction = () => {
     if (isClockedIn) {
@@ -59,7 +63,7 @@ export default function TimePage() {
           <WriteGate>
             <Button 
               onClick={handleClockAction}
-              disabled={clockIn.isPending || clockOut.isPending || todayLoading}
+              disabled={clockIn.isPending || clockOut.isPending || todayLoading || !hasEmployeeRecord}
               variant={isClockedIn ? 'destructive' : 'default'}
               size="lg"
             >
@@ -74,6 +78,17 @@ export default function TimePage() {
             </Button>
           </WriteGate>
         </div>
+
+        {/* No Employee Record Warning */}
+        {!hasEmployeeRecord && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No Employee Record Found</AlertTitle>
+            <AlertDescription>
+              Your user account is not linked to an employee record. Please contact your HR administrator to create an employee record and link it to your account. Time tracking features require an employee profile.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Current Status */}
         {todayEntry?.clock_in && (
