@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Building2, Hash, RefreshCw, Check, X } from 'lucide-react';
 import { MultiCompanyRequestDialog } from '@/components/MultiCompanyRequestDialog';
+import { DomainSettingsSection } from '@/components/settings/DomainSettingsSection';
 import { type EmployeeIdSettings, formatPreviewNumber, generateEmployeeNumber } from '@/hooks/useEmployeeNumber';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -569,6 +570,9 @@ export default function CompanySettingsPage() {
           <MultiCompanyRequestDialog />
         </CardContent>
       </Card>
+
+      {/* Domain Settings Section */}
+      <DomainSettingsSection />
     </div>
   );
 }

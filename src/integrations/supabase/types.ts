@@ -236,6 +236,7 @@ export type Database = {
           company_id: string
           created_at: string | null
           custom_domain: string | null
+          hosting_provider: string | null
           id: string
           is_active: boolean | null
           is_primary: boolean | null
@@ -249,6 +250,7 @@ export type Database = {
           company_id: string
           created_at?: string | null
           custom_domain?: string | null
+          hosting_provider?: string | null
           id?: string
           is_active?: boolean | null
           is_primary?: boolean | null
@@ -262,6 +264,7 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           custom_domain?: string | null
+          hosting_provider?: string | null
           id?: string
           is_active?: boolean | null
           is_primary?: boolean | null
