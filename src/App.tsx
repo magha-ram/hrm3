@@ -17,6 +17,7 @@ import { RootRedirect } from "@/components/RootRedirect";
 
 // App layout
 import { AppLayout } from "@/components/layout/AppLayout";
+import { PlatformLayout } from "@/components/platform/PlatformLayout";
 
 // Lazy load app pages
 const DashboardPage = lazy(() => import("./pages/app/DashboardPage"));
@@ -37,6 +38,14 @@ const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
 const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
 const BillingSettingsPage = lazy(() => import("./pages/app/settings/BillingSettingsPage"));
 const SuperAdminPage = lazy(() => import("./pages/app/settings/SuperAdminPage"));
+
+// Platform admin pages
+const PlatformDashboardPage = lazy(() => import("./pages/platform/PlatformDashboardPage"));
+const PlatformAdminsPage = lazy(() => import("./pages/platform/PlatformAdminsPage"));
+const PlatformCompaniesPage = lazy(() => import("./pages/platform/PlatformCompaniesPage"));
+const PlatformPlansPage = lazy(() => import("./pages/platform/PlatformPlansPage"));
+const PlatformAnalyticsPage = lazy(() => import("./pages/platform/PlatformAnalyticsPage"));
+const PlatformSettingsPage = lazy(() => import("./pages/platform/PlatformSettingsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +87,17 @@ const App = () => (
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/unauthorized" element={<Unauthorized />} />
+
+                  {/* Platform admin routes */}
+                  <Route path="/platform" element={<PlatformLayout />}>
+                    <Route index element={<Navigate to="/platform/dashboard" replace />} />
+                    <Route path="dashboard" element={<PlatformDashboardPage />} />
+                    <Route path="admins" element={<PlatformAdminsPage />} />
+                    <Route path="companies" element={<PlatformCompaniesPage />} />
+                    <Route path="plans" element={<PlatformPlansPage />} />
+                    <Route path="analytics" element={<PlatformAnalyticsPage />} />
+                    <Route path="settings" element={<PlatformSettingsPage />} />
+                  </Route>
 
                   {/* Protected app routes */}
                   <Route path="/app" element={<AppLayout />}>
