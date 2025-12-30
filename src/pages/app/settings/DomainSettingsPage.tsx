@@ -211,7 +211,7 @@ export default function DomainSettingsPage() {
     },
   });
 
-  // Verify domain mutation
+  // Verify domain mutation (DNS check)
   const verifyDomainMutation = useMutation({
     mutationFn: async (domainId: string) => {
       const { data, error } = await supabase.functions.invoke('verify-domain', {
@@ -230,6 +230,29 @@ export default function DomainSettingsPage() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Verification failed. Check DNS records.');
+    },
+  });
+
+  // Auto-verify domain mutation (skip DNS check)
+  const autoVerifyDomainMutation = useMutation({
+    mutationFn: async (domainId: string) => {
+      const { error } = await supabase
+        .from('company_domains')
+        .update({
+          is_verified: true,
+          verified_at: new Date().toISOString(),
+        })
+        .eq('id', domainId)
+        .eq('company_id', companyId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-domains', companyId] });
+      toast.success('Domain auto-verified successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to auto-verify domain');
     },
   });
 
@@ -442,19 +465,34 @@ export default function DomainSettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {!domain.is_verified && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => verifyDomainMutation.mutate(domain.id)}
-                        disabled={verifyDomainMutation.isPending}
-                      >
-                        {verifyDomainMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4 mr-1" />
-                        )}
-                        Verify
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => verifyDomainMutation.mutate(domain.id)}
+                          disabled={verifyDomainMutation.isPending || autoVerifyDomainMutation.isPending}
+                        >
+                          {verifyDomainMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                          )}
+                          Verify DNS
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => autoVerifyDomainMutation.mutate(domain.id)}
+                          disabled={verifyDomainMutation.isPending || autoVerifyDomainMutation.isPending}
+                        >
+                          {autoVerifyDomainMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-1" />
+                          )}
+                          Auto Verify
+                        </Button>
+                      </>
                     )}
                     <Button
                       variant="ghost"
