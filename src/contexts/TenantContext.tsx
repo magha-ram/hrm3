@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { useCurrentCompany } from '@/hooks/useCompany';
 import { AppRole, hasMinimumRole, canManageUsers, canManageHR, canViewReports } from '@/types/auth';
 import { ModuleId } from '@/config/modules';
+import { SubscriptionStatus } from '@/types/company';
 
 interface TenantContextValue {
   // Company info
@@ -27,6 +28,8 @@ interface TenantContextValue {
   // Company state
   isFrozen: boolean;
   isTrialing: boolean;
+  isPastDue: boolean;
+  subscriptionStatus: SubscriptionStatus | null;
   trialDaysRemaining: number | null;
   
   // Plan info
@@ -77,39 +80,47 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return diffDays > 0 ? diffDays : 0;
   }, [company?.subscription?.trial_ends_at]);
 
-  const value = useMemo<TenantContextValue>(() => ({
-    // Company info
-    companyId: currentCompanyId,
-    companyName: currentCompany?.company_name || company?.name || null,
-    companySlug: currentCompany?.company_slug || company?.slug || null,
-    companyLogoUrl: company?.logo_url || null,
-    
-    // User role
-    role: currentRole,
-    employeeId: user?.current_employee_id || null,
-    
-    // Role checks
-    isOwner: currentRole === 'super_admin',
-    isAdmin: hasMinimumRole(currentRole, 'company_admin'),
-    isHR: hasMinimumRole(currentRole, 'hr_manager'),
-    isManager: hasMinimumRole(currentRole, 'manager'),
-    canManageUsers: canManageUsers(currentRole),
-    canManageHR: canManageHR(currentRole),
-    canViewReports: canViewReports(currentRole),
-    
-    // Company state
-    isFrozen: company ? !company.is_active : false,
-    isTrialing: company?.subscription?.status === 'trialing',
-    trialDaysRemaining,
-    
-    // Plan info
-    planName: company?.subscription?.plan_name || null,
-    planModules,
-    hasModule,
-    
-    // Loading
-    isLoading: authLoading || companyLoading,
-  }), [
+  const value = useMemo<TenantContextValue>(() => {
+    const subscriptionStatus = company?.subscription?.status || null;
+    const isPastDue = subscriptionStatus === 'past_due';
+    const isFrozen = company ? !company.is_active : false;
+
+    return {
+      // Company info
+      companyId: currentCompanyId,
+      companyName: currentCompany?.company_name || company?.name || null,
+      companySlug: currentCompany?.company_slug || company?.slug || null,
+      companyLogoUrl: company?.logo_url || null,
+      
+      // User role
+      role: currentRole,
+      employeeId: user?.current_employee_id || null,
+      
+      // Role checks
+      isOwner: currentRole === 'super_admin',
+      isAdmin: hasMinimumRole(currentRole, 'company_admin'),
+      isHR: hasMinimumRole(currentRole, 'hr_manager'),
+      isManager: hasMinimumRole(currentRole, 'manager'),
+      canManageUsers: canManageUsers(currentRole),
+      canManageHR: canManageHR(currentRole),
+      canViewReports: canViewReports(currentRole),
+      
+      // Company state
+      isFrozen,
+      isTrialing: subscriptionStatus === 'trialing',
+      isPastDue,
+      subscriptionStatus,
+      trialDaysRemaining,
+      
+      // Plan info
+      planName: company?.subscription?.plan_name || null,
+      planModules,
+      hasModule,
+      
+      // Loading
+      isLoading: authLoading || companyLoading,
+    };
+  }, [
     currentCompanyId, 
     currentCompany, 
     company, 
