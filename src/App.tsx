@@ -131,13 +131,6 @@ const App = () => (
                     <Route path="help" element={<HelpPage />} />
                   </Route>
 
-                  {/* Legacy redirects for old routes */}
-                  <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
-                  <Route path="/payroll" element={<Navigate to="/app/payroll" replace />} />
-                  <Route path="/audit" element={<Navigate to="/app/audit" replace />} />
-                  <Route path="/compliance" element={<Navigate to="/app/compliance" replace />} />
-                  <Route path="/integrations" element={<Navigate to="/app/integrations" replace />} />
-
                   {/* Catch-all */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

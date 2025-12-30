@@ -11,7 +11,7 @@ import {
   FileText, Users, Loader2, ChevronLeft, ChevronRight,
   AlertTriangle, CheckCircle, Info
 } from 'lucide-react';
-import { RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { useAuditLogs, useAuditLogStats, useAuditLogTables, AuditLogFilters } from '@/hooks/useAuditLogs';
 import { format } from 'date-fns';
 
@@ -115,8 +115,9 @@ export default function AuditLogPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <ModuleGuard moduleId="audit">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Audit Logs</h1>
           <p className="text-muted-foreground">SOC2-compliant activity tracking and compliance monitoring</p>
@@ -358,6 +359,7 @@ export default function AuditLogPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </ModuleGuard>
   );
 }

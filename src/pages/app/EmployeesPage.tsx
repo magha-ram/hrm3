@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Plus, Search, Filter, MoreHorizontal, Eye, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { useEmployees, useDeleteEmployee, type Employee } from '@/hooks/useEmployees';
 import { EmployeeForm } from '@/components/employees/EmployeeForm';
 import { EmployeeDetail } from '@/components/employees/EmployeeDetail';
@@ -65,8 +66,9 @@ export default function EmployeesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <ModuleGuard moduleId="employees">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage your organization's employees</p>
@@ -242,6 +244,7 @@ export default function EmployeesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </ModuleGuard>
   );
 }

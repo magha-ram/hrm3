@@ -13,6 +13,7 @@ import {
   FileText, Users, Calculator, Loader2, Eye, Play
 } from 'lucide-react';
 import { RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { usePayrollRuns, usePayrollEntries, useCreatePayrollRun, useLockPayrollRun, usePayrollStats, useAddPayrollEntry } from '@/hooks/usePayroll';
 import { useEmployees } from '@/hooks/useEmployees';
 import { format } from 'date-fns';
@@ -376,8 +377,9 @@ export default function PayrollPage() {
   const { data: stats } = usePayrollStats();
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <ModuleGuard moduleId="payroll">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Payroll</h1>
           <p className="text-muted-foreground">Process and manage payroll runs</p>
@@ -617,6 +619,7 @@ export default function PayrollPage() {
           </RoleGate>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </ModuleGuard>
   );
 }

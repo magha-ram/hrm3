@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Plus, Building2, MoreHorizontal, Pencil, Trash2, Loader2, Users } from 'lucide-react';
 import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { useDepartments, useDeleteDepartment, type Department } from '@/hooks/useDepartments';
 import { DepartmentForm } from '@/components/departments/DepartmentForm';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -41,8 +42,9 @@ export default function DepartmentsPage() {
   const rootDepartments = departments?.filter(d => !d.parent_id) || [];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <ModuleGuard moduleId="departments">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Departments</h1>
           <p className="text-muted-foreground">Organize your company structure</p>
@@ -184,6 +186,7 @@ export default function DepartmentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </ModuleGuard>
   );
 }
