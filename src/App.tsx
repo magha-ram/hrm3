@@ -85,7 +85,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <TenantProvider>
-              <SessionTimeoutWarning timeoutMinutes={30} warningMinutes={5} />
+              <SessionTimeoutWarning />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public routes */}
