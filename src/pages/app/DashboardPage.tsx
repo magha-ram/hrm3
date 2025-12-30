@@ -5,9 +5,10 @@ import { Link } from 'react-router-dom';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ReadOnlyPageBanner } from '@/components/platform/ImpersonationRestricted';
 
 export default function DashboardPage() {
-  const { companyName, role, isTrialing, trialDaysRemaining, isFrozen, planName } = useTenant();
+  const { companyName, role, isTrialing, trialDaysRemaining, isFrozen, planName, isImpersonating } = useTenant();
   const { accessibleModules } = useModuleAccess();
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
 
@@ -40,6 +41,9 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Read-only mode banner for impersonation */}
+      <ReadOnlyPageBanner />
+      
       {/* Welcome Section */}
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>

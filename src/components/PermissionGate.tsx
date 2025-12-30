@@ -3,7 +3,7 @@ import { AppRole, hasMinimumRole } from '@/types/auth';
 import { ModuleId } from '@/config/modules';
 import { useTenant } from '@/contexts/TenantContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Lock, Crown } from 'lucide-react';
+import { Lock, Crown, Eye } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export interface PermissionGateProps {
@@ -23,12 +23,13 @@ export interface PermissionGateProps {
   children: React.ReactNode;
 }
 
-export type DenialReason = 'role' | 'module' | 'frozen' | null;
+export type DenialReason = 'role' | 'module' | 'frozen' | 'impersonating' | null;
 
 export interface PermissionCheckResult {
   hasAccess: boolean;
   denialReason: DenialReason;
   isFrozen: boolean;
+  isImpersonating: boolean;
   message: string;
 }
 
@@ -40,15 +41,27 @@ export function usePermissionCheck(options: {
   requiredModule?: ModuleId;
   writesOnly?: boolean;
 }): PermissionCheckResult {
-  const { role, isFrozen, hasModule } = useTenant();
+  const { role, isFrozen, hasModule, isImpersonating } = useTenant();
   const { requiredRole, requiredModule, writesOnly } = options;
 
   // If only checking frozen state for writes
   if (writesOnly) {
+    // Impersonation mode restricts writes
+    if (isImpersonating) {
+      return {
+        hasAccess: false,
+        denialReason: 'impersonating',
+        isFrozen,
+        isImpersonating,
+        message: 'Read-only mode. Exit impersonation to make changes.',
+      };
+    }
+    
     return {
       hasAccess: !isFrozen,
       denialReason: isFrozen ? 'frozen' : null,
       isFrozen,
+      isImpersonating,
       message: isFrozen ? 'Account is frozen. Write operations are disabled.' : '',
     };
   }
@@ -59,6 +72,7 @@ export function usePermissionCheck(options: {
       hasAccess: false,
       denialReason: 'role',
       isFrozen,
+      isImpersonating,
       message: `Requires ${requiredRole.replace('_', ' ')} role or higher.`,
     };
   }
@@ -69,6 +83,7 @@ export function usePermissionCheck(options: {
       hasAccess: false,
       denialReason: 'module',
       isFrozen,
+      isImpersonating,
       message: `This feature requires upgrading your plan.`,
     };
   }
@@ -79,6 +94,7 @@ export function usePermissionCheck(options: {
       hasAccess: false,
       denialReason: 'frozen',
       isFrozen,
+      isImpersonating,
       message: 'Account is frozen. Please update billing.',
     };
   }
@@ -87,6 +103,7 @@ export function usePermissionCheck(options: {
     hasAccess: true,
     denialReason: null,
     isFrozen,
+    isImpersonating,
     message: '',
   };
 }
@@ -144,13 +161,14 @@ export function PermissionGate({
   }
 
   if (fallback === 'lock-icon') {
-    const Icon = denialReason === 'module' ? Crown : Lock;
+    const Icon = denialReason === 'module' ? Crown : denialReason === 'impersonating' ? Eye : Lock;
+    const iconColor = denialReason === 'impersonating' ? 'text-amber-500' : '';
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="inline-flex items-center gap-1 opacity-50 cursor-not-allowed">
             {children}
-            <Icon className="h-3 w-3" />
+            <Icon className={`h-3 w-3 ${iconColor}`} />
           </span>
         </TooltipTrigger>
         <TooltipContent>
