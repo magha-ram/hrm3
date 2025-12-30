@@ -57,7 +57,7 @@ const benefits = [
 ];
 
 export default function Landing() {
-  const { isAuthenticated, isPlatformAdmin } = useAuth();
+  const { isAuthenticated, isPlatformAdmin, user } = useAuth();
   
   const dashboardLink = isPlatformAdmin ? '/platform/dashboard' : '/app/dashboard';
 
@@ -74,12 +74,17 @@ export default function Landing() {
           </Link>
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
-              <Link to={dashboardLink}>
-                <Button>
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground hidden sm:inline">
+                  {user?.first_name || user?.email?.split('@')[0] || 'User'}
+                </span>
+                <Link to={dashboardLink}>
+                  <Button>
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Button>
+                </Link>
+              </div>
             ) : (
               <>
                 <Link to="/auth">
