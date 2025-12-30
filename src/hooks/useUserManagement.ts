@@ -11,6 +11,11 @@ interface InviteUserParams {
   lastName?: string;
 }
 
+interface CreateEmployeeUserParams {
+  employeeId: string;
+  role: AppRole;
+}
+
 interface UpdateRoleParams {
   userId: string;
   companyUserId: string;
@@ -27,6 +32,7 @@ export function useUserManagement() {
   const { companyId, role: currentUserRole } = useTenant();
   const queryClient = useQueryClient();
 
+  // Legacy invite user - kept for backwards compatibility
   const inviteUser = useMutation({
     mutationFn: async (params: InviteUserParams) => {
       if (!companyId) throw new Error('No company selected');
@@ -55,6 +61,41 @@ export function useUserManagement() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['company-users', companyId] });
       toast.success(data.user_added ? 'User added to company' : 'Invitation sent successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // New: Create user account from employee
+  const createEmployeeUser = useMutation({
+    mutationFn: async (params: CreateEmployeeUserParams) => {
+      if (!companyId) throw new Error('No company selected');
+
+      const { data, error } = await supabase.functions.invoke('create-employee-user', {
+        body: {
+          employee_id: params.employeeId,
+          company_id: companyId,
+          role: params.role,
+        },
+      });
+
+      if (error) {
+        console.error('Create employee user error:', error);
+        throw new Error(error.message || 'Failed to create user account');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create user account');
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-users', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['employees-without-user', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
+      toast.success('User account created. Login credentials sent to employee\'s email.');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -160,6 +201,8 @@ export function useUserManagement() {
 
   return {
     inviteUser,
+    createEmployeeUser,
+    isCreatingUser: createEmployeeUser.isPending,
     updateUserRole,
     removeUser,
     reactivateUser,

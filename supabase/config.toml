@@ -50,3 +50,6 @@ verify_jwt = true
 
 [functions.send-trial-expiration-emails]
 verify_jwt = false
+
+[functions.create-employee-user]
+verify_jwt = true

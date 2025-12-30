@@ -60,7 +60,8 @@ export type EmailTemplateType =
   | 'trial_expiring_3_days'
   | 'trial_expiring_1_day'
   | 'trial_extension_approved'
-  | 'trial_extension_rejected';
+  | 'trial_extension_rejected'
+  | 'employee_account_created';
 
 export interface EmailTemplateData {
   user_invitation: {
@@ -156,5 +157,14 @@ export interface EmailTemplateData {
     reason: string;
     upgradeUrl: string;
     userName: string;
+  };
+  employee_account_created: {
+    employeeName: string;
+    companyName: string;
+    employeeNumber: string;
+    companySlug: string;
+    temporaryPassword: string;
+    loginUrl: string;
+    loginType: 'email' | 'employee_id';
   };
 }
