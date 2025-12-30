@@ -69,17 +69,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 },
               });
 
-              // Check for suspicious login (new device/location)
-              try {
-                await supabase.functions.invoke('check-suspicious-login', {
-                  body: {
-                    userAgent: navigator.userAgent,
-                    timestamp: new Date().toISOString(),
-                  },
-                });
-              } catch (err) {
-                console.error('Failed to check suspicious login:', err);
-              }
+              // Check for suspicious login (new device/location) - wait for session to be fully established
+              setTimeout(async () => {
+                try {
+                  const { data: { session: currentSession } } = await supabase.auth.getSession();
+                  if (currentSession?.access_token) {
+                    await supabase.functions.invoke('check-suspicious-login', {
+                      body: {
+                        userAgent: navigator.userAgent,
+                        timestamp: new Date().toISOString(),
+                      },
+                    });
+                  }
+                } catch (err) {
+                  console.error('Failed to check suspicious login:', err);
+                }
+              }, 500);
             }
           }, 0);
         } else {
