@@ -181,12 +181,6 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     icon: Shield,
     minRole: 'company_admin',
   },
-  {
-    name: 'Domains',
-    path: '/app/settings/domains',
-    icon: Globe,
-    minRole: 'company_admin',
-  },
 ];
 
 export const UTILITY_NAV = [
