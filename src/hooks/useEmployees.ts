@@ -1,0 +1,183 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { toast } from 'sonner';
+import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+
+export type Employee = Tables<'employees'>;
+export type EmployeeInsert = TablesInsert<'employees'>;
+export type EmployeeUpdate = TablesUpdate<'employees'>;
+
+export function useEmployees() {
+  const { companyId } = useTenant();
+
+  return useQuery({
+    queryKey: ['employees', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      
+      const { data, error } = await supabase
+        .from('employees')
+        .select(`
+          *,
+          department:departments(id, name),
+          manager:employees!employees_manager_id_fkey(id, first_name, last_name)
+        `)
+        .eq('company_id', companyId)
+        .order('last_name', { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+}
+
+export function useEmployee(employeeId: string | null) {
+  const { companyId } = useTenant();
+
+  return useQuery({
+    queryKey: ['employee', employeeId],
+    queryFn: async () => {
+      if (!employeeId) return null;
+
+      const { data, error } = await supabase
+        .from('employees')
+        .select(`
+          *,
+          department:departments(id, name),
+          manager:employees!employees_manager_id_fkey(id, first_name, last_name)
+        `)
+        .eq('id', employeeId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!employeeId && !!companyId,
+  });
+}
+
+export function useCreateEmployee() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async (employee: Omit<EmployeeInsert, 'company_id'>) => {
+      if (!companyId) throw new Error('No company selected');
+
+      const { data, error } = await supabase
+        .from('employees')
+        .insert({ ...employee, company_id: companyId })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Audit log
+      await supabase.from('audit_logs').insert({
+        company_id: companyId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        table_name: 'employees',
+        action: 'create',
+        record_id: data.id,
+        new_values: data,
+      });
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
+      toast.success('Employee created successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create employee');
+    },
+  });
+}
+
+export function useUpdateEmployee() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: EmployeeUpdate & { id: string }) => {
+      const { data: oldData } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      const { data, error } = await supabase
+        .from('employees')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Audit log
+      await supabase.from('audit_logs').insert({
+        company_id: companyId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        table_name: 'employees',
+        action: 'update',
+        record_id: id,
+        old_values: oldData,
+        new_values: data,
+      });
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['employee', variables.id] });
+      toast.success('Employee updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update employee');
+    },
+  });
+}
+
+export function useDeleteEmployee() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: oldData } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Audit log
+      await supabase.from('audit_logs').insert({
+        company_id: companyId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        table_name: 'employees',
+        action: 'delete',
+        record_id: id,
+        old_values: oldData,
+      });
+
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
+      toast.success('Employee deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete employee');
+    },
+  });
+}
