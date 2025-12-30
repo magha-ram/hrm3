@@ -1,29 +1,65 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Users, CreditCard, TrendingUp } from 'lucide-react';
+import { Building2, Users, CreditCard, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
+import { subDays } from 'date-fns';
 
 export default function PlatformDashboardPage() {
+  const navigate = useNavigate();
+  
   const { data: stats, isLoading } = useQuery({
     queryKey: ['platform-stats'],
     queryFn: async () => {
-      const [companiesRes, subscriptionsRes, platformAdminsRes] = await Promise.all([
-        supabase.from('companies').select('id, is_active', { count: 'exact' }),
-        supabase.from('company_subscriptions').select('id, status', { count: 'exact' }),
-        supabase.from('platform_admins').select('id, is_active', { count: 'exact' }),
+      const [companiesRes, subscriptionsRes, platformAdminsRes, plansRes] = await Promise.all([
+        supabase.from('companies').select('id, is_active, created_at'),
+        supabase.from('company_subscriptions').select('id, status, plan_id'),
+        supabase.from('platform_admins').select('id, is_active'),
+        supabase.from('plans').select('id, price_monthly'),
       ]);
 
-      const activeCompanies = companiesRes.data?.filter(c => c.is_active).length || 0;
-      const totalCompanies = companiesRes.count || 0;
-      const activeSubscriptions = subscriptionsRes.data?.filter(s => s.status === 'active' || s.status === 'trialing').length || 0;
+      const companies = companiesRes.data || [];
+      const activeCompanies = companies.filter(c => c.is_active).length;
+      const totalCompanies = companies.length;
+      
+      const subscriptions = subscriptionsRes.data || [];
+      const activeSubscriptions = subscriptions.filter(s => s.status === 'active' || s.status === 'trialing').length;
       const platformAdmins = platformAdminsRes.data?.filter(p => p.is_active).length || 0;
+
+      // Calculate MRR
+      let mrr = 0;
+      subscriptions.forEach(sub => {
+        if (sub.status === 'active') {
+          const plan = plansRes.data?.find(p => p.id === sub.plan_id);
+          mrr += plan?.price_monthly || 0;
+        }
+      });
+
+      // Calculate week-over-week growth
+      const thisWeek = companies.filter(c => {
+        const created = new Date(c.created_at);
+        return created >= subDays(new Date(), 7);
+      }).length;
+
+      const lastWeek = companies.filter(c => {
+        const created = new Date(c.created_at);
+        return created >= subDays(new Date(), 14) && created < subDays(new Date(), 7);
+      }).length;
+
+      const growth = lastWeek > 0 
+        ? ((thisWeek - lastWeek) / lastWeek * 100) 
+        : (thisWeek > 0 ? 100 : 0);
 
       return {
         totalCompanies,
         activeCompanies,
         activeSubscriptions,
         platformAdmins,
+        mrr,
+        growth,
+        thisWeek,
       };
     },
   });
@@ -39,6 +75,36 @@ export default function PlatformDashboardPage() {
 
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Fetch companies needing attention (trialing, expiring soon)
+  const { data: attentionItems } = useQuery({
+    queryKey: ['attention-items'],
+    queryFn: async () => {
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+      const { data: expiringTrials, error } = await supabase
+        .from('company_subscriptions')
+        .select('company_id, trial_ends_at, companies(name)')
+        .eq('status', 'trialing')
+        .lte('trial_ends_at', sevenDaysFromNow.toISOString())
+        .gte('trial_ends_at', new Date().toISOString())
+        .limit(5);
+
+      if (error) throw error;
+
+      const { data: pastDue } = await supabase
+        .from('company_subscriptions')
+        .select('company_id, companies(name)')
+        .eq('status', 'past_due')
+        .limit(5);
+
+      return {
+        expiringTrials: expiringTrials || [],
+        pastDue: pastDue || [],
+      };
     },
   });
 
@@ -91,17 +157,17 @@ export default function PlatformDashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Platform Admins</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{stats?.platformAdmins}</div>
+                <div className="text-2xl font-bold">${stats?.mrr?.toLocaleString() || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  Active administrators
+                  MRR
                 </p>
               </>
             )}
@@ -110,64 +176,127 @@ export default function PlatformDashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Growth</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Weekly Growth</CardTitle>
+            {(stats?.growth || 0) >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-green-500" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-red-500" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">
-              Coming soon
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <>
+                <div className={`text-2xl font-bold ${(stats?.growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {(stats?.growth || 0) >= 0 ? '+' : ''}{stats?.growth?.toFixed(0) || 0}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.thisWeek || 0} new this week
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Companies */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Companies</CardTitle>
-          <CardDescription>Latest companies registered on the platform</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingRecent ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : recentCompanies?.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No companies yet</p>
-          ) : (
-            <div className="space-y-3">
-              {recentCompanies?.map((company) => (
-                <div
-                  key={company.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-border"
-                >
-                  <div>
-                    <p className="font-medium text-foreground">{company.name}</p>
-                    <p className="text-sm text-muted-foreground">{company.slug}</p>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Recent Companies */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Companies</CardTitle>
+            <CardDescription>Latest companies registered on the platform</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingRecent ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : recentCompanies?.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No companies yet</p>
+            ) : (
+              <div className="space-y-3">
+                {recentCompanies?.map((company) => (
+                  <div
+                    key={company.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/platform/companies/${company.id}`)}
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">{company.name}</p>
+                      <p className="text-sm text-muted-foreground">{company.slug}</p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={company.is_active ? 'default' : 'secondary'}>
+                        {company.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(company.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        company.is_active
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                      }`}
-                    >
-                      {company.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(company.created_at).toLocaleDateString()}
-                    </p>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Attention Needed */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Needs Attention</CardTitle>
+            <CardDescription>Companies requiring action</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!attentionItems ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (attentionItems.expiringTrials.length === 0 && attentionItems.pastDue.length === 0) ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">All good! No immediate action needed.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {attentionItems.expiringTrials.map((item: any) => (
+                  <div
+                    key={item.company_id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 cursor-pointer"
+                    onClick={() => navigate(`/platform/companies/${item.company_id}`)}
+                  >
+                    <div>
+                      <p className="font-medium">{item.companies?.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Trial expires {new Date(item.trial_ends_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:text-yellow-300">
+                      Expiring
+                    </Badge>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+                {attentionItems.pastDue.map((item: any) => (
+                  <div
+                    key={item.company_id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950 cursor-pointer"
+                    onClick={() => navigate(`/platform/companies/${item.company_id}`)}
+                  >
+                    <div>
+                      <p className="font-medium">{item.companies?.name}</p>
+                      <p className="text-sm text-muted-foreground">Payment failed</p>
+                    </div>
+                    <Badge variant="destructive">Past Due</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -48,6 +48,7 @@ const HelpPage = lazy(() => import("./pages/app/HelpPage"));
 const PlatformDashboardPage = lazy(() => import("./pages/platform/PlatformDashboardPage"));
 const PlatformAdminsPage = lazy(() => import("./pages/platform/PlatformAdminsPage"));
 const PlatformCompaniesPage = lazy(() => import("./pages/platform/PlatformCompaniesPage"));
+const PlatformCompanyDetailPage = lazy(() => import("./pages/platform/PlatformCompanyDetailPage"));
 const PlatformPlansPage = lazy(() => import("./pages/platform/PlatformPlansPage"));
 const PlatformAnalyticsPage = lazy(() => import("./pages/platform/PlatformAnalyticsPage"));
 const PlatformSettingsPage = lazy(() => import("./pages/platform/PlatformSettingsPage"));
@@ -101,6 +102,7 @@ const App = () => (
                     <Route path="dashboard" element={<PlatformDashboardPage />} />
                     <Route path="admins" element={<PlatformAdminsPage />} />
                     <Route path="companies" element={<PlatformCompaniesPage />} />
+                    <Route path="companies/:companyId" element={<PlatformCompanyDetailPage />} />
                     <Route path="plans" element={<PlatformPlansPage />} />
                     <Route path="analytics" element={<PlatformAnalyticsPage />} />
                     <Route path="settings" element={<PlatformSettingsPage />} />
