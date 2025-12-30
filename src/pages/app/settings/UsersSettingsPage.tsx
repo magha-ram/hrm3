@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,7 +11,6 @@ import { useCompanyUsers, CompanyUser } from '@/hooks/useCompanyUsers';
 import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, UserPlus, MoreHorizontal, Shield, UserMinus, RotateCcw } from 'lucide-react';
-import { InviteUserDialog } from '@/components/users/InviteUserDialog';
 import { ChangeRoleDialog } from '@/components/users/ChangeRoleDialog';
 import { RemoveUserDialog } from '@/components/users/RemoveUserDialog';
 
@@ -37,12 +37,12 @@ function formatRole(role: string) {
 }
 
 export default function UsersSettingsPage() {
+  const navigate = useNavigate();
   const { isFrozen } = useTenant();
   const { user } = useAuth();
   const { data: users, isLoading, error } = useCompanyUsers();
   const { canManageUsers, reactivateUser } = useUserManagement();
 
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [changeRoleUser, setChangeRoleUser] = useState<CompanyUser | null>(null);
   const [removeUser, setRemoveUser] = useState<CompanyUser | null>(null);
 
@@ -102,9 +102,9 @@ export default function UsersSettingsPage() {
             </CardDescription>
           </div>
           {canManageUsers && !isFrozen && (
-            <Button onClick={() => setInviteDialogOpen(true)}>
+            <Button onClick={() => navigate('/app/settings/users/invite')}>
               <UserPlus className="h-4 w-4 mr-2" />
-              Invite User
+              Create User Accounts
             </Button>
           )}
         </CardHeader>
@@ -241,10 +241,6 @@ export default function UsersSettingsPage() {
       </Card>
 
       {/* Dialogs */}
-      <InviteUserDialog 
-        open={inviteDialogOpen} 
-        onOpenChange={setInviteDialogOpen} 
-      />
       <ChangeRoleDialog 
         user={changeRoleUser} 
         open={!!changeRoleUser} 

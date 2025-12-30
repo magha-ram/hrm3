@@ -41,6 +41,7 @@ const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
 const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
 const BillingSettingsPage = lazy(() => import("./pages/app/settings/BillingSettingsPage"));
 const UsersSettingsPage = lazy(() => import("./pages/app/settings/UsersSettingsPage"));
+const InviteUsersPage = lazy(() => import("./pages/app/settings/InviteUsersPage"));
 const SecuritySettingsPage = lazy(() => import("./pages/app/settings/SecuritySettingsPage"));
 
 // Utility pages
@@ -138,6 +139,7 @@ const App = () => (
                       <Route path="company" element={<CompanySettingsPage />} />
                       <Route path="billing" element={<BillingSettingsPage />} />
                       <Route path="users" element={<UsersSettingsPage />} />
+                      <Route path="users/invite" element={<InviteUsersPage />} />
                       <Route path="security" element={<SecuritySettingsPage />} />
                     </Route>
                     <Route path="help" element={<HelpPage />} />

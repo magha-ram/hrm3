@@ -72,6 +72,8 @@ export function useUserManagement() {
     mutationFn: async (params: CreateEmployeeUserParams) => {
       if (!companyId) throw new Error('No company selected');
 
+      console.log('Creating employee user:', { employeeId: params.employeeId, companyId, role: params.role });
+
       const { data, error } = await supabase.functions.invoke('create-employee-user', {
         body: {
           employee_id: params.employeeId,
@@ -80,16 +82,25 @@ export function useUserManagement() {
         },
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
         console.error('Create employee user error:', error);
         throw new Error(error.message || 'Failed to create user account');
       }
 
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to create user account');
+      // Handle case where data might be the response directly or wrapped
+      const responseData = data;
+      
+      if (responseData?.error) {
+        throw new Error(responseData.error || 'Failed to create user account');
       }
 
-      return data;
+      if (responseData && responseData.success === false) {
+        throw new Error(responseData.message || 'Failed to create user account');
+      }
+
+      return responseData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-users', companyId] });
@@ -98,6 +109,7 @@ export function useUserManagement() {
       toast.success('User account created. Login credentials sent to employee\'s email.');
     },
     onError: (error: Error) => {
+      console.error('createEmployeeUser mutation error:', error);
       toast.error(error.message);
     },
   });
