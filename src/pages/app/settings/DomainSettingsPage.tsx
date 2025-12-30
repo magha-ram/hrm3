@@ -718,12 +718,12 @@ export default function DomainSettingsPage() {
                         <div className="col-span-1">
                           <p className="text-muted-foreground">Value</p>
                           <div className="flex items-center gap-1">
-                            <p className="font-mono truncate">{domain.verification_token}</p>
+                            <p className="font-mono truncate">hrplatform-verify={domain.verification_token}</p>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-5 w-5"
-                              onClick={() => copyToClipboard(domain.verification_token || '', domain.id)}
+                              onClick={() => copyToClipboard(`hrplatform-verify=${domain.verification_token}`, domain.id)}
                             >
                               {copied === domain.id ? (
                                 <Check className="h-3 w-3 text-green-500" />
@@ -880,12 +880,12 @@ export default function DomainSettingsPage() {
                         <td className="px-3 py-2 font-mono">_hrplatform-verify</td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono truncate max-w-[120px]">{selectedDomainForDns.verification_token}</span>
+                            <span className="font-mono truncate max-w-[200px]">hrplatform-verify={selectedDomainForDns.verification_token}</span>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
-                              onClick={() => copyToClipboard(selectedDomainForDns.verification_token || '', 'dns-txt')}
+                              onClick={() => copyToClipboard(`hrplatform-verify=${selectedDomainForDns.verification_token}`, 'dns-txt')}
                             >
                               {copied === 'dns-txt' ? (
                                 <Check className="h-3 w-3 text-green-500" />

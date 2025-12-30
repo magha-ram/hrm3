@@ -100,9 +100,12 @@ serve(async (req: Request): Promise<Response> => {
       
       console.log(`TXT records found:`, txtRecords);
       
-      // Check if any TXT record matches the verification token
+      // Check if any TXT record matches the verification token (with prefix or legacy format)
+      const expectedValue = `hrplatform-verify=${domainRecord.verification_token}`;
       verified = txtRecords.some(record => 
-        record.some((txt: string) => txt === domainRecord.verification_token)
+        record.some((txt: string) => 
+          txt === expectedValue || txt === domainRecord.verification_token // backward compatibility
+        )
       );
     } catch (dnsError) {
       console.error(`DNS lookup failed for ${domainRecord.custom_domain}:`, dnsError);
