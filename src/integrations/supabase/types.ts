@@ -2266,6 +2266,15 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_company_branding_for_domain: {
+        Args: { hostname: string }
+        Returns: {
+          id: string
+          logo_url: string
+          name: string
+          slug: string
+        }[]
+      }
       get_current_employee: { Args: { _company_id: string }; Returns: string }
       get_platform_admin_role: { Args: { _user_id: string }; Returns: string }
       get_user_companies: {

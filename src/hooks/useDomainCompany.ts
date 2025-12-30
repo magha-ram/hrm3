@@ -99,69 +99,45 @@ export function useDomainCompany(): UseDomainCompanyResult {
       setSubdomain(detectedSubdomain);
       setBaseDomain(detectedBaseDomain);
 
-      // Try to find company by subdomain first
-      if (detectedSubdomain) {
-        console.log('[useDomainCompany] Looking up company by subdomain:', detectedSubdomain);
-        
-        const { data: domainData, error } = await supabase
-          .from('company_domains')
-          .select(`
-            company_id,
-            companies (
-              id,
-              name,
-              slug,
-              logo_url
-            )
-          `)
-          .eq('subdomain', detectedSubdomain)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (error) {
-          console.error('[useDomainCompany] Error looking up subdomain:', error);
-        }
-
-        if (domainData?.companies) {
-          const companyData = domainData.companies as unknown as DomainCompany;
-          console.log('[useDomainCompany] Found company by subdomain:', companyData.name);
-          setCompany(companyData);
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log('[useDomainCompany] No company found for subdomain:', detectedSubdomain);
-      }
-
-      // Try custom domain lookup (full hostname match)
-      console.log('[useDomainCompany] Trying custom domain lookup for:', hostname);
+      // Use the secure RPC function that works for anonymous users
+      // Try subdomain first, then full hostname for custom domains
+      const lookupKey = detectedSubdomain || hostname;
       
-      const { data: customDomainData, error: customError } = await supabase
-        .from('company_domains')
-        .select(`
-          company_id,
-          companies (
-            id,
-            name,
-            slug,
-            logo_url
-          )
-        `)
-        .eq('custom_domain', hostname)
-        .eq('is_verified', true)
-        .eq('is_active', true)
-        .maybeSingle();
+      console.log('[useDomainCompany] Looking up company branding for:', lookupKey);
+      
+      const { data, error } = await supabase.rpc('get_company_branding_for_domain', {
+        hostname: lookupKey
+      });
 
-      if (customError) {
-        console.error('[useDomainCompany] Error looking up custom domain:', customError);
+      if (error) {
+        console.error('[useDomainCompany] Error looking up company:', error);
+        setIsLoading(false);
+        return;
       }
 
-      if (customDomainData?.companies) {
-        const companyData = customDomainData.companies as unknown as DomainCompany;
-        console.log('[useDomainCompany] Found company by custom domain:', companyData.name);
+      if (data && data.length > 0) {
+        const companyData = data[0] as DomainCompany;
+        console.log('[useDomainCompany] Found company:', companyData.name);
         setCompany(companyData);
+      } else if (detectedSubdomain) {
+        // If subdomain lookup failed, try full hostname for custom domains
+        console.log('[useDomainCompany] Subdomain not found, trying full hostname:', hostname);
+        
+        const { data: customData, error: customError } = await supabase.rpc('get_company_branding_for_domain', {
+          hostname: hostname
+        });
+
+        if (customError) {
+          console.error('[useDomainCompany] Error looking up custom domain:', customError);
+        } else if (customData && customData.length > 0) {
+          const companyData = customData[0] as DomainCompany;
+          console.log('[useDomainCompany] Found company by custom domain:', companyData.name);
+          setCompany(companyData);
+        } else {
+          console.log('[useDomainCompany] No company found for hostname:', hostname);
+        }
       } else {
-        console.log('[useDomainCompany] No company found for hostname:', hostname);
+        console.log('[useDomainCompany] No company found for:', lookupKey);
       }
 
       setIsLoading(false);
