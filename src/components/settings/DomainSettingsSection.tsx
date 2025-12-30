@@ -38,6 +38,9 @@ interface DomainRecord {
   verification_token: string | null;
   hosting_provider: HostingProvider | null;
   created_at: string | null;
+  vercel_status: string | null;
+  vercel_verified: boolean | null;
+  vercel_error: string | null;
 }
 
 interface HealthCheckResult {
@@ -102,7 +105,10 @@ export function DomainSettingsSection() {
       // Cast the hosting_provider to the correct type
       const typedData: DomainRecord[] = (data || []).map(d => ({
         ...d,
-        hosting_provider: (d.hosting_provider as HostingProvider) || 'vercel'
+        hosting_provider: (d.hosting_provider as HostingProvider) || 'vercel',
+        vercel_status: d.vercel_status,
+        vercel_verified: d.vercel_verified,
+        vercel_error: d.vercel_error,
       }));
       setDomains(typedData);
     } catch (error) {
@@ -144,6 +150,7 @@ export function DomainSettingsSection() {
     try {
       const verificationToken = `hrplatform-${crypto.randomUUID().slice(0, 12)}`;
       
+      // First, add to database
       const { data, error } = await supabase
         .from('company_domains')
         .insert({
@@ -152,7 +159,8 @@ export function DomainSettingsSection() {
           verification_token: verificationToken,
           is_verified: false,
           is_active: false,
-          hosting_provider: hostingProvider
+          hosting_provider: hostingProvider,
+          vercel_status: hostingProvider === 'vercel' ? 'adding' : null,
         })
         .select()
         .single();
@@ -168,13 +176,43 @@ export function DomainSettingsSection() {
       
       const typedData: DomainRecord = {
         ...data,
-        hosting_provider: (data.hosting_provider as HostingProvider) || 'vercel'
+        hosting_provider: (data.hosting_provider as HostingProvider) || 'vercel',
+        vercel_status: data.vercel_status,
+        vercel_verified: data.vercel_verified,
+        vercel_error: data.vercel_error,
       };
+      
+      // If Vercel hosting, add domain to Vercel project
+      if (hostingProvider === 'vercel') {
+        toast.info('Adding domain to Vercel...');
+        
+        const { data: vercelResult, error: vercelError } = await supabase.functions.invoke('manage-vercel-domain', {
+          body: { 
+            action: 'add',
+            domain,
+            domainId: data.id,
+            companyId
+          }
+        });
+        
+        if (vercelError || !vercelResult?.success) {
+          const errorMsg = vercelResult?.error || vercelError?.message || 'Failed to add domain to Vercel';
+          toast.error(errorMsg);
+          
+          // Update local state with error
+          typedData.vercel_status = 'error';
+          typedData.vercel_error = errorMsg;
+        } else {
+          typedData.vercel_status = vercelResult.data?.verified ? 'active' : 'pending';
+          typedData.vercel_verified = vercelResult.data?.verified || false;
+          toast.success('Domain added to Vercel! Configure your DNS records.');
+        }
+      }
+      
       setDomains(prev => [...prev, typedData]);
       setNewDomain('');
       setSelectedDomain(typedData);
       setShowDnsDialog(true);
-      toast.success('Domain added! Configure your DNS records to verify.');
     } catch (error) {
       console.error('Error adding domain:', error);
       toast.error('Failed to add domain');
@@ -189,31 +227,61 @@ export function DomainSettingsSection() {
     setVerifyingDomain(domain.id);
     
     try {
-      const { data, error } = await supabase.functions.invoke('verify-domain', {
-        body: { 
-          domain: domain.custom_domain,
-          companyId: companyId
-        }
-      });
-      
-      if (error) throw error;
-      
-      if (data.verified) {
-        await supabase
-          .from('company_domains')
-          .update({ 
-            is_verified: true, 
-            is_active: true,
-            verified_at: new Date().toISOString()
-          })
-          .eq('id', domain.id);
+      // For Vercel domains, use Vercel verification
+      if (domain.hosting_provider === 'vercel') {
+        const { data: vercelResult, error: vercelError } = await supabase.functions.invoke('manage-vercel-domain', {
+          body: { 
+            action: 'verify',
+            domain: domain.custom_domain,
+            domainId: domain.id,
+            companyId
+          }
+        });
         
-        setDomains(prev => prev.map(d => 
-          d.id === domain.id ? { ...d, is_verified: true, is_active: true } : d
-        ));
-        toast.success('Domain verified successfully!');
+        if (vercelError) throw vercelError;
+        
+        if (vercelResult?.success && vercelResult?.verified) {
+          setDomains(prev => prev.map(d => 
+            d.id === domain.id ? { 
+              ...d, 
+              is_verified: true, 
+              is_active: true,
+              vercel_status: 'active',
+              vercel_verified: true 
+            } : d
+          ));
+          toast.success('Domain verified successfully!');
+        } else {
+          toast.error(vercelResult?.error || 'Domain verification failed. Please check your DNS records.');
+        }
       } else {
-        toast.error(data.message || 'Domain verification failed. Please check your DNS records.');
+        // Use existing verification for non-Vercel domains
+        const { data, error } = await supabase.functions.invoke('verify-domain', {
+          body: { 
+            domain: domain.custom_domain,
+            companyId: companyId
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data.verified) {
+          await supabase
+            .from('company_domains')
+            .update({ 
+              is_verified: true, 
+              is_active: true,
+              verified_at: new Date().toISOString()
+            })
+            .eq('id', domain.id);
+          
+          setDomains(prev => prev.map(d => 
+            d.id === domain.id ? { ...d, is_verified: true, is_active: true } : d
+          ));
+          toast.success('Domain verified successfully!');
+        } else {
+          toast.error(data.message || 'Domain verification failed. Please check your DNS records.');
+        }
       }
     } catch (error) {
       console.error('Error verifying domain:', error);
@@ -227,6 +295,25 @@ export function DomainSettingsSection() {
     setDeletingDomain(domain.id);
     
     try {
+      // For Vercel domains, remove from Vercel first
+      if (domain.hosting_provider === 'vercel' && domain.custom_domain) {
+        const { data: vercelResult, error: vercelError } = await supabase.functions.invoke('manage-vercel-domain', {
+          body: { 
+            action: 'remove',
+            domain: domain.custom_domain,
+            domainId: domain.id,
+            companyId
+          }
+        });
+        
+        if (vercelError) {
+          console.warn('Failed to remove domain from Vercel:', vercelError);
+          // Continue with database deletion even if Vercel removal fails
+        } else if (!vercelResult?.success) {
+          console.warn('Vercel domain removal failed:', vercelResult?.error);
+        }
+      }
+      
       const { error } = await supabase
         .from('company_domains')
         .delete()
@@ -406,7 +493,7 @@ export function DomainSettingsSection() {
                 <div key={domain.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{domain.custom_domain}</span>
                         {domain.is_verified ? (
                           <Badge variant="default" className="bg-green-500/10 text-green-600 border-green-500/20">
@@ -422,9 +509,46 @@ export function DomainSettingsSection() {
                         <Badge variant="outline" className="text-xs">
                           {domain.hosting_provider === 'lovable' ? 'Lovable' : 'Vercel'}
                         </Badge>
+                        {/* Vercel-specific status */}
+                        {domain.hosting_provider === 'vercel' && domain.vercel_status && (
+                          <>
+                            {domain.vercel_status === 'active' && (
+                              <Badge variant="default" className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">
+                                Vercel Active
+                              </Badge>
+                            )}
+                            {domain.vercel_status === 'adding' && (
+                              <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">
+                                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                Adding to Vercel
+                              </Badge>
+                            )}
+                            {domain.vercel_status === 'pending' && (
+                              <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Vercel Pending DNS
+                              </Badge>
+                            )}
+                            {domain.vercel_status === 'misconfigured' && (
+                              <Badge variant="destructive" className="text-xs">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                DNS Misconfigured
+                              </Badge>
+                            )}
+                            {domain.vercel_status === 'error' && (
+                              <Badge variant="destructive" className="text-xs">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Error
+                              </Badge>
+                            )}
+                          </>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         Added {new Date(domain.created_at!).toLocaleDateString()}
+                        {domain.vercel_error && (
+                          <span className="text-destructive ml-2">• {domain.vercel_error}</span>
+                        )}
                       </p>
                     </div>
                   </div>

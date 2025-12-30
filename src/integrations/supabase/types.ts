@@ -243,6 +243,10 @@ export type Database = {
           is_verified: boolean | null
           subdomain: string | null
           updated_at: string | null
+          vercel_domain_id: string | null
+          vercel_error: string | null
+          vercel_status: string | null
+          vercel_verified: boolean | null
           verification_token: string | null
           verified_at: string | null
         }
@@ -257,6 +261,10 @@ export type Database = {
           is_verified?: boolean | null
           subdomain?: string | null
           updated_at?: string | null
+          vercel_domain_id?: string | null
+          vercel_error?: string | null
+          vercel_status?: string | null
+          vercel_verified?: boolean | null
           verification_token?: string | null
           verified_at?: string | null
         }
@@ -271,6 +279,10 @@ export type Database = {
           is_verified?: boolean | null
           subdomain?: string | null
           updated_at?: string | null
+          vercel_domain_id?: string | null
+          vercel_error?: string | null
+          vercel_status?: string | null
+          vercel_verified?: boolean | null
           verification_token?: string | null
           verified_at?: string | null
         }
