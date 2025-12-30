@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import Landing from '@/pages/Landing';
 
 export function RootRedirect() {
   const { isAuthenticated, isLoading, currentCompanyId } = useAuth();
@@ -13,13 +14,16 @@ export function RootRedirect() {
     );
   }
 
+  // Show landing page for unauthenticated users
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    return <Landing />;
   }
 
+  // Redirect to onboarding if no company
   if (!currentCompanyId) {
     return <Navigate to="/onboarding" replace />;
   }
 
+  // Redirect to dashboard if authenticated with company
   return <Navigate to="/app/dashboard" replace />;
 }
