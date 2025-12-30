@@ -23,7 +23,7 @@ export const useRequireAuth = (options: UseRequireAuthOptions = {}) => {
     if (isLoading) return;
 
     if (!isAuthenticated) {
-      navigate(redirectTo, { replace: true });
+      navigate('/auth', { replace: true });
       return;
     }
 
