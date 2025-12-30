@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { 
+import {
   ArrowLeft, 
   Building2, 
   Users, 
@@ -34,10 +34,15 @@ import {
   HardDrive,
   UserCheck,
   Eye,
-  AlertTriangle
+  AlertTriangle,
+  Gift,
+  Check,
+  X
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { useState } from 'react';
 
 export default function PlatformCompanyDetailPage() {
   const { companyId } = useParams<{ companyId: string }>();
@@ -279,6 +284,73 @@ export default function PlatformCompanyDetailPage() {
     },
   });
 
+  // Fetch pending extension requests for this company
+  const { data: extensionRequests, isLoading: isLoadingExtensions } = useQuery({
+    queryKey: ['company-extension-requests', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trial_extension_requests')
+        .select('*, profiles:requested_by(email, first_name, last_name)')
+        .eq('company_id', companyId!)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const pendingExtensions = extensionRequests?.filter(r => r.status === 'pending') || [];
+
+  // Review extension request mutation
+  const reviewExtensionMutation = useMutation({
+    mutationFn: async ({ requestId, approved, notes }: { requestId: string; approved: boolean; notes: string }) => {
+      const request = extensionRequests?.find(r => r.id === requestId);
+      if (!request) throw new Error('Request not found');
+
+      // Update the request status
+      const { error: updateError } = await supabase
+        .from('trial_extension_requests')
+        .update({
+          status: approved ? 'approved' : 'rejected',
+          reviewed_by: (await supabase.auth.getUser()).data.user?.id,
+          reviewed_at: new Date().toISOString(),
+          review_notes: notes || null,
+        })
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      // If approved, extend the trial
+      if (approved && subscription) {
+        const newEndDate = new Date(subscription.trial_ends_at || subscription.current_period_end);
+        newEndDate.setDate(newEndDate.getDate() + request.requested_days);
+
+        const { error: subError } = await supabase
+          .from('company_subscriptions')
+          .update({
+            trial_ends_at: newEndDate.toISOString(),
+            current_period_end: newEndDate.toISOString(),
+            status: 'trialing',
+          })
+          .eq('id', subscription.id);
+
+        if (subError) throw subError;
+      }
+    },
+    onSuccess: (_, { approved }) => {
+      toast.success(approved ? 'Extension approved and trial extended' : 'Extension rejected');
+      queryClient.invalidateQueries({ queryKey: ['company-extension-requests', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['platform-company-subscription', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['pending-extension-requests'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const [reviewNotes, setReviewNotes] = useState('');
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -501,6 +573,75 @@ export default function PlatformCompanyDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending Extension Requests */}
+      {pendingExtensions.length > 0 && (
+        <Card className="border-purple-200 dark:border-purple-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-purple-600" />
+              Pending Extension Requests
+            </CardTitle>
+            <CardDescription>Review and approve trial extension requests</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {pendingExtensions.map((request) => (
+              <div key={request.id} className="p-4 border rounded-lg space-y-3 bg-purple-50/50 dark:bg-purple-950/50">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium">
+                      {request.requested_days} day extension requested
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Extension #{request.extension_number + 1} • Requested {format(new Date(request.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">Pending</Badge>
+                </div>
+                
+                <div className="text-sm">
+                  <p className="text-muted-foreground">Reason:</p>
+                  <p className="mt-1">{request.reason}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Add notes (optional)"
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        reviewExtensionMutation.mutate({ requestId: request.id, approved: true, notes: reviewNotes });
+                        setReviewNotes('');
+                      }}
+                      disabled={reviewExtensionMutation.isPending}
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        reviewExtensionMutation.mutate({ requestId: request.id, approved: false, notes: reviewNotes });
+                        setReviewNotes('');
+                      }}
+                      disabled={reviewExtensionMutation.isPending}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Usage Stats */}
       <div className="grid gap-4 md:grid-cols-3">

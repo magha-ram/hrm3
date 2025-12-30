@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Building2, Users, CreditCard, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Building2, Users, CreditCard, TrendingUp, TrendingDown, DollarSign, Gift } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
@@ -105,6 +105,22 @@ export default function PlatformDashboardPage() {
         expiringTrials: expiringTrials || [],
         pastDue: pastDue || [],
       };
+    },
+  });
+
+  // Fetch pending trial extension requests
+  const { data: pendingExtensions } = useQuery({
+    queryKey: ['pending-extension-requests'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trial_extension_requests')
+        .select('id, company_id, requested_days, reason, created_at, companies(name)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true })
+        .limit(5);
+
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -256,12 +272,33 @@ export default function PlatformDashboardPage() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
-            ) : (attentionItems.expiringTrials.length === 0 && attentionItems.pastDue.length === 0) ? (
+            ) : (attentionItems.expiringTrials.length === 0 && attentionItems.pastDue.length === 0 && (!pendingExtensions || pendingExtensions.length === 0)) ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">All good! No immediate action needed.</p>
               </div>
             ) : (
               <div className="space-y-3">
+                {/* Pending Extension Requests */}
+                {pendingExtensions?.map((item: any) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950 cursor-pointer"
+                    onClick={() => navigate(`/platform/companies/${item.company_id}`)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      <div>
+                        <p className="font-medium">{item.companies?.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Requested {item.requested_days} day extension
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="border-purple-500 text-purple-700 dark:text-purple-300">
+                      Extension
+                    </Badge>
+                  </div>
+                ))}
                 {attentionItems.expiringTrials.map((item: any) => (
                   <div
                     key={item.company_id}
