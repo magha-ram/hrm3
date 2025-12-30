@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Zap,
   Globe,
-  LayoutDashboard
+  LayoutDashboard,
+  LogOut
 } from 'lucide-react';
 
 const features = [
@@ -57,7 +58,7 @@ const benefits = [
 ];
 
 export default function Landing() {
-  const { isAuthenticated, isPlatformAdmin, user } = useAuth();
+  const { isAuthenticated, isPlatformAdmin, user, signOut } = useAuth();
   
   const dashboardLink = isPlatformAdmin ? '/platform/dashboard' : '/app/dashboard';
 
@@ -84,6 +85,9 @@ export default function Landing() {
                     Dashboard
                   </Button>
                 </Link>
+                <Button variant="ghost" size="icon" onClick={signOut} title="Sign out">
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
             ) : (
               <>
