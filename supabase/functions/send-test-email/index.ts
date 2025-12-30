@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { EmailService } from "../_shared/email/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +94,8 @@ serve(async (req: Request): Promise<Response> => {
     const fromName = settings.from_name || "HR Platform";
     const fromAddress = settings.from_address || "noreply@example.com";
 
+    console.log(`Using email provider: ${provider}`);
+
     // For console provider, just log
     if (provider === "console") {
       console.log("=== TEST EMAIL (Console Provider) ===");
@@ -107,15 +108,49 @@ serve(async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: "Test email logged to console (development mode)",
+          message: "Test email logged to console (development mode). Configure an email provider (SendGrid, MailerSend, AWS SES) to send real emails.",
           provider: "console"
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // For actual email providers, use EmailService directly
+    // For actual providers, check if required API keys are configured
+    let apiKeyConfigured = false;
+    let apiKeyName = "";
+
+    switch (provider) {
+      case "sendgrid":
+        apiKeyName = "SENDGRID_API_KEY";
+        apiKeyConfigured = !!Deno.env.get("SENDGRID_API_KEY");
+        break;
+      case "mailersend":
+        apiKeyName = "MAILERSEND_API_KEY";
+        apiKeyConfigured = !!Deno.env.get("MAILERSEND_API_KEY");
+        break;
+      case "aws-ses":
+        apiKeyName = "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY";
+        apiKeyConfigured = !!Deno.env.get("AWS_ACCESS_KEY_ID") && !!Deno.env.get("AWS_SECRET_ACCESS_KEY");
+        break;
+    }
+
+    if (!apiKeyConfigured) {
+      console.warn(`Email provider ${provider} selected but ${apiKeyName} not configured`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Configuration Error",
+          message: `Email provider "${provider}" is selected but ${apiKeyName} is not configured. Please add the secret in Supabase Edge Functions settings.`,
+          provider
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Import and use EmailService
+    const { EmailService } = await import("../_shared/email/index.ts");
     const emailService = new EmailService();
+    
     const result = await emailService.sendRaw({
       to: { email: body.to },
       subject: "Test Email from HR Platform",
