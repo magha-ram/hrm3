@@ -58,3 +58,7 @@ export async function createPlatformAdmin(
 ): Promise<ApiResponse<{ user_id: string; role: string; is_new_user: boolean }>> {
   return callEdgeFunction('create-platform-admin', params);
 }
+
+export async function checkPlatformAdminExists(): Promise<ApiResponse<{ has_admins: boolean }>> {
+  return callEdgeFunction('check-platform-admin', {});
+}

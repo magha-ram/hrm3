@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPlatformAdmin } from '@/lib/platform-api';
+import { createPlatformAdmin, checkPlatformAdminExists } from '@/lib/platform-api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,21 +44,11 @@ export default function SetupPage() {
 
   const checkForExistingAdmins = async () => {
     try {
-      // Use a public RPC or edge function to check if admins exist
-      // Since RLS blocks unauthenticated users, we call the edge function
-      const result = await createPlatformAdmin({
-        email: 'check@check.com',
-        password: 'checkonly',
-      });
+      const result = await checkPlatformAdminExists();
       
-      // If we get a specific error about not being in bootstrap mode, admins exist
-      if (result.error?.includes('platform owner') || result.error?.includes('Forbidden')) {
+      if (result.success && result.data?.has_admins) {
         setHasAdmins(true);
-      } else if (result.error?.includes('Invalid email') || result.error?.includes('check@check.com')) {
-        // Bootstrap mode is active but email validation failed - no admins yet
-        setHasAdmins(false);
       } else {
-        // Default to showing setup
         setHasAdmins(false);
       }
     } catch (error) {
