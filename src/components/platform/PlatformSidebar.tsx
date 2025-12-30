@@ -9,7 +9,8 @@ import {
   Settings,
   Shield,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,11 @@ const platformNavItems = [
     name: 'Analytics', 
     path: '/platform/analytics', 
     icon: BarChart3 
+  },
+  { 
+    name: 'Audit Logs', 
+    path: '/platform/audit-logs', 
+    icon: FileText 
   },
   { 
     name: 'Settings', 

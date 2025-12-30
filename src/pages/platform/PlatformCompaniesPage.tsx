@@ -202,6 +202,14 @@ export default function PlatformCompaniesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => navigate(`/platform/companies/${company.id}`)}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => toggleActiveMutation.mutate({ 
                             companyId: company.id, 
                             isActive: company.is_active 

@@ -166,9 +166,26 @@ serve(async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (freePlan) {
+      // Get trial settings from platform_settings
+      let trialDays = 14; // default
+      const { data: trialSettings } = await supabaseAdmin
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "trial")
+        .maybeSingle();
+
+      if (trialSettings?.value && typeof trialSettings.value === 'object') {
+        const settings = trialSettings.value as { default_days?: number };
+        if (settings.default_days && settings.default_days > 0) {
+          trialDays = settings.default_days;
+        }
+      }
+
+      console.log(`Creating trial subscription with ${trialDays} days`);
+
       // Create subscription
       const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + 14);
+      trialEnd.setDate(trialEnd.getDate() + trialDays);
 
       const { error: subError } = await supabaseAdmin
         .from("company_subscriptions")

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Settings, Mail, Palette, UserPlus, Clock, Save } from 'lucide-react';
+import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -69,6 +69,7 @@ export default function PlatformSettingsPage() {
   });
 
   const [domainInput, setDomainInput] = useState('');
+  const [testEmailAddress, setTestEmailAddress] = useState('');
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['platform-settings'],
@@ -130,6 +131,32 @@ export default function PlatformSettingsPage() {
 
   const handleSaveEmail = () => {
     updateSettingMutation.mutate({ key: 'email', value: email });
+  };
+
+  // Send test email mutation
+  const sendTestEmailMutation = useMutation({
+    mutationFn: async (toEmail: string) => {
+      const { data, error } = await supabase.functions.invoke('send-test-email', {
+        body: { to: toEmail },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || 'Test email sent');
+      setTestEmailAddress('');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to send test email');
+    },
+  });
+
+  const handleSendTestEmail = () => {
+    if (!testEmailAddress) {
+      toast.error('Please enter an email address');
+      return;
+    }
+    sendTestEmailMutation.mutate(testEmailAddress);
   };
 
   const handleAddDomain = () => {
@@ -421,10 +448,34 @@ export default function PlatformSettingsPage() {
               Note: Email provider API keys should be configured as secrets in your Supabase project.
             </p>
 
-            <Button onClick={handleSaveEmail} disabled={updateSettingMutation.isPending}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Email Settings
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 pt-2 border-t">
+              <Button onClick={handleSaveEmail} disabled={updateSettingMutation.isPending}>
+                <Save className="h-4 w-4 mr-2" />
+                Save Email Settings
+              </Button>
+              
+              <div className="flex gap-2 flex-1">
+                <Input
+                  type="email"
+                  placeholder="test@example.com"
+                  value={testEmailAddress}
+                  onChange={(e) => setTestEmailAddress(e.target.value)}
+                  className="max-w-xs"
+                />
+                <Button 
+                  variant="outline"
+                  onClick={handleSendTestEmail}
+                  disabled={sendTestEmailMutation.isPending || !testEmailAddress}
+                >
+                  {sendTestEmailMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Send Test Email
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
