@@ -132,27 +132,10 @@ export default function SetupPage() {
     );
   }
 
+  // If platform admin exists, redirect to login
   if (hasAdmins) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Shield className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle>Setup Complete</CardTitle>
-            <CardDescription>
-              This platform has already been configured with an owner.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={() => navigate('/auth')}>
-              Go to Sign In
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    navigate('/auth', { replace: true });
+    return null;
   }
 
   if (isComplete) {
