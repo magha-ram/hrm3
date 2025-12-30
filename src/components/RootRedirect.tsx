@@ -29,7 +29,7 @@ export function RootRedirect() {
     );
   }
 
-  // Platform admins go to platform dashboard
+  // Platform admins go to platform dashboard (check this FIRST before company check)
   if (isPlatformAdmin) {
     return <Navigate to="/platform/dashboard" replace />;
   }
@@ -37,7 +37,7 @@ export function RootRedirect() {
   // Check if user has any companies
   const hasCompanies = user.companies && user.companies.length > 0;
 
-  // Redirect to onboarding only if user has NO companies
+  // Redirect to onboarding only if user has NO companies AND is not a platform admin
   if (!hasCompanies) {
     return <Navigate to="/onboarding" replace />;
   }
