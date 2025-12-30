@@ -57,33 +57,16 @@ export function useCompanyEmailSettings() {
     queryFn: async (): Promise<CompanyEmailSettings | null> => {
       if (!companyId) return null;
 
+      // Use POST with action parameter since supabase.functions.invoke doesn't support query params well
       const { data, error } = await supabase.functions.invoke('manage-email-settings', {
-        method: 'GET',
-        body: null,
-        headers: {
-          'Content-Type': 'application/json',
+        body: {
+          action: 'get',
+          company_id: companyId,
         },
       });
 
-      // For GET requests, we need to use query params approach
-      const response = await fetch(
-        `https://xwfzrbigmgyxsrzlkqwr.supabase.co/functions/v1/manage-email-settings?company_id=${companyId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to fetch email settings');
-      }
-
-      const result = await response.json();
-      return result.settings;
+      if (error) throw error;
+      return data?.settings || null;
     },
     enabled: !!companyId,
   });
@@ -115,23 +98,15 @@ export function useCompanyEmailSettings() {
     mutationFn: async () => {
       if (!companyId) throw new Error('No company selected');
 
-      const response = await fetch(
-        `https://xwfzrbigmgyxsrzlkqwr.supabase.co/functions/v1/manage-email-settings?company_id=${companyId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const { data, error } = await supabase.functions.invoke('manage-email-settings', {
+        body: {
+          action: 'delete',
+          company_id: companyId,
+        },
+      });
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to delete settings');
-      }
-
-      return response.json();
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       toast.success('Custom settings removed, using platform default');
