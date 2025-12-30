@@ -1545,6 +1545,10 @@ export type Database = {
     }
     Functions: {
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_user_employee_id: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: string
+      }
       has_company_role: {
         Args: {
           _company_id: string
@@ -1553,6 +1557,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_valid_support_access: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_active_company_admin: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_active_company_member: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_active_hr_or_above: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_active_manager_or_above: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_company_active: { Args: { _company_id: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -1563,6 +1588,14 @@ export type Database = {
       }
       is_hr_or_above: {
         Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_manager_of_employee: {
+        Args: { _employee_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_own_employee_record: {
+        Args: { _employee_id: string; _user_id: string }
         Returns: boolean
       }
     }
