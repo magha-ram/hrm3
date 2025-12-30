@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.send-webhook]
 verify_jwt = false
+
+[functions.request-multi-company]
+verify_jwt = true
