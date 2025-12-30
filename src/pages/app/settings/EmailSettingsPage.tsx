@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Mail, Send, ChevronDown, CheckCircle2, XCircle, HelpCircle, Eye, EyeOff, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useCompanyEmailSettings, type EmailProvider } from '@/hooks/useCompanyEmailSettings';
+import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -25,6 +26,7 @@ const PROVIDER_OPTIONS: { value: EmailProvider; label: string; description: stri
 
 export default function EmailSettingsPage() {
   const queryClient = useQueryClient();
+  const { companyId } = useTenant();
   const { settings, isLoading, error, saveSettings, isSaving, sendTestEmail, isTesting } = useCompanyEmailSettings();
   
   const [usePlatformDefault, setUsePlatformDefault] = useState(true);
@@ -101,7 +103,7 @@ export default function EmailSettingsPage() {
   };
 
   const handleRetry = () => {
-    queryClient.invalidateQueries({ queryKey: ['company-email-settings'] });
+    queryClient.invalidateQueries({ queryKey: ['company-email-settings', companyId] });
   };
 
   if (isLoading) {
