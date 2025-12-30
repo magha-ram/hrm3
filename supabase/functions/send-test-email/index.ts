@@ -132,6 +132,14 @@ serve(async (req: Request): Promise<Response> => {
         apiKeyName = "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY";
         apiKeyConfigured = !!Deno.env.get("AWS_ACCESS_KEY_ID") && !!Deno.env.get("AWS_SECRET_ACCESS_KEY");
         break;
+      case "brevo":
+        apiKeyName = "BREVO_API_KEY";
+        apiKeyConfigured = !!Deno.env.get("BREVO_API_KEY");
+        break;
+      case "resend":
+        apiKeyName = "RESEND_API_KEY";
+        apiKeyConfigured = !!Deno.env.get("RESEND_API_KEY");
+        break;
     }
 
     if (!apiKeyConfigured) {
