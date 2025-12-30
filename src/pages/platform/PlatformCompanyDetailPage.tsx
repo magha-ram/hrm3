@@ -125,6 +125,22 @@ export default function PlatformCompanyDetailPage() {
     enabled: !!companyId,
   });
 
+  // Fetch company domains
+  const { data: companyDomains, isLoading: isLoadingDomains } = useQuery({
+    queryKey: ['platform-company-domains', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_domains')
+        .select('*')
+        .eq('company_id', companyId!)
+        .order('is_primary', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
   // Fetch storage usage (sum of file_size from employee_documents)
   const { data: storageUsage } = useQuery({
     queryKey: ['platform-company-storage', companyId],
@@ -728,6 +744,60 @@ export default function PlatformCompanyDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Company Domains */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Domains
+          </CardTitle>
+          <CardDescription>Subdomains and custom domains for this company</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingDomains ? (
+            <Skeleton className="h-20" />
+          ) : companyDomains?.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">No domains configured</p>
+          ) : (
+            <div className="space-y-3">
+              {companyDomains?.map((domain) => (
+                <div key={domain.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-mono text-sm">
+                        {domain.subdomain ? `${domain.subdomain}.hrplatform.com` : domain.custom_domain}
+                      </p>
+                      <div className="flex gap-2 mt-1">
+                        {domain.is_primary && (
+                          <Badge variant="default" className="text-xs">Primary</Badge>
+                        )}
+                        {domain.subdomain && (
+                          <Badge variant="secondary" className="text-xs">Subdomain</Badge>
+                        )}
+                        {domain.custom_domain && (
+                          <Badge variant="outline" className="text-xs">Custom</Badge>
+                        )}
+                        {domain.is_verified ? (
+                          <Badge variant="default" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            Verified
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">Pending</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant={domain.is_active ? 'default' : 'secondary'}>
+                    {domain.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Users Table */}
       <Card>
