@@ -1,13 +1,10 @@
-import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Briefcase, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
 
 export default function RecruitmentPage() {
-  const { isFrozen } = useTenant();
-  const canEdit = !isFrozen;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -15,12 +12,14 @@ export default function RecruitmentPage() {
           <h1 className="text-2xl font-bold">Recruitment</h1>
           <p className="text-muted-foreground">Manage job postings and candidates</p>
         </div>
-        {canEdit && (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Post Job
-          </Button>
-        )}
+        <WriteGate>
+          <RoleGate role="hr_manager">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Post Job
+            </Button>
+          </RoleGate>
+        </WriteGate>
       </div>
 
       <Tabs defaultValue="jobs" className="space-y-4">

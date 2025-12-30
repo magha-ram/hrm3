@@ -1,13 +1,10 @@
-import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, BarChart3 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
 
 export default function PerformancePage() {
-  const { isFrozen, isHR } = useTenant();
-  const canEdit = !isFrozen;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -15,19 +12,23 @@ export default function PerformancePage() {
           <h1 className="text-2xl font-bold">Performance</h1>
           <p className="text-muted-foreground">Track and manage performance reviews</p>
         </div>
-        {canEdit && isHR && (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Start Review Cycle
-          </Button>
-        )}
+        <WriteGate>
+          <RoleGate role="hr_manager">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Start Review Cycle
+            </Button>
+          </RoleGate>
+        </WriteGate>
       </div>
 
       <Tabs defaultValue="my-reviews" className="space-y-4">
         <TabsList>
           <TabsTrigger value="my-reviews">My Reviews</TabsTrigger>
           <TabsTrigger value="pending">Pending</TabsTrigger>
-          {isHR && <TabsTrigger value="all">All Reviews</TabsTrigger>}
+          <RoleGate role="hr_manager">
+            <TabsTrigger value="all">All Reviews</TabsTrigger>
+          </RoleGate>
         </TabsList>
 
         <TabsContent value="my-reviews">
@@ -59,8 +60,8 @@ export default function PerformancePage() {
           </Card>
         </TabsContent>
 
-        {isHR && (
-          <TabsContent value="all">
+        <TabsContent value="all">
+          <RoleGate role="hr_manager">
             <Card>
               <CardHeader>
                 <CardTitle>All Reviews</CardTitle>
@@ -72,8 +73,8 @@ export default function PerformancePage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        )}
+          </RoleGate>
+        </TabsContent>
       </Tabs>
     </div>
   );

@@ -1,13 +1,10 @@
-import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
 
 export default function EmployeesPage() {
-  const { isFrozen, hasModule } = useTenant();
-  const canEdit = !isFrozen;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -15,12 +12,14 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage your organization's employees</p>
         </div>
-        {canEdit && (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Employee
-          </Button>
-        )}
+        <WriteGate>
+          <RoleGate role="hr_manager">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Employee
+            </Button>
+          </RoleGate>
+        </WriteGate>
       </div>
 
       {/* Filters */}
@@ -43,9 +42,7 @@ export default function EmployeesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Employee Directory</CardTitle>
-          <CardDescription>
-            {isFrozen ? 'View-only mode - Account is frozen' : 'Click on an employee to view details'}
-          </CardDescription>
+          <CardDescription>Click on an employee to view details</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12 text-muted-foreground">

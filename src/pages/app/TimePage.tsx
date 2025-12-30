@@ -1,12 +1,9 @@
-import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, Play, Square } from 'lucide-react';
+import { WriteGate } from '@/components/PermissionGate';
 
 export default function TimePage() {
-  const { isFrozen } = useTenant();
-  const canEdit = !isFrozen;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -14,7 +11,7 @@ export default function TimePage() {
           <h1 className="text-2xl font-bold">Time Tracking</h1>
           <p className="text-muted-foreground">Track your work hours and attendance</p>
         </div>
-        {canEdit && (
+        <WriteGate>
           <div className="flex gap-2">
             <Button variant="outline">
               <Play className="h-4 w-4 mr-2" />
@@ -25,7 +22,7 @@ export default function TimePage() {
               Clock Out
             </Button>
           </div>
-        )}
+        </WriteGate>
       </div>
 
       {/* Today's Summary */}
