@@ -204,7 +204,7 @@ export default function DomainSettingsPage() {
   // Add custom domain mutation
   const addDomainMutation = useMutation({
     mutationFn: async (domain: string) => {
-      const verificationToken = crypto.randomUUID().split('-')[0];
+      const verificationToken = crypto.randomUUID();
       
       const { data, error } = await supabase
         .from('company_domains')
@@ -233,6 +233,29 @@ export default function DomainSettingsPage() {
       } else {
         toast.error(error.message || 'Failed to add domain');
       }
+    },
+  });
+
+  // Regenerate verification token mutation (for domains with old short tokens)
+  const regenerateTokenMutation = useMutation({
+    mutationFn: async (domainId: string) => {
+      const newToken = crypto.randomUUID();
+      
+      const { error } = await supabase
+        .from('company_domains')
+        .update({ verification_token: newToken })
+        .eq('id', domainId)
+        .eq('company_id', companyId);
+      
+      if (error) throw error;
+      return newToken;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-domains', companyId] });
+      toast.success('Verification token regenerated. Update your DNS TXT record.');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to regenerate token');
     },
   });
 
@@ -557,6 +580,23 @@ export default function DomainSettingsPage() {
                             <Settings className="h-4 w-4 mr-1" />
                             Setup DNS
                           </Button>
+                          {/* Show regenerate button for domains with short/old tokens */}
+                          {domain.verification_token && domain.verification_token.length < 36 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => regenerateTokenMutation.mutate(domain.id)}
+                              disabled={regenerateTokenMutation.isPending}
+                              title="Regenerate full verification token"
+                            >
+                              {regenerateTokenMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4 mr-1" />
+                              )}
+                              Fix Token
+                            </Button>
+                          )}
                           <Button
                             variant="default"
                             size="sm"
