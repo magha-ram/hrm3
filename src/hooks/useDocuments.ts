@@ -90,7 +90,7 @@ export function useAllDocuments() {
         .from('employee_documents')
         .select(`
           *,
-          employee:employees(id, first_name, last_name, email),
+          employee:employees!employee_documents_employee_id_fkey(id, first_name, last_name, email),
           document_type:document_types(id, name, code)
         `)
         .eq('company_id', companyId)

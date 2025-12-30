@@ -24,6 +24,8 @@ export interface UserRoleInfo {
   isCompanyAdmin: boolean;
   /** User is hr_manager or higher */
   isHRManager: boolean;
+  /** User is hr_manager or higher (alias) */
+  isHROrAbove: boolean;
   /** User is manager or higher */
   isManager: boolean;
   /** User is employee (lowest role level) */
@@ -58,6 +60,7 @@ export function useUserRole(): UserRoleInfo {
       isSuperAdmin: role === 'super_admin',
       isCompanyAdmin: hasMinimumRole(role, 'company_admin'),
       isHRManager: hasMinimumRole(role, 'hr_manager'),
+      isHROrAbove: hasMinimumRole(role, 'hr_manager'),
       isManager: hasMinimumRole(role, 'manager'),
       isEmployee: role === 'employee',
       
