@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { createPlatformAdmin } from '@/lib/platform-api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordStrength } from '@/components/ui/password-strength';
 import { toast } from 'sonner';
 import { Loader2, Shield, CheckCircle2 } from 'lucide-react';
 import { z } from 'zod';
@@ -219,6 +219,7 @@ export default function SetupPage() {
                 placeholder="••••••••"
                 required
               />
+              <PasswordStrength password={formData.password} />
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
