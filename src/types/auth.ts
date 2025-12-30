@@ -18,6 +18,7 @@ export interface UserContext {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
+  max_companies: number;
   current_company_id: string | null;
   current_role: AppRole | null;
   current_employee_id: string | null;

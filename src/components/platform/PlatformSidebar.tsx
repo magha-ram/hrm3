@@ -29,6 +29,11 @@ const platformNavItems = [
     icon: Building2 
   },
   { 
+    name: 'Users', 
+    path: '/platform/users', 
+    icon: Users 
+  },
+  { 
     name: 'Platform Admins', 
     path: '/platform/admins', 
     icon: Shield 

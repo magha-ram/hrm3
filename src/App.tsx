@@ -56,6 +56,7 @@ const PlatformSettingsPage = lazy(() => import("./pages/platform/PlatformSetting
 const PlatformAuditLogsPage = lazy(() => import("./pages/platform/PlatformAuditLogsPage"));
 const PlatformImpersonationLogsPage = lazy(() => import("./pages/platform/PlatformImpersonationLogsPage"));
 const PlatformWebhooksPage = lazy(() => import("./pages/platform/PlatformWebhooksPage"));
+const PlatformUsersPage = lazy(() => import("./pages/platform/PlatformUsersPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,6 +109,7 @@ const App = () => (
                     <Route path="admins" element={<PlatformAdminsPage />} />
                     <Route path="companies" element={<PlatformCompaniesPage />} />
                     <Route path="companies/:companyId" element={<PlatformCompanyDetailPage />} />
+                    <Route path="users" element={<PlatformUsersPage />} />
                     <Route path="plans" element={<PlatformPlansPage />} />
                     <Route path="analytics" element={<PlatformAnalyticsPage />} />
                     <Route path="audit-logs" element={<PlatformAuditLogsPage />} />

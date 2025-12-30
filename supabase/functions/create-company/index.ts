@@ -74,6 +74,32 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // Check user's company limit
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("max_companies")
+      .eq("id", user.id)
+      .single();
+
+    const { count: currentCompanyCount } = await supabaseAdmin
+      .from("company_users")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+
+    const maxCompanies = profile?.max_companies || 1;
+
+    if ((currentCompanyCount || 0) >= maxCompanies) {
+      console.log(`User ${user.id} has reached company limit: ${currentCompanyCount}/${maxCompanies}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Company Limit Reached", 
+          message: `You can only belong to ${maxCompanies} company(ies). Contact platform support to create additional companies.` 
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Parse and validate request body
     const body: CreateCompanyRequest = await req.json();
 

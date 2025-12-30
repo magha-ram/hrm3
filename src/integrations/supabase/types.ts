@@ -1408,6 +1408,7 @@ export type Database = {
           last_login_at: string | null
           last_name: string | null
           locale: string | null
+          max_companies: number
           metadata: Json | null
           phone: string | null
           timezone: string | null
@@ -1422,6 +1423,7 @@ export type Database = {
           last_login_at?: string | null
           last_name?: string | null
           locale?: string | null
+          max_companies?: number
           metadata?: Json | null
           phone?: string | null
           timezone?: string | null
@@ -1436,6 +1438,7 @@ export type Database = {
           last_login_at?: string | null
           last_name?: string | null
           locale?: string | null
+          max_companies?: number
           metadata?: Json | null
           phone?: string | null
           timezone?: string | null
