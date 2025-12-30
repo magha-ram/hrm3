@@ -12,7 +12,8 @@ import {
   ChevronRight,
   FileText,
   UserCog,
-  Webhook
+  Webhook,
+  Mail,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,11 @@ const platformNavItems = [
     name: 'Webhooks', 
     path: '/platform/webhooks', 
     icon: Webhook 
+  },
+  { 
+    name: 'Email Logs', 
+    path: '/platform/email-logs', 
+    icon: Mail 
   },
   { 
     name: 'Settings', 
