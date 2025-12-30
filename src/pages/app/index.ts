@@ -8,3 +8,7 @@ export { default as RecruitmentPage } from './RecruitmentPage';
 export { default as PerformancePage } from './PerformancePage';
 export { default as PayrollPage } from './PayrollPage';
 export { default as SettingsPage } from './SettingsPage';
+export { default as IntegrationsPage } from './IntegrationsPage';
+export { default as AuditLogPage } from './AuditLogPage';
+export { default as CompliancePage } from './CompliancePage';
+export { default as HelpPage } from './HelpPage';
