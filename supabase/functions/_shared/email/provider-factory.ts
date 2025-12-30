@@ -6,19 +6,85 @@ import { AwsSesEmailProvider } from './providers/aws-ses.ts';
 import { SmtpEmailProvider, SmtpConfig } from './providers/smtp.ts';
 import { ResendEmailProvider, ResendConfig } from './providers/resend.ts';
 import { BrevoEmailProvider, BrevoConfig } from './providers/brevo.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+
+interface PlatformEmailSettings {
+  provider: EmailProviderType;
+  from_name: string;
+  from_address: string;
+}
 
 /**
  * Email Provider Factory
  * Creates the appropriate email provider based on configuration.
- * Supports both platform-level (env vars) and company-level (database) settings.
+ * Supports both platform-level (database) and company-level (database) settings.
  */
 export class EmailProviderFactory {
   private static platformInstance: EmailProvider | null = null;
   private static platformProviderType: EmailProviderType | null = null;
+  private static dbPlatformInstance: EmailProvider | null = null;
+  private static dbPlatformProviderType: EmailProviderType | null = null;
+
+  /**
+   * Get the platform-level email provider from the database (platform_settings table).
+   * This is the preferred method as it respects settings configured in the Platform UI.
+   */
+  static async getPlatformProviderFromDb(): Promise<EmailProvider> {
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        console.warn('Supabase credentials not available, falling back to env vars');
+        return this.getPlatformProvider();
+      }
+
+      const client = createClient(supabaseUrl, supabaseServiceKey);
+      
+      // Fetch platform email settings from database
+      const { data, error } = await client
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'email')
+        .single();
+
+      if (error || !data) {
+        console.warn('No platform email settings in database, falling back to env vars');
+        return this.getPlatformProvider();
+      }
+
+      const settings = data.value as PlatformEmailSettings;
+      const providerType = (settings.provider?.toLowerCase() || 'console') as EmailProviderType;
+
+      // Check if we have a cached instance with the same provider type
+      if (this.dbPlatformInstance && this.dbPlatformProviderType === providerType) {
+        return this.dbPlatformInstance;
+      }
+
+      const config: EmailProviderConfig = {
+        fromEmail: settings.from_address || Deno.env.get('EMAIL_FROM_ADDRESS') || 'noreply@example.com',
+        fromName: settings.from_name || Deno.env.get('EMAIL_FROM_NAME') || 'HR System',
+      };
+
+      this.dbPlatformProviderType = providerType;
+      this.dbPlatformInstance = this.createProvider(providerType, config);
+
+      console.log(`Platform email provider from database: ${this.dbPlatformInstance.name}`);
+
+      if (!this.dbPlatformInstance.validateConfig()) {
+        console.warn(`Email provider ${this.dbPlatformInstance.name} configuration is incomplete.`);
+      }
+
+      return this.dbPlatformInstance;
+    } catch (err) {
+      console.error('Error fetching platform email settings from database:', err);
+      return this.getPlatformProvider();
+    }
+  }
 
   /**
    * Get the platform-level email provider (from environment variables).
-   * Uses singleton pattern to ensure only one provider instance exists.
+   * This is the fallback method if database fetch fails.
    */
   static getPlatformProvider(): EmailProvider {
     const currentProviderType = this.getPlatformProviderType();
@@ -32,7 +98,7 @@ export class EmailProviderFactory {
     this.platformProviderType = currentProviderType;
     this.platformInstance = this.createProvider(currentProviderType, config);
 
-    console.log(`Platform email provider initialized: ${this.platformInstance.name}`);
+    console.log(`Platform email provider initialized (env vars): ${this.platformInstance.name}`);
 
     if (!this.platformInstance.validateConfig()) {
       console.warn(`Email provider ${this.platformInstance.name} configuration is incomplete.`);
@@ -42,8 +108,43 @@ export class EmailProviderFactory {
   }
 
   /**
-   * Create a provider from company-specific settings.
+   * Create a provider from company-specific settings (async version).
+   * Falls back to platform provider from database if company uses default.
+   */
+  static async getCompanyProviderAsync(settings: CompanyEmailSettings | null): Promise<EmailProvider> {
+    // If no settings or using platform default, return platform provider from database
+    if (!settings || settings.use_platform_default) {
+      console.log('Using platform default email provider (from database)');
+      return this.getPlatformProviderFromDb();
+    }
+
+    // Create company-specific provider
+    if (!settings.provider) {
+      console.warn('Company has custom settings but no provider specified, using platform default');
+      return this.getPlatformProviderFromDb();
+    }
+
+    const config: EmailProviderConfig = {
+      fromEmail: settings.from_email || Deno.env.get('EMAIL_FROM_ADDRESS') || 'noreply@example.com',
+      fromName: settings.from_name || Deno.env.get('EMAIL_FROM_NAME') || 'HR System',
+    };
+
+    const provider = this.createProviderFromCompanySettings(settings, config);
+    
+    console.log(`Company email provider created: ${provider.name}`);
+    
+    if (!provider.validateConfig()) {
+      console.warn(`Company provider ${provider.name} configuration is incomplete, falling back to platform`);
+      return this.getPlatformProviderFromDb();
+    }
+
+    return provider;
+  }
+
+  /**
+   * Create a provider from company-specific settings (sync version - legacy).
    * Falls back to platform provider if company uses default.
+   * @deprecated Use getCompanyProviderAsync instead
    */
   static getCompanyProvider(settings: CompanyEmailSettings | null): EmailProvider {
     // If no settings or using platform default, return platform provider
@@ -202,5 +303,7 @@ export class EmailProviderFactory {
   static reset(): void {
     this.platformInstance = null;
     this.platformProviderType = null;
+    this.dbPlatformInstance = null;
+    this.dbPlatformProviderType = null;
   }
 }

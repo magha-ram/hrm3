@@ -252,13 +252,13 @@ export class EmailService {
     templateType?: string,
     context?: EmailContext
   ): Promise<EmailSendResult> {
-    // Get provider - use company settings if available, otherwise platform default
+    // Get provider - use company settings if available, otherwise platform default from database
     let provider;
     if (context?.companyId) {
       const companySettings = await this.getCompanyEmailSettings(context.companyId);
-      provider = EmailProviderFactory.getCompanyProvider(companySettings);
+      provider = await EmailProviderFactory.getCompanyProviderAsync(companySettings);
     } else {
-      provider = EmailProviderFactory.getPlatformProvider();
+      provider = await EmailProviderFactory.getPlatformProviderFromDb();
     }
     
     const primaryRecipient = message.to[0];
