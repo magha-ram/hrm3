@@ -18,6 +18,7 @@ const PROVIDER_OPTIONS: { value: EmailProvider; label: string; description: stri
   { value: 'resend', label: 'Resend', description: 'Modern email API with great deliverability' },
   { value: 'mailersend', label: 'MailerSend', description: 'Transactional email service' },
   { value: 'sendgrid', label: 'SendGrid', description: 'Twilio SendGrid email API' },
+  { value: 'brevo', label: 'Brevo', description: 'Brevo (formerly Sendinblue) email API' },
   { value: 'ses', label: 'AWS SES', description: 'Amazon Simple Email Service' },
 ];
 

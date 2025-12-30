@@ -42,7 +42,7 @@ export interface EmailProvider {
 }
 
 // Supported email providers
-export type EmailProviderType = 'mailersend' | 'sendgrid' | 'ses' | 'console' | 'smtp' | 'resend';
+export type EmailProviderType = 'mailersend' | 'sendgrid' | 'ses' | 'console' | 'smtp' | 'resend' | 'brevo';
 
 // Company email settings from database
 export interface CompanyEmailSettings {

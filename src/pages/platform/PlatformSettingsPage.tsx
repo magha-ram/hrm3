@@ -78,6 +78,18 @@ const PROVIDER_SECRETS: Record<string, { name: string; required: string[]; optio
     optional: ['EMAIL_FROM_ADDRESS', 'EMAIL_FROM_NAME'],
     docs: 'https://app.sendgrid.com/settings/api_keys',
   },
+  resend: {
+    name: 'Resend',
+    required: ['RESEND_API_KEY'],
+    optional: ['EMAIL_FROM_ADDRESS', 'EMAIL_FROM_NAME'],
+    docs: 'https://resend.com/api-keys',
+  },
+  brevo: {
+    name: 'Brevo (Sendinblue)',
+    required: ['BREVO_API_KEY'],
+    optional: ['EMAIL_FROM_ADDRESS', 'EMAIL_FROM_NAME'],
+    docs: 'https://app.brevo.com/settings/keys/api',
+  },
   'aws-ses': {
     name: 'AWS SES',
     required: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION'],
@@ -616,6 +628,8 @@ export default function PlatformSettingsPage() {
                     <SelectItem value="console">Console (Development)</SelectItem>
                     <SelectItem value="sendgrid">SendGrid</SelectItem>
                     <SelectItem value="mailersend">MailerSend</SelectItem>
+                    <SelectItem value="resend">Resend</SelectItem>
+                    <SelectItem value="brevo">Brevo (Sendinblue)</SelectItem>
                     <SelectItem value="aws-ses">AWS SES</SelectItem>
                   </SelectContent>
                 </Select>
