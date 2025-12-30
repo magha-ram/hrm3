@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { SecurityEventsViewer } from '@/components/security/SecurityEventsViewer';
 
 const SESSION_TIMEOUT_OPTIONS = [
   { value: '15', label: '15 minutes' },
@@ -198,25 +199,8 @@ export default function SecuritySettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Security Audit */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            Security Audit
-          </CardTitle>
-          <CardDescription>
-            Recent security events and recommendations
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No security issues detected</p>
-            <p className="text-sm mt-1">Your organization follows security best practices</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Security Events Viewer */}
+      <SecurityEventsViewer />
     </div>
   );
 }
