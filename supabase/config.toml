@@ -1,1 +1,13 @@
 project_id = "xwfzrbigmgyxsrzlkqwr"
+
+[functions.create-company]
+verify_jwt = true
+
+[functions.invite-user]
+verify_jwt = true
+
+[functions.assign-plan]
+verify_jwt = true
+
+[functions.freeze-company]
+verify_jwt = true

@@ -1,0 +1,203 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+interface CreateCompanyRequest {
+  name: string;
+  slug?: string;
+  industry?: string;
+  size_range?: string;
+}
+
+serve(async (req: Request): Promise<Response> => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Get authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("No authorization header provided");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized", message: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create Supabase client with user's JWT
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // User client for auth verification
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    if (authError || !user) {
+      console.error("Auth error:", authError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized", message: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Creating company for user: ${user.id}`);
+
+    // Parse and validate request body
+    const body: CreateCompanyRequest = await req.json();
+
+    if (!body.name || typeof body.name !== "string" || body.name.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Validation Error", message: "Company name is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (body.name.length > 255) {
+      return new Response(
+        JSON.stringify({ error: "Validation Error", message: "Company name must be less than 255 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Generate slug if not provided
+    const slug = body.slug?.trim() || 
+      body.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .substring(0, 50) + "-" + Date.now().toString(36);
+
+    // Use service role for admin operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check if slug already exists
+    const { data: existingCompany } = await supabaseAdmin
+      .from("companies")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (existingCompany) {
+      return new Response(
+        JSON.stringify({ error: "Conflict", message: "A company with this slug already exists" }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create company
+    const { data: company, error: companyError } = await supabaseAdmin
+      .from("companies")
+      .insert({
+        name: body.name.trim(),
+        slug,
+        industry: body.industry?.trim() || null,
+        size_range: body.size_range || null,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (companyError) {
+      console.error("Error creating company:", companyError);
+      return new Response(
+        JSON.stringify({ error: "Database Error", message: companyError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Company created: ${company.id}`);
+
+    // Add user as company admin
+    const { error: userError } = await supabaseAdmin
+      .from("company_users")
+      .insert({
+        company_id: company.id,
+        user_id: user.id,
+        role: "company_admin",
+        is_primary: true,
+        is_active: true,
+        joined_at: new Date().toISOString(),
+      });
+
+    if (userError) {
+      console.error("Error adding user to company:", userError);
+      // Rollback company creation
+      await supabaseAdmin.from("companies").delete().eq("id", company.id);
+      return new Response(
+        JSON.stringify({ error: "Database Error", message: "Failed to add user to company" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get free plan for trial subscription
+    const { data: freePlan } = await supabaseAdmin
+      .from("plans")
+      .select("id")
+      .eq("name", "Free")
+      .maybeSingle();
+
+    if (freePlan) {
+      // Create subscription
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 14);
+
+      const { error: subError } = await supabaseAdmin
+        .from("company_subscriptions")
+        .insert({
+          company_id: company.id,
+          plan_id: freePlan.id,
+          status: "trialing",
+          billing_interval: "monthly",
+          current_period_start: new Date().toISOString(),
+          current_period_end: trialEnd.toISOString(),
+          trial_ends_at: trialEnd.toISOString(),
+        });
+
+      if (subError) {
+        console.error("Error creating subscription:", subError);
+        // Non-fatal, company still created
+      }
+    }
+
+    // Log audit event
+    await supabaseAdmin.from("audit_logs").insert({
+      company_id: company.id,
+      user_id: user.id,
+      action: "create",
+      table_name: "companies",
+      record_id: company.id,
+      new_values: { name: company.name, slug: company.slug },
+    });
+
+    console.log(`Company provisioning complete: ${company.id}`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        company: {
+          id: company.id,
+          name: company.name,
+          slug: company.slug,
+        },
+      }),
+      { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Unexpected error in create-company:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return new Response(
+      JSON.stringify({ error: "Internal Server Error", message: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
