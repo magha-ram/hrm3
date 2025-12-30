@@ -48,6 +48,38 @@ export interface EmailSettingsFormData {
 
 export type EmailProvider = 'smtp' | 'resend' | 'mailersend' | 'sendgrid' | 'brevo' | 'ses';
 
+// Helper to invoke edge function with session refresh on 401
+async function invokeWithRetry<T>(
+  functionName: string,
+  body: Record<string, unknown>
+): Promise<T> {
+  // Ensure we have a fresh session
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated. Please log in again.');
+  }
+
+  const { data, error } = await supabase.functions.invoke(functionName, { body });
+
+  if (error) {
+    const errorMessage = error.message || '';
+    // Check for auth-related errors
+    if (errorMessage.includes('401') || errorMessage.includes('JWT') || errorMessage.includes('Invalid')) {
+      // Try to refresh the session
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        throw new Error('Session expired. Please log in again.');
+      }
+      // Retry the request
+      const { data: retryData, error: retryError } = await supabase.functions.invoke(functionName, { body });
+      if (retryError) throw retryError;
+      return retryData as T;
+    }
+    throw error;
+  }
+  return data as T;
+}
+
 export function useCompanyEmailSettings() {
   const { companyId } = useTenant();
   const queryClient = useQueryClient();
@@ -57,15 +89,10 @@ export function useCompanyEmailSettings() {
     queryFn: async (): Promise<CompanyEmailSettings | null> => {
       if (!companyId) return null;
 
-      // Use POST with action parameter since supabase.functions.invoke doesn't support query params well
-      const { data, error } = await supabase.functions.invoke('manage-email-settings', {
-        body: {
-          action: 'get',
-          company_id: companyId,
-        },
-      });
-
-      if (error) throw error;
+      const data = await invokeWithRetry<{ settings: CompanyEmailSettings | null }>(
+        'manage-email-settings',
+        { action: 'get', company_id: companyId }
+      );
       return data?.settings || null;
     },
     enabled: !!companyId,
@@ -75,15 +102,10 @@ export function useCompanyEmailSettings() {
     mutationFn: async (formData: EmailSettingsFormData) => {
       if (!companyId) throw new Error('No company selected');
 
-      const { data, error } = await supabase.functions.invoke('manage-email-settings', {
-        body: {
-          company_id: companyId,
-          ...formData,
-        },
+      return invokeWithRetry('manage-email-settings', {
+        company_id: companyId,
+        ...formData,
       });
-
-      if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       toast.success('Email settings saved');
@@ -98,15 +120,10 @@ export function useCompanyEmailSettings() {
     mutationFn: async () => {
       if (!companyId) throw new Error('No company selected');
 
-      const { data, error } = await supabase.functions.invoke('manage-email-settings', {
-        body: {
-          action: 'delete',
-          company_id: companyId,
-        },
+      return invokeWithRetry('manage-email-settings', {
+        action: 'delete',
+        company_id: companyId,
       });
-
-      if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       toast.success('Custom settings removed, using platform default');
@@ -121,14 +138,10 @@ export function useCompanyEmailSettings() {
     mutationFn: async (toEmail: string) => {
       if (!companyId) throw new Error('No company selected');
 
-      const { data, error } = await supabase.functions.invoke('test-company-email', {
-        body: {
-          company_id: companyId,
-          to: toEmail,
-        },
-      });
-
-      if (error) throw error;
+      const data = await invokeWithRetry<{ success: boolean; error?: string; message?: string }>(
+        'test-company-email',
+        { company_id: companyId, to: toEmail }
+      );
       if (!data.success) throw new Error(data.error || 'Test email failed');
       return data;
     },
