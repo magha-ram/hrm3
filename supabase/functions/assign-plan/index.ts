@@ -136,17 +136,40 @@ serve(async (req: Request): Promise<Response> => {
     const periodEnd = new Date();
     periodEnd.setMonth(periodEnd.getMonth() + (billingInterval === "yearly" ? 12 : 1));
 
+    // Check if this is a paid plan (price > 0)
+    const isPaidPlan = plan.price_monthly > 0 || plan.price_yearly > 0;
+    const wasTrialing = currentSub?.status === "trialing";
+
     if (currentSub) {
-      // Update existing subscription - clear trial_ends_at when upgrading to active
+      // Determine new status and trial_ends_at based on plan type
+      let newStatus: string;
+      let newTrialEndsAt: string | null;
+
+      if (isPaidPlan) {
+        // Paid plan = end trial immediately, set status to active
+        newStatus = "active";
+        newTrialEndsAt = null;
+        console.log(`Upgrading to paid plan ${plan.name} - ending trial immediately`);
+      } else if (wasTrialing && currentSub.trial_ends_at) {
+        // Switching to free plan while trialing = keep trial active
+        newStatus = "trialing";
+        newTrialEndsAt = currentSub.trial_ends_at;
+        console.log(`Switching to free plan ${plan.name} - preserving trial until ${newTrialEndsAt}`);
+      } else {
+        // Non-trialing user switching to free plan = active
+        newStatus = "active";
+        newTrialEndsAt = null;
+      }
+
       const { error: updateError } = await supabaseAdmin
         .from("company_subscriptions")
         .update({
           plan_id: body.plan_id,
-          status: "active",
+          status: newStatus,
           billing_interval: billingInterval,
           current_period_start: now.toISOString(),
           current_period_end: periodEnd.toISOString(),
-          trial_ends_at: null, // Clear trial date when plan becomes active
+          trial_ends_at: newTrialEndsAt,
           stripe_customer_id: body.stripe_customer_id || currentSub.stripe_customer_id,
           stripe_subscription_id: body.stripe_subscription_id || currentSub.stripe_subscription_id,
           updated_at: now.toISOString(),
@@ -161,27 +184,34 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
-      // Log audit event
+      // Log audit event with trial_ended flag
       await supabaseAdmin.from("audit_logs").insert({
         company_id: body.company_id,
         user_id: user.id,
         action: "update",
         table_name: "company_subscriptions",
         record_id: currentSub.id,
-        old_values: { plan_id: currentSub.plan_id, status: currentSub.status },
-        new_values: { plan_id: body.plan_id, status: "active" },
+        old_values: { plan_id: currentSub.plan_id, status: currentSub.status, trial_ends_at: currentSub.trial_ends_at },
+        new_values: { plan_id: body.plan_id, status: newStatus, trial_ends_at: newTrialEndsAt },
+        metadata: { is_paid_upgrade: isPaidPlan, trial_ended: wasTrialing && isPaidPlan },
       });
 
-      console.log(`Subscription updated for company ${body.company_id} to plan ${plan.name}`);
+      const trialEnded = wasTrialing && isPaidPlan;
+      const message = trialEnded 
+        ? `Upgraded to ${plan.name}. Your trial has ended.`
+        : "Plan updated successfully";
+
+      console.log(`Subscription updated for company ${body.company_id} to plan ${plan.name}, status: ${newStatus}`);
 
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Plan updated successfully",
+          message,
+          trial_ended: trialEnded,
           subscription: {
             plan_id: body.plan_id,
             plan_name: plan.name,
-            status: "active",
+            status: newStatus,
             billing_interval: billingInterval,
             current_period_end: periodEnd.toISOString(),
           },
