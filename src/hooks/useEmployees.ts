@@ -21,14 +21,19 @@ export function useEmployees() {
         .from('employees')
         .select(`
           *,
-          department:departments!employees_department_id_fkey(id, name),
-          manager:employees!employees_manager_id_fkey(id, first_name, last_name)
+          department:departments!employees_department_id_fkey(id, name)
         `)
         .eq('company_id', companyId)
         .order('last_name', { ascending: true });
 
       if (error) throw error;
-      return data ?? [];
+      
+      // Map manager info from the same dataset (self-reference)
+      const employeeMap = new Map((data || []).map(e => [e.id, e]));
+      return (data || []).map(emp => ({
+        ...emp,
+        manager: emp.manager_id ? employeeMap.get(emp.manager_id) : null,
+      }));
     },
     enabled: !!companyId,
     meta: { isFrozen },
@@ -47,14 +52,24 @@ export function useEmployee(employeeId: string | null) {
         .from('employees')
         .select(`
           *,
-          department:departments!employees_department_id_fkey(id, name),
-          manager:employees!employees_manager_id_fkey(id, first_name, last_name)
+          department:departments!employees_department_id_fkey(id, name)
         `)
         .eq('id', employeeId)
         .maybeSingle();
 
       if (error) throw error;
-      return data;
+      
+      // Fetch manager separately if exists
+      if (data?.manager_id) {
+        const { data: manager } = await supabase
+          .from('employees')
+          .select('id, first_name, last_name')
+          .eq('id', data.manager_id)
+          .maybeSingle();
+        return { ...data, manager };
+      }
+      
+      return { ...data, manager: null };
     },
     enabled: !!employeeId && !!companyId,
   });
