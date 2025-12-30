@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.check-wildcard-health]
 verify_jwt = false
+
+[functions.manage-vercel-domain]
+verify_jwt = true
