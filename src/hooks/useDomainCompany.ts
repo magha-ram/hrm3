@@ -20,6 +20,7 @@ interface UseDomainCompanyResult {
 // These are the domains where company subdomains are hosted
 const KNOWN_BASE_DOMAINS = [
   'hr.nateshkumar.tech',    // Production wildcard domain
+  'thefruitbazaar.com',     // Vercel production domain
   'lovable.app',            // Lovable hosting
   'vercel.app',             // Vercel hosting
 ];
