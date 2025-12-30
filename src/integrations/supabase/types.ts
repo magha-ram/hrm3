@@ -1544,6 +1544,46 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_use_documents: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_use_leave: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_use_module: {
+        Args: { _company_id: string; _module: string; _user_id: string }
+        Returns: boolean
+      }
+      can_use_payroll: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_use_performance: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_use_recruitment: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_use_time_tracking: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      company_can_add_employee: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
+      company_has_active_subscription: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
+      company_has_module: {
+        Args: { _company_id: string; _module: string }
+        Returns: boolean
+      }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_employee_id: {
         Args: { _company_id: string; _user_id: string }
