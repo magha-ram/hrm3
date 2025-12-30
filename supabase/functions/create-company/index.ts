@@ -52,6 +52,28 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log(`Creating company for user: ${user.id}`);
 
+    // Use service role for admin operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check if user is a platform admin - they cannot create companies
+    const { data: platformAdmin } = await supabaseAdmin
+      .from("platform_admins")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (platformAdmin) {
+      console.error("Platform admin attempted to create company:", user.id);
+      return new Response(
+        JSON.stringify({ 
+          error: "Forbidden", 
+          message: "Platform admins cannot create companies. Use impersonation to access company data." 
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Parse and validate request body
     const body: CreateCompanyRequest = await req.json();
 
@@ -76,9 +98,6 @@ serve(async (req: Request): Promise<Response> => {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "")
         .substring(0, 50) + "-" + Date.now().toString(36);
-
-    // Use service role for admin operations
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if slug already exists
     const { data: existingCompany } = await supabaseAdmin
