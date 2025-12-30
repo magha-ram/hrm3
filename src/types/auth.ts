@@ -9,6 +9,7 @@ export interface UserCompany {
   logo_url: string | null;
   role: AppRole;
   is_primary: boolean;
+  is_frozen?: boolean;
 }
 
 export interface UserContext {
