@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useAuth } from './AuthContext';
-import { useCurrentCompany } from '@/hooks/useCompany';
+import { useImpersonation } from './ImpersonationContext';
+import { useCompany } from '@/hooks/useCompany';
 import { AppRole, hasMinimumRole, canManageUsers, canManageHR, canViewReports } from '@/types/auth';
 import { ModuleId } from '@/config/modules';
 import { SubscriptionStatus } from '@/types/company';
@@ -37,6 +38,9 @@ interface TenantContextValue {
   planModules: ModuleId[] | 'all';
   hasModule: (module: ModuleId) => boolean;
   
+  // Impersonation
+  isImpersonating: boolean;
+  
   // Loading state
   isLoading: boolean;
 }
@@ -52,13 +56,27 @@ export const useTenant = () => {
 };
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, currentCompanyId, currentRole, isLoading: authLoading } = useAuth();
-  const { data: company, isLoading: companyLoading } = useCurrentCompany();
+  const { user, currentCompanyId, currentRole, isLoading: authLoading, isPlatformAdmin } = useAuth();
+  const { isImpersonating, impersonatedCompany, effectiveCompanyId } = useImpersonation();
+  
+  // When impersonating, use the impersonated company ID
+  const activeCompanyId = isImpersonating ? effectiveCompanyId : currentCompanyId;
+  
+  const { data: company, isLoading: companyLoading } = useCompany(activeCompanyId);
 
   const currentCompany = useMemo(() => {
+    // When impersonating, create a virtual company entry
+    if (isImpersonating && impersonatedCompany) {
+      return {
+        company_id: impersonatedCompany.id,
+        company_name: impersonatedCompany.name,
+        company_slug: impersonatedCompany.slug,
+      };
+    }
+    
     if (!user?.companies || !currentCompanyId) return null;
     return user.companies.find(c => c.company_id === currentCompanyId) || null;
-  }, [user?.companies, currentCompanyId]);
+  }, [user?.companies, currentCompanyId, isImpersonating, impersonatedCompany]);
 
   const planModules = useMemo((): ModuleId[] | 'all' => {
     const modules = company?.subscription?.features?.modules;
@@ -80,6 +98,9 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return diffDays > 0 ? diffDays : 0;
   }, [company?.subscription?.trial_ends_at]);
 
+  // When impersonating, grant admin-like view access
+  const effectiveRole = isImpersonating && isPlatformAdmin ? 'company_admin' as AppRole : currentRole;
+
   const value = useMemo<TenantContextValue>(() => {
     const subscriptionStatus = company?.subscription?.status || null;
     const isPastDue = subscriptionStatus === 'past_due';
@@ -87,23 +108,23 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     return {
       // Company info
-      companyId: currentCompanyId,
+      companyId: activeCompanyId,
       companyName: currentCompany?.company_name || company?.name || null,
       companySlug: currentCompany?.company_slug || company?.slug || null,
       companyLogoUrl: company?.logo_url || null,
       
       // User role
-      role: currentRole,
-      employeeId: user?.current_employee_id || null,
+      role: effectiveRole,
+      employeeId: isImpersonating ? null : (user?.current_employee_id || null),
       
-      // Role checks
-      isOwner: currentRole === 'super_admin',
-      isAdmin: hasMinimumRole(currentRole, 'company_admin'),
-      isHR: hasMinimumRole(currentRole, 'hr_manager'),
-      isManager: hasMinimumRole(currentRole, 'manager'),
-      canManageUsers: canManageUsers(currentRole),
-      canManageHR: canManageHR(currentRole),
-      canViewReports: canViewReports(currentRole),
+      // Role checks - when impersonating, grant view access
+      isOwner: isImpersonating ? false : effectiveRole === 'super_admin',
+      isAdmin: isImpersonating ? true : hasMinimumRole(effectiveRole, 'company_admin'),
+      isHR: isImpersonating ? true : hasMinimumRole(effectiveRole, 'hr_manager'),
+      isManager: isImpersonating ? true : hasMinimumRole(effectiveRole, 'manager'),
+      canManageUsers: isImpersonating ? false : canManageUsers(effectiveRole),
+      canManageHR: isImpersonating ? false : canManageHR(effectiveRole),
+      canViewReports: isImpersonating ? true : canViewReports(effectiveRole),
       
       // Company state
       isFrozen,
@@ -117,19 +138,23 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       planModules,
       hasModule,
       
+      // Impersonation
+      isImpersonating,
+      
       // Loading
       isLoading: authLoading || companyLoading,
     };
   }, [
-    currentCompanyId, 
+    activeCompanyId, 
     currentCompany, 
     company, 
-    currentRole, 
+    effectiveRole, 
     user?.current_employee_id,
     planModules,
     trialDaysRemaining,
     authLoading,
     companyLoading,
+    isImpersonating,
   ]);
 
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;

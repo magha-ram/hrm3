@@ -29,17 +29,19 @@ import {
   Calendar,
   Mail,
   Globe,
-  MapPin,
   Briefcase,
   HardDrive,
-  UserCheck
+  UserCheck,
+  Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 export default function PlatformCompanyDetailPage() {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { startImpersonation } = useImpersonation();
 
   // Fetch company details
   const { data: company, isLoading: isLoadingCompany } = useQuery({
@@ -280,6 +282,20 @@ export default function PlatformCompanyDetailPage() {
           </Badge>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="default"
+            onClick={async () => {
+              await startImpersonation({
+                id: company.id,
+                name: company.name,
+                slug: company.slug,
+              });
+              navigate('/app/dashboard');
+            }}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Impersonate
+          </Button>
           <Button
             variant="outline"
             onClick={() => toggleActiveMutation.mutate()}

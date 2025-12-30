@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TenantProvider } from "@/contexts/TenantContext";
+import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { lazy, Suspense } from "react";
 
@@ -85,8 +86,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <TenantProvider>
-              <SessionTimeoutWarning />
+            <ImpersonationProvider>
+              <TenantProvider>
+                <SessionTimeoutWarning />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public routes */}
@@ -138,8 +140,9 @@ const App = () => (
                 </Routes>
               </Suspense>
             </TenantProvider>
-          </AuthProvider>
-        </BrowserRouter>
+          </ImpersonationProvider>
+        </AuthProvider>
+      </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
