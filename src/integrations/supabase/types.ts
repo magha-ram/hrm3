@@ -1694,6 +1694,97 @@ export type Database = {
           },
         ]
       }
+      trial_email_logs: {
+        Row: {
+          company_id: string
+          days_remaining: number
+          email_type: string
+          id: string
+          recipient_email: string
+          sent_at: string
+          sent_date: string
+        }
+        Insert: {
+          company_id: string
+          days_remaining: number
+          email_type: string
+          id?: string
+          recipient_email: string
+          sent_at?: string
+          sent_date?: string
+        }
+        Update: {
+          company_id?: string
+          days_remaining?: number
+          email_type?: string
+          id?: string
+          recipient_email?: string
+          sent_at?: string
+          sent_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trial_email_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trial_extension_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          extension_number: number
+          id: string
+          reason: string
+          requested_by: string
+          requested_days: number
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          extension_number?: number
+          id?: string
+          reason: string
+          requested_by: string
+          requested_days?: number
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          extension_number?: number
+          id?: string
+          reason?: string
+          requested_by?: string
+          requested_days?: number
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trial_extension_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trusted_devices: {
         Row: {
           browser: string | null

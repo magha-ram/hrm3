@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.request-multi-company]
 verify_jwt = true
+
+[functions.request-trial-extension]
+verify_jwt = true
+
+[functions.send-trial-expiration-emails]
+verify_jwt = false

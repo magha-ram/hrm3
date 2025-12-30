@@ -4,6 +4,7 @@ import { Clock, AlertTriangle, X, Sparkles, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { TrialExtensionRequestDialog } from '@/components/TrialExtensionRequestDialog';
 
 const DISMISS_KEY = 'trial-banner-dismissed';
 const DISMISS_TIMESTAMP_KEY = 'trial-banner-dismissed-at';
@@ -177,8 +178,11 @@ export function TrialBanner() {
 
           {/* Right side: CTA + Dismiss */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {isAdmin && (isUrgent || isWarning) && (
+              <TrialExtensionRequestDialog />
+            )}
             {isAdmin && (
-              <Link to="/settings/billing">
+              <Link to="/app/settings/billing">
                 <Button 
                   size="sm" 
                   variant={isUrgent ? "destructive" : "default"}
