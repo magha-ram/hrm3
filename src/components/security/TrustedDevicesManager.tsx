@@ -6,19 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Monitor, Smartphone, Laptop, Trash2, RefreshCw, Shield, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { ReauthDialog } from './ReauthDialog';
 
 interface TrustedDevice {
   id: string;
@@ -48,6 +39,8 @@ export function TrustedDevicesManager() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [deviceToRemove, setDeviceToRemove] = useState<TrustedDevice | null>(null);
+  const [showReauth, setShowReauth] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'single' | 'all' | null>(null);
 
   const { data: devices, isLoading, refetch } = useQuery({
     queryKey: ['trusted-devices', user?.user_id],
@@ -75,7 +68,6 @@ export function TrustedDevicesManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trusted-devices'] });
       toast.success('Device removed successfully');
-      setDeviceToRemove(null);
     },
     onError: (error) => {
       console.error('Failed to remove device:', error);
@@ -85,7 +77,6 @@ export function TrustedDevicesManager() {
 
   const removeAllDevicesMutation = useMutation({
     mutationFn: async () => {
-      // Keep current device, remove others
       const currentDevice = devices?.find(d => d.is_current);
       const { error } = await supabase
         .from('trusted_devices')
@@ -103,6 +94,35 @@ export function TrustedDevicesManager() {
       toast.error('Failed to remove devices');
     },
   });
+
+  const handleRemoveDevice = (device: TrustedDevice) => {
+    setDeviceToRemove(device);
+    setPendingAction('single');
+    setShowReauth(true);
+  };
+
+  const handleRemoveAllDevices = () => {
+    setPendingAction('all');
+    setShowReauth(true);
+  };
+
+  const handleReauthSuccess = () => {
+    if (pendingAction === 'single' && deviceToRemove) {
+      removeDeviceMutation.mutate(deviceToRemove.id);
+    } else if (pendingAction === 'all') {
+      removeAllDevicesMutation.mutate();
+    }
+    setPendingAction(null);
+    setDeviceToRemove(null);
+  };
+
+  const handleReauthClose = (open: boolean) => {
+    setShowReauth(open);
+    if (!open) {
+      setPendingAction(null);
+      setDeviceToRemove(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -154,7 +174,7 @@ export function TrustedDevicesManager() {
                 <Button 
                   variant="destructive" 
                   size="sm"
-                  onClick={() => removeAllDevicesMutation.mutate()}
+                  onClick={handleRemoveAllDevices}
                   disabled={removeAllDevicesMutation.isPending}
                 >
                   Remove All Others
@@ -211,7 +231,7 @@ export function TrustedDevicesManager() {
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeviceToRemove(device)}
+                        onClick={() => handleRemoveDevice(device)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -224,26 +244,17 @@ export function TrustedDevicesManager() {
         </CardContent>
       </Card>
 
-      <AlertDialog open={!!deviceToRemove} onOpenChange={() => setDeviceToRemove(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove this device?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove "{deviceToRemove?.device_name}" from your trusted devices. 
-              If someone is using this device, they will receive a suspicious login alert next time they sign in.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deviceToRemove && removeDeviceMutation.mutate(deviceToRemove.id)}
-            >
-              Remove Device
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ReauthDialog
+        open={showReauth}
+        onOpenChange={handleReauthClose}
+        onSuccess={handleReauthSuccess}
+        title="Confirm Device Removal"
+        description={
+          pendingAction === 'all'
+            ? 'For security, please enter your password to remove all other devices.'
+            : `For security, please enter your password to remove "${deviceToRemove?.device_name}".`
+        }
+      />
     </>
   );
 }
