@@ -11,6 +11,7 @@ import { Loader2, Building2, Mail, Lock, User, Hash, IdCard } from 'lucide-react
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChange } from '@/components/security/ForcePasswordChange';
+import { useDomainCompany } from '@/hooks/useDomainCompany';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(8, 'Password must be at least 8 characters');
@@ -18,6 +19,7 @@ const passwordSchema = z.string().min(8, 'Password must be at least 8 characters
 export default function Auth() {
   const navigate = useNavigate();
   const { signIn, signUp, isAuthenticated, isLoading: authLoading, currentCompanyId, isPlatformAdmin, user, refreshUserContext } = useAuth();
+  const { company: domainCompany, isLoading: domainLoading, isDomainBased } = useDomainCompany();
   
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'employee' | 'admin' | 'signup'>('admin');
@@ -37,6 +39,14 @@ export default function Auth() {
   const [lastName, setLastName] = useState('');
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Pre-fill company slug when domain is detected
+  useEffect(() => {
+    if (isDomainBased && domainCompany) {
+      setCompanySlug(domainCompany.slug);
+      setActiveTab('employee');
+    }
+  }, [isDomainBased, domainCompany]);
 
   useEffect(() => {
     // Wait for both auth loading AND user context to be loaded before redirecting
@@ -228,7 +238,7 @@ export default function Auth() {
   };
 
   // Show loading while auth is loading OR when authenticated but user context is still loading
-  if (authLoading || (isAuthenticated && user === null && !showForcePasswordChange)) {
+  if (authLoading || domainLoading || (isAuthenticated && user === null && !showForcePasswordChange)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -238,6 +248,95 @@ export default function Auth() {
           )}
         </div>
       </div>
+    );
+  }
+
+  // Domain-based login - simplified UI for company subdomain/custom domain
+  if (isDomainBased && domainCompany) {
+    return (
+      <>
+        <ForcePasswordChange 
+          open={showForcePasswordChange} 
+          onSuccess={handlePasswordChangeSuccess} 
+        />
+        
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4">
+          <div className="w-full max-w-md">
+            <div className="flex flex-col items-center justify-center mb-8">
+              {domainCompany.logo_url ? (
+                <img 
+                  src={domainCompany.logo_url} 
+                  alt={domainCompany.name} 
+                  className="h-16 w-auto mb-4"
+                />
+              ) : (
+                <div className="p-3 rounded-xl bg-primary mb-4">
+                  <Building2 className="h-8 w-8 text-primary-foreground" />
+                </div>
+              )}
+              <h1 className="text-2xl font-bold">{domainCompany.name}</h1>
+              <p className="text-muted-foreground">Employee Portal</p>
+            </div>
+
+            <Card className="border-border/50 shadow-xl">
+              <form onSubmit={handleEmployeeLogin}>
+                <CardHeader>
+                  <CardTitle>Sign In</CardTitle>
+                  <CardDescription>
+                    Enter your Employee ID and password
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="domain-employee-id">Employee ID</Label>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="domain-employee-id"
+                        placeholder="e.g., EMP-001"
+                        value={employeeId}
+                        onChange={(e) => setEmployeeId(e.target.value)}
+                        className="pl-10"
+                        disabled={isLoading}
+                        autoFocus
+                      />
+                    </div>
+                    {errors.employeeId && <p className="text-sm text-destructive">{errors.employeeId}</p>}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="domain-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="domain-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={employeePassword}
+                        onChange={(e) => setEmployeePassword(e.target.value)}
+                        className="pl-10"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    {errors.employeePassword && <p className="text-sm text-destructive">{errors.employeePassword}</p>}
+                  </div>
+                </CardContent>
+                
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Sign In
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+            
+            <p className="text-center text-sm text-muted-foreground mt-4">
+              Need help? Contact your HR administrator.
+            </p>
+          </div>
+        </div>
+      </>
     );
   }
 

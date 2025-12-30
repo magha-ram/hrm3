@@ -11,6 +11,7 @@ import {
   Shield,
   HelpCircle,
   Mail,
+  Globe,
   type LucideIcon 
 } from 'lucide-react';
 import { AppRole } from '@/types/auth';
@@ -178,6 +179,12 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     name: 'Security',
     path: '/app/settings/security',
     icon: Shield,
+    minRole: 'company_admin',
+  },
+  {
+    name: 'Domains',
+    path: '/app/settings/domains',
+    icon: Globe,
     minRole: 'company_admin',
   },
 ];
