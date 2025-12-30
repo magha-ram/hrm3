@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/errors';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
 export type Employee = Tables<'employees'>;
@@ -9,7 +10,7 @@ export type EmployeeInsert = TablesInsert<'employees'>;
 export type EmployeeUpdate = TablesUpdate<'employees'>;
 
 export function useEmployees() {
-  const { companyId } = useTenant();
+  const { companyId, isFrozen } = useTenant();
 
   return useQuery({
     queryKey: ['employees', companyId],
@@ -27,9 +28,10 @@ export function useEmployees() {
         .order('last_name', { ascending: true });
 
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
     enabled: !!companyId,
+    meta: { isFrozen },
   });
 }
 
@@ -60,11 +62,12 @@ export function useEmployee(employeeId: string | null) {
 
 export function useCreateEmployee() {
   const queryClient = useQueryClient();
-  const { companyId } = useTenant();
+  const { companyId, isFrozen } = useTenant();
 
   return useMutation({
     mutationFn: async (employee: Omit<EmployeeInsert, 'company_id'>) => {
       if (!companyId) throw new Error('No company selected');
+      if (isFrozen) throw new Error('Company account is frozen. Please update billing.');
 
       const { data, error } = await supabase
         .from('employees')
@@ -74,14 +77,20 @@ export function useCreateEmployee() {
 
       if (error) throw error;
 
-      // Audit log
-      await supabase.from('audit_logs').insert({
-        company_id: companyId,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        table_name: 'employees',
-        action: 'create',
-        record_id: data.id,
-        new_values: data,
+      // Audit log (non-blocking)
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          supabase.from('audit_logs').insert([{
+            company_id: companyId,
+            user_id: user.id,
+            table_name: 'employees',
+            action: 'create' as const,
+            record_id: data.id,
+            new_values: data,
+          }]).then(({ error }) => {
+            if (error) console.error('Audit log error:', error);
+          });
+        }
       });
 
       return data;
@@ -91,17 +100,20 @@ export function useCreateEmployee() {
       toast.success('Employee created successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create employee');
+      toast.error(getErrorMessage(error));
     },
   });
 }
 
 export function useUpdateEmployee() {
   const queryClient = useQueryClient();
-  const { companyId } = useTenant();
+  const { companyId, isFrozen } = useTenant();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: EmployeeUpdate & { id: string }) => {
+      if (!companyId) throw new Error('No company selected');
+      if (isFrozen) throw new Error('Company account is frozen. Please update billing.');
+
       const { data: oldData } = await supabase
         .from('employees')
         .select('*')
@@ -117,15 +129,21 @@ export function useUpdateEmployee() {
 
       if (error) throw error;
 
-      // Audit log
-      await supabase.from('audit_logs').insert({
-        company_id: companyId,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        table_name: 'employees',
-        action: 'update',
-        record_id: id,
-        old_values: oldData,
-        new_values: data,
+      // Audit log (non-blocking)
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          supabase.from('audit_logs').insert([{
+            company_id: companyId,
+            user_id: user.id,
+            table_name: 'employees',
+            action: 'update' as const,
+            record_id: id,
+            old_values: oldData,
+            new_values: data,
+          }]).then(({ error }) => {
+            if (error) console.error('Audit log error:', error);
+          });
+        }
       });
 
       return data;
@@ -136,17 +154,20 @@ export function useUpdateEmployee() {
       toast.success('Employee updated successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update employee');
+      toast.error(getErrorMessage(error));
     },
   });
 }
 
 export function useDeleteEmployee() {
   const queryClient = useQueryClient();
-  const { companyId } = useTenant();
+  const { companyId, isFrozen } = useTenant();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!companyId) throw new Error('No company selected');
+      if (isFrozen) throw new Error('Company account is frozen. Please update billing.');
+
       const { data: oldData } = await supabase
         .from('employees')
         .select('*')
@@ -160,14 +181,20 @@ export function useDeleteEmployee() {
 
       if (error) throw error;
 
-      // Audit log
-      await supabase.from('audit_logs').insert({
-        company_id: companyId,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        table_name: 'employees',
-        action: 'delete',
-        record_id: id,
-        old_values: oldData,
+      // Audit log (non-blocking)
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          supabase.from('audit_logs').insert([{
+            company_id: companyId,
+            user_id: user.id,
+            table_name: 'employees',
+            action: 'delete' as const,
+            record_id: id,
+            old_values: oldData,
+          }]).then(({ error }) => {
+            if (error) console.error('Audit log error:', error);
+          });
+        }
       });
 
       return id;
@@ -177,7 +204,7 @@ export function useDeleteEmployee() {
       toast.success('Employee deleted successfully');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete employee');
+      toast.error(getErrorMessage(error));
     },
   });
 }
