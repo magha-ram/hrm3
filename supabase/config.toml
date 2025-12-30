@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.check-domain-health]
 verify_jwt = false
+
+[functions.check-wildcard-health]
+verify_jwt = false

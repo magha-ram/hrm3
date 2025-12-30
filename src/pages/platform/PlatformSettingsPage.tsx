@@ -376,6 +376,201 @@ function DomainHealthCheckCard({ baseDomain }: { baseDomain: string }) {
   );
 }
 
+interface WildcardHealthResult {
+  baseDomain: string;
+  wildcardConfigured: boolean;
+  rootResolvable: boolean;
+  testSubdomains: {
+    subdomain: string;
+    resolvable: boolean;
+    ipAddress: string | null;
+  }[];
+  expectedIp: string | null;
+  message: string;
+  instructions: string[];
+  vercelInstructions: string[];
+  lovableInstructions: string[];
+}
+
+function WildcardSubdomainCard({ baseDomain }: { baseDomain: string }) {
+  const [isChecking, setIsChecking] = useState(false);
+  const [result, setResult] = useState<WildcardHealthResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const runWildcardCheck = async () => {
+    if (!baseDomain) {
+      setError('Please enter a base domain in the branding settings above');
+      return;
+    }
+
+    setIsChecking(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('check-wildcard-health', {
+        body: { baseDomain },
+      });
+
+      if (fnError) throw fnError;
+      if (data.error) throw new Error(data.error);
+
+      setResult(data as WildcardHealthResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Wildcard check failed');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle>Wildcard Subdomain Configuration</CardTitle>
+              <CardDescription>Verify wildcard DNS for automatic company subdomains</CardDescription>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={runWildcardCheck} 
+            disabled={isChecking || !baseDomain}
+          >
+            {isChecking ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            <span className="ml-2">{isChecking ? 'Checking...' : 'Test Wildcard'}</span>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!baseDomain && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Enter a base domain in the branding settings above to configure wildcard subdomains.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {result && (
+          <div className="space-y-4">
+            {/* Wildcard Status */}
+            <div className={`p-4 rounded-lg border ${
+              result.wildcardConfigured 
+                ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800' 
+                : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                {result.wildcardConfigured ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                )}
+                <span className="font-medium">{result.message}</span>
+              </div>
+              {result.expectedIp && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Root IP: <code className="bg-background px-1 rounded">{result.expectedIp}</code>
+                </p>
+              )}
+            </div>
+
+            {/* Test Subdomain Results */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Test Subdomain Resolution</h4>
+              <div className="grid gap-2">
+                {result.testSubdomains.map((test) => (
+                  <div key={test.subdomain} className="flex items-center justify-between text-sm p-2 bg-muted rounded">
+                    <code>{test.subdomain}.{result.baseDomain}</code>
+                    <div className="flex items-center gap-2">
+                      {test.resolvable ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <span className="text-green-600">{test.ipAddress}</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          <span className="text-red-600">Not resolvable</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Setup Instructions */}
+            {!result.wildcardConfigured && (
+              <div className="space-y-4 pt-2 border-t">
+                <h4 className="text-sm font-medium">Setup Instructions</h4>
+                
+                {/* Vercel Instructions */}
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-sm">Vercel (Recommended)</span>
+                  </div>
+                  <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                    {result.vercelInstructions.map((instruction, i) => (
+                      <li key={i}>{instruction}</li>
+                    ))}
+                  </ol>
+                </div>
+
+                {/* Lovable Instructions */}
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-sm">Lovable Hosting</span>
+                  </div>
+                  <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                    {result.lovableInstructions.map((instruction, i) => (
+                      <li key={i}>{instruction}</li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!result && !error && baseDomain && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Click "Test Wildcard" to check if <strong>*.{baseDomain}</strong> is configured for automatic company subdomain routing.
+            </p>
+            
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-medium mb-2">Quick Setup for Vercel:</p>
+                <ol className="text-sm space-y-1 list-decimal list-inside">
+                  <li>Add A record: <code className="bg-muted px-1 rounded">*.hr → 76.76.21.21</code> at your DNS provider</li>
+                  <li>Add <code className="bg-muted px-1 rounded">{baseDomain}</code> and <code className="bg-muted px-1 rounded">*.{baseDomain}</code> in Vercel domains</li>
+                  <li>Wait for DNS propagation (up to 48 hours)</li>
+                </ol>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PlatformSettingsPage() {
   const queryClient = useQueryClient();
   
@@ -650,6 +845,9 @@ export default function PlatformSettingsPage() {
 
         {/* Domain Health Check */}
         <DomainHealthCheckCard baseDomain={branding.base_domain} />
+
+        {/* Wildcard Subdomain Configuration */}
+        <WildcardSubdomainCard baseDomain={branding.base_domain} />
 
         {/* Registration Settings */}
         <Card>
