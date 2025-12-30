@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import Landing from '@/pages/Landing';
 
 export function RootRedirect() {
-  const { isAuthenticated, isLoading, user, currentCompanyId } = useAuth();
+  const { isAuthenticated, isLoading, user, currentCompanyId, isPlatformAdmin } = useAuth();
 
   if (isLoading) {
     return (
@@ -27,6 +27,11 @@ export function RootRedirect() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // Platform admins go to platform dashboard
+  if (isPlatformAdmin) {
+    return <Navigate to="/platform/dashboard" replace />;
   }
 
   // Check if user has any companies
