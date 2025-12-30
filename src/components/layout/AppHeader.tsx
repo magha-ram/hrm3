@@ -123,13 +123,13 @@ export function AppHeader() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link to="/profile">
+            <Link to="/app/profile">
               <User className="mr-2 h-4 w-4" />
               My Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/settings">
+            <Link to="/app/settings">
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </Link>

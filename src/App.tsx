@@ -36,6 +36,7 @@ const SettingsPage = lazy(() => import("./pages/app/SettingsPage"));
 const AuditLogPage = lazy(() => import("./pages/app/AuditLogPage"));
 const CompliancePage = lazy(() => import("./pages/app/CompliancePage"));
 const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
+const ProfilePage = lazy(() => import("./pages/app/ProfilePage"));
 
 // Settings sub-pages
 const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
@@ -149,6 +150,7 @@ const App = () => (
                     </Route>
                     <Route path="email-logs" element={<EmailLogsPage />} />
                     <Route path="help" element={<HelpPage />} />
+                    <Route path="profile" element={<ProfilePage />} />
                   </Route>
 
                   {/* Catch-all */}
