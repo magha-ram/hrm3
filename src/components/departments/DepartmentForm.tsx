@@ -144,14 +144,17 @@ export function DepartmentForm({ department, departments, onSuccess, onCancel }:
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Parent Department</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select 
+                  onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} 
+                  value={field.value || "__none__"}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="None (root level)" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">None (root level)</SelectItem>
+                    <SelectItem value="__none__">None (root level)</SelectItem>
                     {parentOptions.map((dept) => (
                       <SelectItem key={dept.id} value={dept.id}>
                         {dept.name}
@@ -169,14 +172,17 @@ export function DepartmentForm({ department, departments, onSuccess, onCancel }:
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Manager</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select 
+                  onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} 
+                  value={field.value || "__none__"}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select manager" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">No manager</SelectItem>
+                    <SelectItem value="__none__">No manager</SelectItem>
                     {employees?.map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
                         {emp.first_name} {emp.last_name}
