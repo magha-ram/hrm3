@@ -31,7 +31,7 @@ export function useEmployeesWithoutUser() {
           last_name,
           email,
           job_title,
-          department:departments(name)
+          department:departments!employees_department_id_fkey(name)
         `)
         .eq('company_id', companyId)
         .is('user_id', null)
