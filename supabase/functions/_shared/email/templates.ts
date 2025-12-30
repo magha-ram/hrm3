@@ -233,6 +233,39 @@ const templates: Record<EmailTemplateType, (data: any) => RenderedTemplate> = {
     `, 'Account Suspended'),
     text: `Important: The account for ${data.companyName} has been suspended.\n\nReason: ${data.reason}\n\nContact support: ${data.supportEmail}`
   }),
+
+  suspicious_login: (data: EmailTemplateData['suspicious_login']) => ({
+    subject: '⚠️ Suspicious Login Detected on Your Account',
+    html: wrapTemplate(`
+      <div class="header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+        <h1>⚠️ Security Alert</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p>We detected a login to your account that looks unusual. If this was you, you can ignore this email.</p>
+        <div class="highlight" style="border-left-color: #f59e0b;">
+          <p><strong>When:</strong> ${data.loginTime}</p>
+          <p><strong>Browser:</strong> ${data.browser}</p>
+          <p><strong>Location:</strong> ${data.location}</p>
+          <p><strong>IP Address:</strong> ${data.ipAddress}</p>
+          <p><strong>Reason for alert:</strong> ${data.reason}</p>
+        </div>
+        <p><strong>If this wasn't you:</strong> Someone may have access to your account. We recommend you:</p>
+        <ol>
+          <li>Change your password immediately</li>
+          <li>Enable two-factor authentication</li>
+          <li>Review recent account activity</li>
+        </ol>
+        <p style="text-align: center;">
+          <a href="${data.secureAccountUrl}" class="button" style="background: #dc2626;">Secure My Account</a>
+        </p>
+      </div>
+      <div class="footer">
+        <p>This is an automated security notification. Do not reply to this email.</p>
+      </div>
+    `, 'Security Alert - Suspicious Login'),
+    text: `Security Alert\n\nHi ${data.userName},\n\nWe detected a suspicious login to your account:\n\nWhen: ${data.loginTime}\nBrowser: ${data.browser}\nLocation: ${data.location}\nIP Address: ${data.ipAddress}\nReason: ${data.reason}\n\nIf this wasn't you, please secure your account immediately: ${data.secureAccountUrl}`
+  }),
 };
 
 export function renderTemplate<T extends EmailTemplateType>(

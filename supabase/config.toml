@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.check-platform-admin]
 verify_jwt = false
+
+[functions.check-suspicious-login]
+verify_jwt = true
