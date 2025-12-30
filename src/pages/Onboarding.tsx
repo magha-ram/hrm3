@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,13 +32,23 @@ const SIZE_RANGES = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { refreshUserContext } = useAuth();
+  const { refreshUserContext, user, isLoading: authContextLoading } = useAuth();
   const { isLoading: authLoading } = useRequireAuth({ redirectTo: '/auth' });
   
   const [isLoading, setIsLoading] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
   const [sizeRange, setSizeRange] = useState('');
+
+  // Redirect to dashboard if user already has companies
+  useEffect(() => {
+    if (!authContextLoading && user) {
+      const hasCompanies = user.companies && user.companies.length > 0;
+      if (hasCompanies) {
+        navigate('/app/dashboard', { replace: true });
+      }
+    }
+  }, [user, authContextLoading, navigate]);
 
   const generateSlug = (name: string): string => {
     return name
@@ -88,7 +98,16 @@ export default function Onboarding() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || authContextLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show loading while checking if user has companies
+  if (user && user.companies && user.companies.length > 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

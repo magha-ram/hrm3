@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import Landing from '@/pages/Landing';
 
 export function RootRedirect() {
-  const { isAuthenticated, isLoading, currentCompanyId } = useAuth();
+  const { isAuthenticated, isLoading, user, currentCompanyId } = useAuth();
 
   if (isLoading) {
     return (
@@ -19,8 +19,21 @@ export function RootRedirect() {
     return <Landing />;
   }
 
-  // Redirect to onboarding if no company
-  if (!currentCompanyId) {
+  // Wait for user context to load before deciding redirect
+  // user being null means context is still loading
+  if (user === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Check if user has any companies
+  const hasCompanies = user.companies && user.companies.length > 0;
+
+  // Redirect to onboarding only if user has NO companies
+  if (!hasCompanies) {
     return <Navigate to="/onboarding" replace />;
   }
 
