@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { useEmailLogs, useEmailLogStats, EmailLogFilters } from '@/hooks/useEmailLogs';
 import { useTenant } from '@/contexts/TenantContext';
 import { format } from 'date-fns';
@@ -45,37 +45,40 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-function StatusBadge({ status }: { status: 'pending' | 'sent' | 'failed' }) {
-  const config = {
-    pending: { 
-      label: 'Pending', 
-      variant: 'secondary' as const, 
-      icon: Clock,
-      className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
-    },
-    sent: { 
-      label: 'Sent', 
-      variant: 'default' as const, 
-      icon: CheckCircle2,
-      className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
-    },
-    failed: { 
-      label: 'Failed', 
-      variant: 'destructive' as const, 
-      icon: XCircle,
-      className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-    },
-  };
+const StatusBadge = forwardRef<HTMLDivElement, { status: 'pending' | 'sent' | 'failed' }>(
+  ({ status }, ref) => {
+    const config = {
+      pending: { 
+        label: 'Pending', 
+        variant: 'secondary' as const, 
+        icon: Clock,
+        className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+      },
+      sent: { 
+        label: 'Sent', 
+        variant: 'default' as const, 
+        icon: CheckCircle2,
+        className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
+      },
+      failed: { 
+        label: 'Failed', 
+        variant: 'destructive' as const, 
+        icon: XCircle,
+        className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      },
+    };
 
-  const { label, icon: Icon, className } = config[status];
+    const { label, icon: Icon, className } = config[status];
 
-  return (
-    <Badge variant="outline" className={cn('gap-1', className)}>
-      <Icon className="h-3 w-3" />
-      {label}
-    </Badge>
-  );
-}
+    return (
+      <Badge ref={ref} variant="outline" className={cn('gap-1', className)}>
+        <Icon className="h-3 w-3" />
+        {label}
+      </Badge>
+    );
+  }
+);
+StatusBadge.displayName = 'StatusBadge';
 
 function StatsCard({ 
   title, 
