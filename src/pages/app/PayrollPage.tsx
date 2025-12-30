@@ -1,13 +1,10 @@
-import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, DollarSign } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
 
 export default function PayrollPage() {
-  const { isFrozen } = useTenant();
-  const canEdit = !isFrozen;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -15,19 +12,23 @@ export default function PayrollPage() {
           <h1 className="text-2xl font-bold">Payroll</h1>
           <p className="text-muted-foreground">Process and manage payroll runs</p>
         </div>
-        {canEdit && (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Payroll Run
-          </Button>
-        )}
+        <WriteGate>
+          <RoleGate role="hr_manager">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Payroll Run
+            </Button>
+          </RoleGate>
+        </WriteGate>
       </div>
 
       <Tabs defaultValue="runs" className="space-y-4">
         <TabsList>
           <TabsTrigger value="runs">Payroll Runs</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <RoleGate role="company_admin">
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </RoleGate>
         </TabsList>
 
         <TabsContent value="runs">
@@ -60,17 +61,19 @@ export default function PayrollPage() {
         </TabsContent>
 
         <TabsContent value="settings">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payroll Settings</CardTitle>
-              <CardDescription>Configure payroll settings and schedules</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Payroll settings coming soon.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <RoleGate role="company_admin">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payroll Settings</CardTitle>
+                <CardDescription>Configure payroll settings and schedules</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12 text-muted-foreground">
+                  <p>Payroll settings coming soon.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </RoleGate>
         </TabsContent>
       </Tabs>
     </div>

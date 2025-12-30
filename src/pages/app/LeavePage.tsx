@@ -1,13 +1,10 @@
-import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Calendar } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
 
 export default function LeavePage() {
-  const { isFrozen, isManager } = useTenant();
-  const canEdit = !isFrozen;
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -15,18 +12,20 @@ export default function LeavePage() {
           <h1 className="text-2xl font-bold">Leave Management</h1>
           <p className="text-muted-foreground">Request and manage time off</p>
         </div>
-        {canEdit && (
+        <WriteGate>
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             Request Leave
           </Button>
-        )}
+        </WriteGate>
       </div>
 
       <Tabs defaultValue="my-leave" className="space-y-4">
         <TabsList>
           <TabsTrigger value="my-leave">My Leave</TabsTrigger>
-          {isManager && <TabsTrigger value="team">Team Requests</TabsTrigger>}
+          <RoleGate role="manager">
+            <TabsTrigger value="team">Team Requests</TabsTrigger>
+          </RoleGate>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
 
@@ -45,8 +44,8 @@ export default function LeavePage() {
           </Card>
         </TabsContent>
 
-        {isManager && (
-          <TabsContent value="team">
+        <TabsContent value="team">
+          <RoleGate role="manager">
             <Card>
               <CardHeader>
                 <CardTitle>Team Leave Requests</CardTitle>
@@ -58,8 +57,8 @@ export default function LeavePage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        )}
+          </RoleGate>
+        </TabsContent>
 
         <TabsContent value="calendar">
           <Card>
