@@ -30,42 +30,32 @@ export function useDomainCompany(): UseDomainCompanyResult {
         return;
       }
 
+      // Auto-detect base domain from running environment
       const parts = hostname.split('.');
+      
+      let detectedSubdomain: string | null = null;
+      let customDomain: string | null = null;
 
-      // FIRST: Try full hostname as custom_domain (e.g., hr1.nateshkumar.tech)
-      const { data: customDomainData } = await supabase
-        .from('company_domains')
-        .select(`
-          company_id,
-          subdomain,
-          companies (
-            id,
-            name,
-            slug,
-            logo_url
-          )
-        `)
-        .eq('custom_domain', hostname)
-        .eq('is_verified', true)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (customDomainData?.companies) {
-        const companyData = customDomainData.companies as unknown as DomainCompany;
-        setCompany(companyData);
-        if (customDomainData.subdomain) {
-          setSubdomain(customDomainData.subdomain);
+      // Check if it's a subdomain pattern
+      if (parts.length >= 3) {
+        // For patterns like: company.app.lovable.app or company.hrplatform.com
+        if (hostname.endsWith('.lovable.app')) {
+          // On Lovable: first part is the subdomain
+          detectedSubdomain = parts[0];
+          setSubdomain(detectedSubdomain);
+        } else {
+          // On custom domain: first part is the subdomain
+          detectedSubdomain = parts[0];
+          setSubdomain(detectedSubdomain);
         }
-        setIsLoading(false);
-        return;
+      } else if (parts.length === 2) {
+        // This is a root domain (e.g., hrplatform.com) - could be a custom domain lookup
+        customDomain = hostname;
       }
 
-      // THEN: Check for subdomain patterns (4+ parts like sala.hr.nateshkumar.tech)
-      if (parts.length >= 4) {
-        const detectedSubdomain = parts[0];
-        setSubdomain(detectedSubdomain);
-
-        const { data: subdomainData } = await supabase
+      // Try to find company by subdomain first
+      if (detectedSubdomain) {
+        const { data: domainData } = await supabase
           .from('company_domains')
           .select(`
             company_id,
@@ -80,20 +70,17 @@ export function useDomainCompany(): UseDomainCompanyResult {
           .eq('is_active', true)
           .maybeSingle();
 
-        if (subdomainData?.companies) {
-          const companyData = subdomainData.companies as unknown as DomainCompany;
+        if (domainData?.companies) {
+          const companyData = domainData.companies as unknown as DomainCompany;
           setCompany(companyData);
           setIsLoading(false);
           return;
         }
       }
 
-      // For Lovable domains: check subdomain (e.g., company.xxx.lovable.app)
-      if (hostname.endsWith('.lovable.app') && parts.length >= 3) {
-        const detectedSubdomain = parts[0];
-        setSubdomain(detectedSubdomain);
-
-        const { data: subdomainData } = await supabase
+      // Try custom domain lookup
+      if (customDomain) {
+        const { data: domainData } = await supabase
           .from('company_domains')
           .select(`
             company_id,
@@ -104,12 +91,13 @@ export function useDomainCompany(): UseDomainCompanyResult {
               logo_url
             )
           `)
-          .eq('subdomain', detectedSubdomain)
+          .eq('custom_domain', customDomain)
+          .eq('is_verified', true)
           .eq('is_active', true)
           .maybeSingle();
 
-        if (subdomainData?.companies) {
-          const companyData = subdomainData.companies as unknown as DomainCompany;
+        if (domainData?.companies) {
+          const companyData = domainData.companies as unknown as DomainCompany;
           setCompany(companyData);
         }
       }
