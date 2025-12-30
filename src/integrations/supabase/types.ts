@@ -1544,6 +1544,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_users: { Args: { _company_id: string }; Returns: boolean }
       can_use_documents: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -1572,6 +1573,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_reports: { Args: { _company_id: string }; Returns: boolean }
       company_can_add_employee: {
         Args: { _company_id: string }
         Returns: boolean
@@ -1584,10 +1586,41 @@ export type Database = {
         Args: { _company_id: string; _module: string }
         Returns: boolean
       }
+      create_company_with_admin: {
+        Args: {
+          _industry?: string
+          _name: string
+          _size_range?: string
+          _slug: string
+        }
+        Returns: string
+      }
+      current_company_id: { Args: never; Returns: string }
+      current_employee_id: { Args: never; Returns: string }
+      current_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_current_employee: { Args: { _company_id: string }; Returns: string }
+      get_user_companies: {
+        Args: never
+        Returns: {
+          company_id: string
+          company_name: string
+          company_slug: string
+          is_primary: boolean
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_user_context: { Args: never; Returns: Json }
       get_user_employee_id: {
         Args: { _company_id: string; _user_id: string }
         Returns: string
+      }
+      get_user_role: {
+        Args: { _company_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
       }
       has_company_role: {
         Args: {
@@ -1600,6 +1633,14 @@ export type Database = {
       has_valid_support_access: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
+      }
+      invite_user_to_company: {
+        Args: {
+          _company_id: string
+          _email: string
+          _role?: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: string
       }
       is_active_company_admin: {
         Args: { _company_id: string; _user_id: string }
@@ -1626,6 +1667,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_company_owner: { Args: { _company_id: string }; Returns: boolean }
       is_hr_or_above: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -1636,6 +1678,11 @@ export type Database = {
       }
       is_own_employee_record: {
         Args: { _employee_id: string; _user_id: string }
+        Returns: boolean
+      }
+      set_primary_company: { Args: { _company_id: string }; Returns: boolean }
+      validate_tenant_access: {
+        Args: { _company_id: string }
         Returns: boolean
       }
     }
