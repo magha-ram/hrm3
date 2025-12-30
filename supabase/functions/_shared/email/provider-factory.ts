@@ -1,64 +1,163 @@
-import { EmailProvider, EmailProviderType, EmailProviderConfig } from './types.ts';
+import { EmailProvider, EmailProviderType, EmailProviderConfig, CompanyEmailSettings } from './types.ts';
 import { ConsoleEmailProvider } from './providers/console.ts';
 import { MailerSendEmailProvider } from './providers/mailersend.ts';
 import { SendGridEmailProvider } from './providers/sendgrid.ts';
 import { AwsSesEmailProvider } from './providers/aws-ses.ts';
+import { SmtpEmailProvider, SmtpConfig } from './providers/smtp.ts';
+import { ResendEmailProvider, ResendConfig } from './providers/resend.ts';
 
 /**
  * Email Provider Factory
- * Creates the appropriate email provider based on environment configuration.
+ * Creates the appropriate email provider based on configuration.
+ * Supports both platform-level (env vars) and company-level (database) settings.
  */
 export class EmailProviderFactory {
-  private static instance: EmailProvider | null = null;
-  private static providerType: EmailProviderType | null = null;
+  private static platformInstance: EmailProvider | null = null;
+  private static platformProviderType: EmailProviderType | null = null;
 
   /**
-   * Get the configured email provider.
+   * Get the platform-level email provider (from environment variables).
    * Uses singleton pattern to ensure only one provider instance exists.
    */
-  static getProvider(): EmailProvider {
-    const currentProviderType = this.getProviderType();
+  static getPlatformProvider(): EmailProvider {
+    const currentProviderType = this.getPlatformProviderType();
 
     // Return cached instance if provider type hasn't changed
-    if (this.instance && this.providerType === currentProviderType) {
-      return this.instance;
+    if (this.platformInstance && this.platformProviderType === currentProviderType) {
+      return this.platformInstance;
     }
 
-    const config = this.getConfig();
-    this.providerType = currentProviderType;
+    const config = this.getPlatformConfig();
+    this.platformProviderType = currentProviderType;
+    this.platformInstance = this.createProvider(currentProviderType, config);
 
-    switch (currentProviderType) {
+    console.log(`Platform email provider initialized: ${this.platformInstance.name}`);
+
+    if (!this.platformInstance.validateConfig()) {
+      console.warn(`Email provider ${this.platformInstance.name} configuration is incomplete.`);
+    }
+
+    return this.platformInstance;
+  }
+
+  /**
+   * Create a provider from company-specific settings.
+   * Falls back to platform provider if company uses default.
+   */
+  static getCompanyProvider(settings: CompanyEmailSettings | null): EmailProvider {
+    // If no settings or using platform default, return platform provider
+    if (!settings || settings.use_platform_default) {
+      console.log('Using platform default email provider');
+      return this.getPlatformProvider();
+    }
+
+    // Create company-specific provider
+    if (!settings.provider) {
+      console.warn('Company has custom settings but no provider specified, using platform default');
+      return this.getPlatformProvider();
+    }
+
+    const config: EmailProviderConfig = {
+      fromEmail: settings.from_email || Deno.env.get('EMAIL_FROM_ADDRESS') || 'noreply@example.com',
+      fromName: settings.from_name || Deno.env.get('EMAIL_FROM_NAME') || 'HR System',
+    };
+
+    const provider = this.createProviderFromCompanySettings(settings, config);
+    
+    console.log(`Company email provider created: ${provider.name}`);
+    
+    if (!provider.validateConfig()) {
+      console.warn(`Company provider ${provider.name} configuration is incomplete, falling back to platform`);
+      return this.getPlatformProvider();
+    }
+
+    return provider;
+  }
+
+  /**
+   * Create a provider instance from company settings
+   */
+  private static createProviderFromCompanySettings(
+    settings: CompanyEmailSettings, 
+    config: EmailProviderConfig
+  ): EmailProvider {
+    switch (settings.provider) {
+      case 'smtp':
+        const smtpConfig: SmtpConfig = {
+          ...config,
+          host: settings.smtp_host || '',
+          port: settings.smtp_port || 587,
+          username: settings.smtp_username || '',
+          password: settings.smtp_password || '',
+          secure: settings.smtp_secure ?? true,
+        };
+        return new SmtpEmailProvider(smtpConfig);
+
+      case 'resend':
+        const resendConfig: ResendConfig = {
+          ...config,
+          apiKey: settings.api_key || '',
+        };
+        return new ResendEmailProvider(resendConfig);
+
       case 'mailersend':
-        this.instance = new MailerSendEmailProvider(config);
-        break;
+        // MailerSend reads API key from env, but we can set it for company config
+        Deno.env.set('MAILERSEND_API_KEY', settings.api_key || '');
+        return new MailerSendEmailProvider(config);
+
       case 'sendgrid':
-        this.instance = new SendGridEmailProvider(config);
-        break;
+        // SendGrid reads API key from env, but we can set it for company config
+        Deno.env.set('SENDGRID_API_KEY', settings.api_key || '');
+        return new SendGridEmailProvider(config);
+
       case 'ses':
-        this.instance = new AwsSesEmailProvider(config);
-        break;
+        // AWS SES reads keys from env, set them for company config
+        Deno.env.set('AWS_SES_ACCESS_KEY', settings.aws_access_key_id || '');
+        Deno.env.set('AWS_SES_SECRET_KEY', settings.aws_secret_access_key || '');
+        Deno.env.set('AWS_SES_REGION', settings.aws_region || 'us-east-1');
+        return new AwsSesEmailProvider(config);
+
       case 'console':
-        this.instance = new ConsoleEmailProvider(config);
-        break;
       default:
-        throw new Error(`Unknown email provider: ${currentProviderType}. Valid options: mailersend, sendgrid, ses, console`);
+        return new ConsoleEmailProvider(config);
     }
+  }
 
-    console.log(`Email provider initialized: ${this.instance.name}`);
-
-    // Validate configuration
-    if (!this.instance.validateConfig()) {
-      console.warn(`Email provider ${this.instance.name} configuration is incomplete. Emails may fail.`);
+  /**
+   * Create a provider instance based on type and config (for platform level)
+   */
+  private static createProvider(type: EmailProviderType, config: EmailProviderConfig): EmailProvider {
+    switch (type) {
+      case 'mailersend':
+        return new MailerSendEmailProvider(config);
+      case 'sendgrid':
+        return new SendGridEmailProvider(config);
+      case 'ses':
+        return new AwsSesEmailProvider(config);
+      case 'smtp':
+        return new SmtpEmailProvider({
+          ...config,
+          host: Deno.env.get('SMTP_HOST') || '',
+          port: parseInt(Deno.env.get('SMTP_PORT') || '587'),
+          username: Deno.env.get('SMTP_USERNAME') || '',
+          password: Deno.env.get('SMTP_PASSWORD') || '',
+          secure: Deno.env.get('SMTP_SECURE') !== 'false',
+        });
+      case 'resend':
+        return new ResendEmailProvider({
+          ...config,
+          apiKey: Deno.env.get('RESEND_API_KEY') || '',
+        });
+      case 'console':
+      default:
+        return new ConsoleEmailProvider(config);
     }
-
-    return this.instance;
   }
 
   /**
    * Get the provider type from environment.
-   * Defaults to 'console' in development.
    */
-  private static getProviderType(): EmailProviderType {
+  private static getPlatformProviderType(): EmailProviderType {
     const provider = Deno.env.get('EMAIL_PROVIDER')?.toLowerCase() as EmailProviderType;
     
     if (!provider) {
@@ -66,7 +165,7 @@ export class EmailProviderFactory {
       return 'console';
     }
 
-    const validProviders: EmailProviderType[] = ['mailersend', 'sendgrid', 'ses', 'console'];
+    const validProviders: EmailProviderType[] = ['mailersend', 'sendgrid', 'ses', 'console', 'smtp', 'resend'];
     if (!validProviders.includes(provider)) {
       throw new Error(`Invalid EMAIL_PROVIDER: ${provider}. Valid options: ${validProviders.join(', ')}`);
     }
@@ -77,7 +176,7 @@ export class EmailProviderFactory {
   /**
    * Get shared email configuration from environment.
    */
-  private static getConfig(): EmailProviderConfig {
+  private static getPlatformConfig(): EmailProviderConfig {
     return {
       fromEmail: Deno.env.get('EMAIL_FROM_ADDRESS') || 'noreply@example.com',
       fromName: Deno.env.get('EMAIL_FROM_NAME') || 'HR System',
@@ -85,11 +184,10 @@ export class EmailProviderFactory {
   }
 
   /**
-   * Reset the cached provider instance.
-   * Useful for testing or when environment changes.
+   * Reset the cached provider instances.
    */
   static reset(): void {
-    this.instance = null;
-    this.providerType = null;
+    this.platformInstance = null;
+    this.platformProviderType = null;
   }
 }

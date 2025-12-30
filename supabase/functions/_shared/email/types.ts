@@ -42,7 +42,30 @@ export interface EmailProvider {
 }
 
 // Supported email providers
-export type EmailProviderType = 'mailersend' | 'sendgrid' | 'ses' | 'console';
+export type EmailProviderType = 'mailersend' | 'sendgrid' | 'ses' | 'console' | 'smtp' | 'resend';
+
+// Company email settings from database
+export interface CompanyEmailSettings {
+  id: string;
+  company_id: string;
+  use_platform_default: boolean;
+  provider: EmailProviderType | null;
+  from_email: string | null;
+  from_name: string | null;
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_username: string | null;
+  smtp_password: string | null;
+  smtp_secure: boolean | null;
+  api_key: string | null;
+  aws_region: string | null;
+  aws_access_key_id: string | null;
+  aws_secret_access_key: string | null;
+  is_verified: boolean;
+  verified_at: string | null;
+  last_test_at: string | null;
+  last_test_result: Record<string, unknown> | null;
+}
 
 // Email template types
 export type EmailTemplateType = 

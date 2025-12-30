@@ -62,6 +62,8 @@ interface EmailLogEntry {
   sent_at?: string;
 }
 
+import { CompanyEmailSettings } from './types.ts';
+
 /**
  * EmailService - Provider-agnostic email orchestrator with audit logging
  * 
@@ -83,6 +85,31 @@ export class EmailService {
       }
     }
     return this.supabaseAdmin;
+  }
+
+  /**
+   * Fetch company email settings from database
+   */
+  private async getCompanyEmailSettings(companyId: string): Promise<CompanyEmailSettings | null> {
+    const client = this.getAdminClient();
+    if (!client) return null;
+
+    try {
+      const { data, error } = await client
+        .from('company_email_settings')
+        .select('*')
+        .eq('company_id', companyId)
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      // Cast through unknown to handle database row type
+      return data as unknown as CompanyEmailSettings;
+    } catch {
+      return null;
+    }
   }
 
   private async createLogEntry(entry: EmailLogEntry): Promise<string | null> {
@@ -225,7 +252,15 @@ export class EmailService {
     templateType?: string,
     context?: EmailContext
   ): Promise<EmailSendResult> {
-    const provider = EmailProviderFactory.getProvider();
+    // Get provider - use company settings if available, otherwise platform default
+    let provider;
+    if (context?.companyId) {
+      const companySettings = await this.getCompanyEmailSettings(context.companyId);
+      provider = EmailProviderFactory.getCompanyProvider(companySettings);
+    } else {
+      provider = EmailProviderFactory.getPlatformProvider();
+    }
+    
     const primaryRecipient = message.to[0];
 
     // Create log entry with 'pending' status
