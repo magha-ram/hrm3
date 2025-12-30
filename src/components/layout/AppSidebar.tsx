@@ -1,10 +1,11 @@
 import { useLocation } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES, UTILITY_NAV, SETTINGS_NAV } from '@/config/modules';
 import { hasMinimumRole } from '@/types/auth';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle } from 'lucide-react';
+import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarHeader,
   useSidebar,
 } from '@/components/ui/sidebar';
 import {
@@ -32,12 +34,35 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { role, isAdmin, planName, isTrialing } = useTenant();
   const { accessibleModules, moduleAccess, isFrozen } = useModuleAccess();
+  const { isImpersonating, impersonatedCompany } = useImpersonation();
 
   const isActive = (path: string) => location.pathname.startsWith(path);
   const isSettingsActive = location.pathname.startsWith('/settings');
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
+      {/* Impersonation Indicator */}
+      {isImpersonating && impersonatedCompany && (
+        <SidebarHeader className="p-0">
+          <div className={cn(
+            "bg-amber-500/10 border-b border-amber-500/20 px-3 py-2",
+            collapsed ? "flex items-center justify-center" : ""
+          )}>
+            {collapsed ? (
+              <Eye className="h-4 w-4 text-amber-600" />
+            ) : (
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <Eye className="h-4 w-4 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide font-medium opacity-75">Viewing as</p>
+                  <p className="text-xs font-semibold truncate">{impersonatedCompany.name}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </SidebarHeader>
+      )}
+      
       <SidebarContent className="py-2">
         {/* Main HR Modules */}
         <SidebarGroup>
