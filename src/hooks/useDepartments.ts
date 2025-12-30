@@ -20,8 +20,7 @@ export function useDepartments() {
         .from('departments')
         .select(`
           *,
-          manager:employees!fk_departments_manager(id, first_name, last_name),
-          parent:departments!departments_parent_id_fkey(id, name)
+          manager:employees!fk_departments_manager(id, first_name, last_name)
         `)
         .eq('company_id', companyId)
         .order('name', { ascending: true });
