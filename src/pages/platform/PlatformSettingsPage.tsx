@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Eye, Bell } from 'lucide-react';
+import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Eye, Bell, CheckCircle2, XCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -56,6 +57,158 @@ interface NotificationSettings {
   payroll_processed: boolean;
   subscription_expiring: boolean;
   company_frozen: boolean;
+}
+
+// Provider secrets configuration
+const PROVIDER_SECRETS: Record<string, { name: string; required: string[]; optional?: string[]; docs: string }> = {
+  console: {
+    name: 'Console (Development)',
+    required: [],
+    docs: '',
+  },
+  mailersend: {
+    name: 'MailerSend',
+    required: ['MAILERSEND_API_KEY'],
+    optional: ['EMAIL_FROM_ADDRESS', 'EMAIL_FROM_NAME'],
+    docs: 'https://app.mailersend.com/api-tokens',
+  },
+  sendgrid: {
+    name: 'SendGrid',
+    required: ['SENDGRID_API_KEY'],
+    optional: ['EMAIL_FROM_ADDRESS', 'EMAIL_FROM_NAME'],
+    docs: 'https://app.sendgrid.com/settings/api_keys',
+  },
+  'aws-ses': {
+    name: 'AWS SES',
+    required: ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION'],
+    optional: ['EMAIL_FROM_ADDRESS', 'EMAIL_FROM_NAME'],
+    docs: 'https://console.aws.amazon.com/ses/',
+  },
+};
+
+// Known configured secrets (fetched from edge function)
+function ProviderSecretsHelper({ provider }: { provider: string }) {
+  const { data: secretStatus, isLoading } = useQuery({
+    queryKey: ['email-secrets-status'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('check-email-secrets');
+      if (error) throw error;
+      return data as Record<string, boolean>;
+    },
+    staleTime: 60000,
+  });
+
+  const config = PROVIDER_SECRETS[provider];
+  
+  if (!config || provider === 'console') {
+    return (
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Console mode logs emails to the edge function logs instead of sending them. 
+          Select a real provider for production use.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const allRequired = config.required;
+  const allOptional = config.optional || [];
+
+  return (
+    <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-sm">{config.name} Configuration</h4>
+        {config.docs && (
+          <a
+            href={config.docs}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            Get API Key <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
+      </div>
+      
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground font-medium">Required Secrets:</p>
+        <div className="grid gap-1.5">
+          {allRequired.map((secret) => (
+            <SecretStatusRow 
+              key={secret} 
+              name={secret} 
+              isConfigured={secretStatus?.[secret]} 
+              isLoading={isLoading}
+            />
+          ))}
+        </div>
+      </div>
+
+      {allOptional.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">Optional (uses defaults if not set):</p>
+          <div className="grid gap-1.5">
+            {allOptional.map((secret) => (
+              <SecretStatusRow 
+                key={secret} 
+                name={secret} 
+                isConfigured={secretStatus?.[secret]} 
+                isLoading={isLoading}
+                optional
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground pt-2 border-t">
+        Configure secrets in{' '}
+        <a
+          href="https://supabase.com/dashboard/project/xwfzrbigmgyxsrzlkqwr/settings/functions"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          Supabase Edge Function Secrets
+        </a>
+      </p>
+    </div>
+  );
+}
+
+function SecretStatusRow({ 
+  name, 
+  isConfigured, 
+  isLoading,
+  optional = false 
+}: { 
+  name: string; 
+  isConfigured?: boolean; 
+  isLoading: boolean;
+  optional?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : isConfigured ? (
+        <CheckCircle2 className="h-4 w-4 text-green-500" />
+      ) : optional ? (
+        <AlertCircle className="h-4 w-4 text-yellow-500" />
+      ) : (
+        <XCircle className="h-4 w-4 text-destructive" />
+      )}
+      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{name}</code>
+      {isConfigured && <span className="text-xs text-green-600">Configured</span>}
+      {!isConfigured && !isLoading && !optional && (
+        <span className="text-xs text-destructive">Not configured</span>
+      )}
+      {!isConfigured && !isLoading && optional && (
+        <span className="text-xs text-yellow-600">Using default</span>
+      )}
+    </div>
+  );
 }
 
 export default function PlatformSettingsPage() {
@@ -488,9 +641,8 @@ export default function PlatformSettingsPage() {
               </div>
             </div>
             
-            <p className="text-sm text-muted-foreground">
-              Note: Email provider API keys should be configured as secrets in your Supabase project.
-            </p>
+            {/* Provider Secrets Helper */}
+            <ProviderSecretsHelper provider={email.provider} />
 
             <div className="flex flex-col sm:flex-row gap-4 pt-2 border-t">
               <Button onClick={handleSaveEmail} disabled={updateSettingMutation.isPending}>
