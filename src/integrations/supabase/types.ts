@@ -1449,10 +1449,12 @@ export type Database = {
           created_at: string
           email: string
           first_name: string | null
+          force_password_change: boolean | null
           id: string
           last_login_at: string | null
           last_name: string | null
           locale: string | null
+          login_type: string | null
           max_companies: number
           metadata: Json | null
           phone: string | null
@@ -1464,10 +1466,12 @@ export type Database = {
           created_at?: string
           email: string
           first_name?: string | null
+          force_password_change?: boolean | null
           id: string
           last_login_at?: string | null
           last_name?: string | null
           locale?: string | null
+          login_type?: string | null
           max_companies?: number
           metadata?: Json | null
           phone?: string | null
@@ -1479,10 +1483,12 @@ export type Database = {
           created_at?: string
           email?: string
           first_name?: string | null
+          force_password_change?: boolean | null
           id?: string
           last_login_at?: string | null
           last_name?: string | null
           locale?: string | null
+          login_type?: string | null
           max_companies?: number
           metadata?: Json | null
           phone?: string | null

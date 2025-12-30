@@ -374,6 +374,37 @@ const templates: Record<EmailTemplateType, (data: any) => RenderedTemplate> = {
     `, 'Trial Extension Update'),
     text: `Hi ${data.userName},\n\nYour trial extension request for ${data.companyName} could not be approved.\n\n${data.reason ? `Reason: ${data.reason}\n\n` : ''}View plans: ${data.upgradeUrl}`
   }),
+
+  employee_account_created: (data: EmailTemplateData['employee_account_created']) => ({
+    subject: `Your ${data.companyName} Login Credentials`,
+    html: wrapTemplate(`
+      <div class="header">
+        <h1>Welcome to ${data.companyName}!</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.employeeName},</p>
+        <p>Your user account has been created for <strong>${data.companyName}</strong>.</p>
+        <div class="highlight">
+          ${data.loginType === 'employee_id' ? `
+            <p><strong>Employee ID:</strong> ${data.employeeNumber}</p>
+            <p><strong>Company:</strong> ${data.companySlug}</p>
+          ` : `
+            <p><strong>Email:</strong> (your work email)</p>
+          `}
+          <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">${data.temporaryPassword}</code></p>
+        </div>
+        <p><strong>Important:</strong> You will be required to change your password on first login.</p>
+        <p style="text-align: center;">
+          <a href="${data.loginUrl}" class="button">Login Now</a>
+        </p>
+        <p style="color: #dc2626; font-size: 14px;"><strong>Security Notice:</strong> Do not share your password with anyone. This email contains sensitive login credentials.</p>
+      </div>
+      <div class="footer">
+        <p>This is an automated message from ${data.companyName}.</p>
+      </div>
+    `, `Login Credentials - ${data.companyName}`),
+    text: `Welcome to ${data.companyName}!\n\nHi ${data.employeeName},\n\nYour user account has been created.\n\n${data.loginType === 'employee_id' ? `Employee ID: ${data.employeeNumber}\nCompany: ${data.companySlug}` : 'Use your work email to login'}\nTemporary Password: ${data.temporaryPassword}\n\nIMPORTANT: You will be required to change your password on first login.\n\nLogin at: ${data.loginUrl}\n\nSecurity Notice: Do not share your password with anyone.`
+  }),
 };
 
 export function renderTemplate<T extends EmailTemplateType>(
