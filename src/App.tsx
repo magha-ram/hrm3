@@ -38,7 +38,11 @@ const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
 // Settings sub-pages
 const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
 const BillingSettingsPage = lazy(() => import("./pages/app/settings/BillingSettingsPage"));
+const UsersSettingsPage = lazy(() => import("./pages/app/settings/UsersSettingsPage"));
+const SecuritySettingsPage = lazy(() => import("./pages/app/settings/SecuritySettingsPage"));
 
+// Utility pages
+const HelpPage = lazy(() => import("./pages/app/HelpPage"));
 // Platform admin pages
 const PlatformDashboardPage = lazy(() => import("./pages/platform/PlatformDashboardPage"));
 const PlatformAdminsPage = lazy(() => import("./pages/platform/PlatformAdminsPage"));
@@ -116,9 +120,13 @@ const App = () => (
                     <Route path="compliance" element={<CompliancePage />} />
                     <Route path="integrations" element={<IntegrationsPage />} />
                     <Route path="settings" element={<SettingsPage />}>
+                      <Route index element={<Navigate to="/app/settings/company" replace />} />
                       <Route path="company" element={<CompanySettingsPage />} />
                       <Route path="billing" element={<BillingSettingsPage />} />
+                      <Route path="users" element={<UsersSettingsPage />} />
+                      <Route path="security" element={<SecuritySettingsPage />} />
                     </Route>
+                    <Route path="help" element={<HelpPage />} />
                   </Route>
 
                   {/* Legacy redirects for old routes */}
