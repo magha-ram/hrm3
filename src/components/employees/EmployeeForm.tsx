@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2 } from 'lucide-react';
 import { useCreateEmployee, useUpdateEmployee, type Employee } from '@/hooks/useEmployees';
 import { useDepartments } from '@/hooks/useDepartments';
-
+import { useNextEmployeeNumber } from '@/hooks/useEmployeeNumber';
 const employeeSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
@@ -36,6 +37,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const { data: departments } = useDepartments();
+  const { data: nextEmployeeNumber, isLoading: isLoadingNumber } = useNextEmployeeNumber();
   
   const isEditing = !!employee;
   const isLoading = createEmployee.isPending || updateEmployee.isPending;
@@ -57,6 +59,13 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
       work_location: employee?.work_location || '',
     },
   });
+
+  // Auto-populate employee number for new employees
+  useEffect(() => {
+    if (!isEditing && nextEmployeeNumber?.formatted && !form.getValues('employee_number')) {
+      form.setValue('employee_number', nextEmployeeNumber.formatted);
+    }
+  }, [isEditing, nextEmployeeNumber, form]);
 
   const onSubmit = async (values: EmployeeFormValues) => {
     try {
@@ -142,8 +151,16 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
               <FormItem>
                 <FormLabel>Employee Number *</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input 
+                    {...field} 
+                    readOnly={!isEditing}
+                    className={!isEditing ? 'bg-muted' : ''}
+                    placeholder={isLoadingNumber ? 'Generating...' : ''}
+                  />
                 </FormControl>
+                {!isEditing && (
+                  <p className="text-xs text-muted-foreground">Auto-generated based on company settings</p>
+                )}
                 <FormMessage />
               </FormItem>
             )}
