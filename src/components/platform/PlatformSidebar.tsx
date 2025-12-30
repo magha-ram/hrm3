@@ -10,7 +10,8 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
-  FileText
+  FileText,
+  UserCog
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,11 @@ const platformNavItems = [
     name: 'Audit Logs', 
     path: '/platform/audit-logs', 
     icon: FileText 
+  },
+  { 
+    name: 'Impersonation Logs', 
+    path: '/platform/impersonation-logs', 
+    icon: UserCog 
   },
   { 
     name: 'Settings', 

@@ -173,6 +173,28 @@ export default function PlatformCompanyDetailPage() {
     },
   });
 
+  // Fetch platform settings for impersonation visibility
+  const { data: platformSettings } = useQuery({
+    queryKey: ['platform-settings-impersonation'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'impersonation')
+        .maybeSingle();
+
+      if (error) throw error;
+      return data?.value as { enabled_for_all?: boolean; enterprise_only?: boolean } || { enterprise_only: true };
+    },
+  });
+
+  // Check if impersonation is allowed for this company
+  const isEnterpriseOrAbove = subscription?.plans?.name?.toLowerCase().includes('enterprise') || 
+                               subscription?.plans?.name?.toLowerCase().includes('business');
+  const canImpersonate = platformSettings?.enabled_for_all || 
+                         (platformSettings?.enterprise_only !== false && isEnterpriseOrAbove) ||
+                         !platformSettings?.enterprise_only;
+
   // Toggle company active status
   const toggleActiveMutation = useMutation({
     mutationFn: async () => {
@@ -322,20 +344,22 @@ export default function PlatformCompanyDetailPage() {
           </Badge>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="default"
-            onClick={async () => {
-              await startImpersonation({
-                id: company.id,
-                name: company.name,
-                slug: company.slug,
-              });
-              navigate('/app/dashboard');
-            }}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Impersonate
-          </Button>
+          {canImpersonate && (
+            <Button
+              variant="default"
+              onClick={async () => {
+                await startImpersonation({
+                  id: company.id,
+                  name: company.name,
+                  slug: company.slug,
+                });
+                navigate('/app/dashboard');
+              }}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Impersonate
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => toggleActiveMutation.mutate()}

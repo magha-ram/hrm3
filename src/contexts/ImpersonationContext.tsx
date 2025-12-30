@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
@@ -30,6 +30,7 @@ export const useImpersonation = () => {
 export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isPlatformAdmin, currentCompanyId, user } = useAuth();
   const [impersonatedCompany, setImpersonatedCompany] = useState<ImpersonatedCompany | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
 
   const startImpersonation = useCallback(async (company: ImpersonatedCompany) => {
     if (!isPlatformAdmin) {
@@ -37,22 +38,25 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    // Log impersonation start
+    // Generate a session ID for this impersonation
+    const sessionId = crypto.randomUUID();
+    sessionIdRef.current = sessionId;
+
+    // Log impersonation start to dedicated table
     try {
-      await supabase.from('audit_logs').insert({
-        action: 'read' as const,
-        table_name: 'impersonation',
-        record_id: company.id,
-        user_id: user?.user_id,
+      await supabase.from('impersonation_logs').insert({
+        admin_user_id: user?.user_id,
+        company_id: company.id,
+        company_name: company.name,
+        action: 'start',
+        session_id: sessionId,
+        user_agent: navigator.userAgent,
         metadata: {
-          action: 'impersonation_start',
-          company_id: company.id,
-          company_name: company.name,
-          timestamp: new Date().toISOString(),
+          company_slug: company.slug,
         },
       });
     } catch (err) {
-      console.error('Failed to log impersonation:', err);
+      console.error('Failed to log impersonation start:', err);
     }
 
     setImpersonatedCompany(company);
@@ -63,16 +67,15 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
     if (impersonatedCompany) {
       // Log impersonation end
       try {
-        await supabase.from('audit_logs').insert({
-          action: 'read' as const,
-          table_name: 'impersonation',
-          record_id: impersonatedCompany.id,
-          user_id: user?.user_id,
+        await supabase.from('impersonation_logs').insert({
+          admin_user_id: user?.user_id,
+          company_id: impersonatedCompany.id,
+          company_name: impersonatedCompany.name,
+          action: 'end',
+          session_id: sessionIdRef.current,
+          user_agent: navigator.userAgent,
           metadata: {
-            action: 'impersonation_end',
-            company_id: impersonatedCompany.id,
-            company_name: impersonatedCompany.name,
-            timestamp: new Date().toISOString(),
+            company_slug: impersonatedCompany.slug,
           },
         });
       } catch (err) {
@@ -80,6 +83,7 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     }
 
+    sessionIdRef.current = null;
     setImpersonatedCompany(null);
     toast.info('Impersonation ended');
   }, [impersonatedCompany, user?.user_id]);
