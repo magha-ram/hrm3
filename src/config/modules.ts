@@ -23,7 +23,10 @@ export type ModuleId =
   | 'documents'
   | 'recruitment'
   | 'performance'
-  | 'payroll';
+  | 'payroll'
+  | 'compliance'
+  | 'audit'
+  | 'integrations';
 
 export interface ModuleConfig {
   id: ModuleId;
