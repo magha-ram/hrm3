@@ -124,3 +124,53 @@ export function exportComplianceReportToCSV(
   const exportFilename = filename || `compliance-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
   downloadFile(fullContent, exportFilename);
 }
+
+/**
+ * Export employees to CSV
+ */
+export function exportEmployeesToCSV(
+  employees: Array<{
+    first_name: string;
+    last_name: string;
+    email: string;
+    employee_number: string;
+    hire_date: string;
+    job_title: string | null;
+    employment_type: string;
+    employment_status: string;
+    phone: string | null;
+    personal_email: string | null;
+    work_location: string | null;
+    department?: { name: string } | null;
+  }>,
+  filename?: string
+) {
+  const csvContent = convertToCSV(employees, [
+    { key: 'first_name', label: 'First Name' },
+    { key: 'last_name', label: 'Last Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'employee_number', label: 'Employee Number' },
+    { key: 'hire_date', label: 'Hire Date' },
+    { key: 'job_title', label: 'Job Title', format: (v) => String(v || '') },
+    { key: 'department', label: 'Department', format: (v) => (v as { name: string } | null)?.name || '' },
+    { key: 'employment_type', label: 'Employment Type', format: (v) => String(v).replace('_', ' ') },
+    { key: 'employment_status', label: 'Status', format: (v) => String(v).replace('_', ' ') },
+    { key: 'phone', label: 'Phone', format: (v) => String(v || '') },
+    { key: 'personal_email', label: 'Personal Email', format: (v) => String(v || '') },
+    { key: 'work_location', label: 'Work Location', format: (v) => String(v || '') },
+  ]);
+
+  const exportFilename = filename || `employees-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  downloadFile(csvContent, exportFilename);
+}
+
+/**
+ * Download sample employee import template
+ */
+export function downloadEmployeeImportTemplate() {
+  const template = `first_name,last_name,email,employee_number,hire_date,job_title,employment_type,employment_status,phone,personal_email,work_location
+John,Doe,john.doe@company.com,EMP-001,2024-01-15,Software Engineer,full_time,active,+1234567890,john@personal.com,New York
+Jane,Smith,jane.smith@company.com,EMP-002,2024-02-01,Product Manager,full_time,active,,jane@personal.com,Remote`;
+  
+  downloadFile(template, 'employee-import-template.csv');
+}
