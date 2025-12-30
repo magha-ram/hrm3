@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.check-email-secrets]
 verify_jwt = false
+
+[functions.send-webhook]
+verify_jwt = false
