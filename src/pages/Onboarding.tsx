@@ -32,7 +32,7 @@ const SIZE_RANGES = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { refreshUserContext, user, isLoading: authContextLoading } = useAuth();
+  const { refreshUserContext, user, isLoading: authContextLoading, isPlatformAdmin } = useAuth();
   const { isLoading: authLoading } = useRequireAuth({ redirectTo: '/auth' });
   
   const [isLoading, setIsLoading] = useState(false);
@@ -40,15 +40,23 @@ export default function Onboarding() {
   const [industry, setIndustry] = useState('');
   const [sizeRange, setSizeRange] = useState('');
 
+  // Redirect platform admins - they cannot create companies
+  useEffect(() => {
+    if (!authContextLoading && isPlatformAdmin) {
+      toast.error('Platform admins cannot create companies. Use impersonation to access company data.');
+      navigate('/platform/dashboard', { replace: true });
+    }
+  }, [isPlatformAdmin, authContextLoading, navigate]);
+
   // Redirect to dashboard if user already has companies
   useEffect(() => {
-    if (!authContextLoading && user) {
+    if (!authContextLoading && user && !isPlatformAdmin) {
       const hasCompanies = user.companies && user.companies.length > 0;
       if (hasCompanies) {
         navigate('/app/dashboard', { replace: true });
       }
     }
-  }, [user, authContextLoading, navigate]);
+  }, [user, authContextLoading, isPlatformAdmin, navigate]);
 
   const generateSlug = (name: string): string => {
     return name

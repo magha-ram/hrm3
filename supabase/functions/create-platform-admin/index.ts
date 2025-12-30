@@ -181,6 +181,29 @@ Deno.serve(async (req) => {
       console.log('Created new user:', userId);
     }
 
+    // Check if user has any company associations and remove them
+    const { data: existingCompanyUsers } = await supabaseAdmin
+      .from('company_users')
+      .select('id, company_id')
+      .eq('user_id', userId);
+
+    if (existingCompanyUsers && existingCompanyUsers.length > 0) {
+      console.log(`User ${userId} has ${existingCompanyUsers.length} company associations - removing them`);
+      
+      // Remove company associations - platform admins should not be company users
+      const { error: deleteError } = await supabaseAdmin
+        .from('company_users')
+        .delete()
+        .eq('user_id', userId);
+
+      if (deleteError) {
+        console.error('Failed to remove company associations:', deleteError);
+        // Non-fatal, continue with platform admin creation
+      } else {
+        console.log('Successfully removed company associations for new platform admin');
+      }
+    }
+
     // Add user to platform_admins
     // In bootstrap mode, first admin is always an owner
     const finalRole = isBootstrap ? 'owner' : role;
