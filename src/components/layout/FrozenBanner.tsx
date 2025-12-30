@@ -17,7 +17,7 @@ export function FrozenBanner() {
           Your company account has been frozen. All data is read-only until the account is reactivated.
         </span>
         {isAdmin && (
-          <Link to="/settings/billing">
+          <Link to="/app/settings/billing">
             <Button size="sm" variant="outline" className="bg-background">
               Update Billing
             </Button>
