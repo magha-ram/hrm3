@@ -14,6 +14,7 @@ import { useEmployees, useDeleteEmployee, type Employee } from '@/hooks/useEmplo
 import { EmployeeForm } from '@/components/employees/EmployeeForm';
 import { EmployeeDetail } from '@/components/employees/EmployeeDetail';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ReadOnlyPageBanner } from '@/components/platform/ImpersonationRestricted';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
@@ -68,6 +69,7 @@ export default function EmployeesPage() {
   return (
     <ModuleGuard moduleId="employees">
       <div className="p-6 space-y-6">
+        <ReadOnlyPageBanner />
         <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Employees</h1>
