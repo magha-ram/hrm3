@@ -5,7 +5,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES, UTILITY_NAV, SETTINGS_NAV } from '@/config/modules';
 import { hasMinimumRole } from '@/types/auth';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye } from 'lucide-react';
+import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +25,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
@@ -34,7 +35,7 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { role, isAdmin, planName, isTrialing } = useTenant();
   const { accessibleModules, moduleAccess, isFrozen } = useModuleAccess();
-  const { isImpersonating, impersonatedCompany } = useImpersonation();
+  const { isImpersonating, impersonatedCompany, stopImpersonation } = useImpersonation();
 
   const isActive = (path: string) => location.pathname.startsWith(path);
   const isSettingsActive = location.pathname.startsWith('/settings');
@@ -49,14 +50,31 @@ export function AppSidebar() {
             collapsed ? "flex items-center justify-center" : ""
           )}>
             {collapsed ? (
-              <Eye className="h-4 w-4 text-amber-600" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-amber-600 hover:text-amber-700 hover:bg-amber-500/20"
+                onClick={() => stopImpersonation()}
+                title="Exit impersonation"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
             ) : (
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
                 <Eye className="h-4 w-4 shrink-0" />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[10px] uppercase tracking-wide font-medium opacity-75">Viewing as</p>
                   <p className="text-xs font-semibold truncate">{impersonatedCompany.name}</p>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/20"
+                  onClick={() => stopImpersonation()}
+                  title="Exit impersonation"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
               </div>
             )}
           </div>
