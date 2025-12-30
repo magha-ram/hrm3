@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Eye } from 'lucide-react';
+import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Eye, Bell } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -46,6 +46,18 @@ interface ImpersonationSettings {
   enterprise_only: boolean;
 }
 
+interface NotificationSettings {
+  user_invitation: boolean;
+  welcome: boolean;
+  password_reset: boolean;
+  leave_request_submitted: boolean;
+  leave_request_approved: boolean;
+  leave_request_rejected: boolean;
+  payroll_processed: boolean;
+  subscription_expiring: boolean;
+  company_frozen: boolean;
+}
+
 export default function PlatformSettingsPage() {
   const queryClient = useQueryClient();
   
@@ -78,6 +90,18 @@ export default function PlatformSettingsPage() {
     enterprise_only: true,
   });
 
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    user_invitation: true,
+    welcome: true,
+    password_reset: true,
+    leave_request_submitted: true,
+    leave_request_approved: true,
+    leave_request_rejected: true,
+    payroll_processed: true,
+    subscription_expiring: true,
+    company_frozen: true,
+  });
+
   const [domainInput, setDomainInput] = useState('');
   const [testEmailAddress, setTestEmailAddress] = useState('');
 
@@ -107,6 +131,7 @@ export default function PlatformSettingsPage() {
       if (settings.trial) setTrial(settings.trial);
       if (settings.email) setEmail(settings.email);
       if (settings.impersonation) setImpersonation(settings.impersonation);
+      if (settings.notifications) setNotifications(settings.notifications);
     }
   }, [settings]);
 
@@ -146,6 +171,10 @@ export default function PlatformSettingsPage() {
 
   const handleSaveImpersonation = () => {
     updateSettingMutation.mutate({ key: 'impersonation', value: impersonation });
+  };
+
+  const handleSaveNotifications = () => {
+    updateSettingMutation.mutate({ key: 'notifications', value: notifications });
   };
 
   // Send test email mutation
@@ -491,6 +520,138 @@ export default function PlatformSettingsPage() {
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Email Notification Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle>Email Notifications</CardTitle>
+                <CardDescription>Configure which events trigger automated emails</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4">
+              <div className="border-b pb-2">
+                <h4 className="font-medium text-sm">User & Authentication</h4>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_invitation">User Invitation</Label>
+                  <p className="text-sm text-muted-foreground">When a user is invited to join a company</p>
+                </div>
+                <Switch
+                  id="notif_invitation"
+                  checked={notifications.user_invitation}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, user_invitation: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_welcome">Welcome Email</Label>
+                  <p className="text-sm text-muted-foreground">When a new user completes signup</p>
+                </div>
+                <Switch
+                  id="notif_welcome"
+                  checked={notifications.welcome}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, welcome: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_password">Password Reset</Label>
+                  <p className="text-sm text-muted-foreground">When a user requests a password reset</p>
+                </div>
+                <Switch
+                  id="notif_password"
+                  checked={notifications.password_reset}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, password_reset: checked })}
+                />
+              </div>
+
+              <div className="border-b pb-2 pt-4">
+                <h4 className="font-medium text-sm">Leave Management</h4>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_leave_submitted">Leave Request Submitted</Label>
+                  <p className="text-sm text-muted-foreground">When an employee submits a leave request</p>
+                </div>
+                <Switch
+                  id="notif_leave_submitted"
+                  checked={notifications.leave_request_submitted}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, leave_request_submitted: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_leave_approved">Leave Request Approved</Label>
+                  <p className="text-sm text-muted-foreground">When a leave request is approved</p>
+                </div>
+                <Switch
+                  id="notif_leave_approved"
+                  checked={notifications.leave_request_approved}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, leave_request_approved: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_leave_rejected">Leave Request Rejected</Label>
+                  <p className="text-sm text-muted-foreground">When a leave request is rejected</p>
+                </div>
+                <Switch
+                  id="notif_leave_rejected"
+                  checked={notifications.leave_request_rejected}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, leave_request_rejected: checked })}
+                />
+              </div>
+
+              <div className="border-b pb-2 pt-4">
+                <h4 className="font-medium text-sm">Payroll & Billing</h4>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_payroll">Payroll Processed</Label>
+                  <p className="text-sm text-muted-foreground">When payroll is processed for employees</p>
+                </div>
+                <Switch
+                  id="notif_payroll"
+                  checked={notifications.payroll_processed}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, payroll_processed: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_subscription">Subscription Expiring</Label>
+                  <p className="text-sm text-muted-foreground">When a company's subscription is about to expire</p>
+                </div>
+                <Switch
+                  id="notif_subscription"
+                  checked={notifications.subscription_expiring}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, subscription_expiring: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="notif_frozen">Company Frozen</Label>
+                  <p className="text-sm text-muted-foreground">When a company account is frozen</p>
+                </div>
+                <Switch
+                  id="notif_frozen"
+                  checked={notifications.company_frozen}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, company_frozen: checked })}
+                />
+              </div>
+            </div>
+
+            <Button onClick={handleSaveNotifications} disabled={updateSettingMutation.isPending}>
+              <Save className="h-4 w-4 mr-2" />
+              Save Notification Settings
+            </Button>
           </CardContent>
         </Card>
 
