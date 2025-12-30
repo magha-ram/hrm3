@@ -53,6 +53,8 @@ serve(async (req: Request) => {
     const secretsToCheck = [
       'MAILERSEND_API_KEY',
       'SENDGRID_API_KEY',
+      'RESEND_API_KEY',
+      'BREVO_API_KEY',
       'AWS_ACCESS_KEY_ID',
       'AWS_SECRET_ACCESS_KEY',
       'AWS_REGION',

@@ -5,6 +5,7 @@ import { SendGridEmailProvider } from './providers/sendgrid.ts';
 import { AwsSesEmailProvider } from './providers/aws-ses.ts';
 import { SmtpEmailProvider, SmtpConfig } from './providers/smtp.ts';
 import { ResendEmailProvider, ResendConfig } from './providers/resend.ts';
+import { BrevoEmailProvider, BrevoConfig } from './providers/brevo.ts';
 
 /**
  * Email Provider Factory
@@ -110,6 +111,13 @@ export class EmailProviderFactory {
         Deno.env.set('SENDGRID_API_KEY', settings.api_key || '');
         return new SendGridEmailProvider(config);
 
+      case 'brevo':
+        const brevoConfig: BrevoConfig = {
+          ...config,
+          apiKey: settings.api_key || '',
+        };
+        return new BrevoEmailProvider(brevoConfig);
+
       case 'ses':
         // AWS SES reads keys from env, set them for company config
         Deno.env.set('AWS_SES_ACCESS_KEY', settings.aws_access_key_id || '');
@@ -148,6 +156,11 @@ export class EmailProviderFactory {
           ...config,
           apiKey: Deno.env.get('RESEND_API_KEY') || '',
         });
+      case 'brevo':
+        return new BrevoEmailProvider({
+          ...config,
+          apiKey: Deno.env.get('BREVO_API_KEY') || '',
+        });
       case 'console':
       default:
         return new ConsoleEmailProvider(config);
@@ -165,7 +178,7 @@ export class EmailProviderFactory {
       return 'console';
     }
 
-    const validProviders: EmailProviderType[] = ['mailersend', 'sendgrid', 'ses', 'console', 'smtp', 'resend'];
+    const validProviders: EmailProviderType[] = ['mailersend', 'sendgrid', 'ses', 'console', 'smtp', 'resend', 'brevo'];
     if (!validProviders.includes(provider)) {
       throw new Error(`Invalid EMAIL_PROVIDER: ${provider}. Valid options: ${validProviders.join(', ')}`);
     }

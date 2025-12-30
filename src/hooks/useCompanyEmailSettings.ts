@@ -46,7 +46,7 @@ export interface EmailSettingsFormData {
   aws_secret_access_key: string;
 }
 
-export type EmailProvider = 'smtp' | 'resend' | 'mailersend' | 'sendgrid' | 'ses';
+export type EmailProvider = 'smtp' | 'resend' | 'mailersend' | 'sendgrid' | 'brevo' | 'ses';
 
 export function useCompanyEmailSettings() {
   const { companyId } = useTenant();
