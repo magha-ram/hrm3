@@ -173,6 +173,12 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     icon: Shield,
     minRole: 'company_admin',
   },
+  {
+    name: 'Super Admins',
+    path: '/app/settings/super-admins',
+    icon: Shield,
+    minRole: 'super_admin',
+  },
 ];
 
 export const UTILITY_NAV = [
