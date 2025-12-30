@@ -155,12 +155,48 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Import and use EmailService
-    const { EmailService } = await import("../_shared/email/index.ts");
-    const emailService = new EmailService();
+    // Import and use provider directly based on platform settings
+    const { EmailProviderFactory } = await import("../_shared/email/provider-factory.ts");
+    const { BrevoEmailProvider } = await import("../_shared/email/providers/brevo.ts");
+    const { ResendEmailProvider } = await import("../_shared/email/providers/resend.ts");
+    const { MailerSendEmailProvider } = await import("../_shared/email/providers/mailersend.ts");
+    const { SendGridEmailProvider } = await import("../_shared/email/providers/sendgrid.ts");
+    const { AwsSesEmailProvider } = await import("../_shared/email/providers/aws-ses.ts");
     
-    const result = await emailService.sendRaw({
-      to: { email: body.to },
+    // Create provider based on platform settings (not env vars)
+    const config = { fromEmail: fromAddress, fromName };
+    let emailProvider;
+    
+    switch (provider) {
+      case "brevo":
+        emailProvider = new BrevoEmailProvider({
+          ...config,
+          apiKey: Deno.env.get("BREVO_API_KEY") || "",
+        });
+        break;
+      case "resend":
+        emailProvider = new ResendEmailProvider({
+          ...config,
+          apiKey: Deno.env.get("RESEND_API_KEY") || "",
+        });
+        break;
+      case "mailersend":
+        emailProvider = new MailerSendEmailProvider(config);
+        break;
+      case "sendgrid":
+        emailProvider = new SendGridEmailProvider(config);
+        break;
+      case "aws-ses":
+        emailProvider = new AwsSesEmailProvider(config);
+        break;
+      default:
+        emailProvider = new MailerSendEmailProvider(config);
+    }
+    
+    console.log(`Using provider instance: ${emailProvider.name}`);
+    
+    const result = await emailProvider.send({
+      to: [{ email: body.to }],
       subject: "Test Email from HR Platform",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
