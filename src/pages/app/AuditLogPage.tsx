@@ -300,7 +300,7 @@ export default function AuditLogPage() {
                         {log.user_id?.slice(0, 8) || 'System'}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {log.ip_address || '-'}
+                        {String(log.ip_address) || '-'}
                       </TableCell>
                       <TableCell>
                         <Dialog>

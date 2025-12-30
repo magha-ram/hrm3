@@ -20,7 +20,7 @@ export const PLAN_MODULES: Record<string, ModuleId[]> = {
   Free: ['employees', 'directory'],
   Basic: ['employees', 'directory', 'leave', 'time_tracking'],
   Pro: ['employees', 'directory', 'leave', 'time_tracking', 'documents', 'recruitment', 'performance'],
-  Enterprise: [], // Uses 'all'
+  Enterprise: ['employees', 'directory', 'leave', 'time_tracking', 'documents', 'recruitment', 'performance', 'payroll', 'compliance', 'audit', 'integrations'], // Or uses 'all'
 };
 
 export const hasModuleAccess = (

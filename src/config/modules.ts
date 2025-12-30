@@ -112,6 +112,33 @@ export const HR_MODULES: ModuleConfig[] = [
     minRole: 'company_admin',
     planRequired: 'payroll',
   },
+  {
+    id: 'compliance',
+    name: 'Compliance',
+    description: 'Security and SOC2 compliance',
+    icon: Shield,
+    path: '/compliance',
+    minRole: 'company_admin',
+    planRequired: 'compliance',
+  },
+  {
+    id: 'audit',
+    name: 'Audit Logs',
+    description: 'Activity tracking and audit trails',
+    icon: FileText,
+    path: '/audit',
+    minRole: 'company_admin',
+    planRequired: 'audit',
+  },
+  {
+    id: 'integrations',
+    name: 'Integrations',
+    description: 'Connect external services',
+    icon: Settings,
+    path: '/integrations',
+    minRole: 'company_admin',
+    planRequired: 'integrations',
+  },
 ];
 
 export interface SettingsNavItem {
