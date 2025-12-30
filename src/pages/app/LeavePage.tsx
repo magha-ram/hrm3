@@ -1,10 +1,32 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Plus, Calendar, Loader2, Check, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { useMyLeaveRequests, usePendingLeaveRequests, useApproveLeaveRequest, useRejectLeaveRequest, useCancelLeaveRequest } from '@/hooks/useLeave';
+import { LeaveRequestForm } from '@/components/leave/LeaveRequestForm';
+import { format } from 'date-fns';
+
+const statusColors: Record<string, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  approved: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  canceled: 'bg-gray-100 text-gray-800',
+};
 
 export default function LeavePage() {
+  const { data: myRequests, isLoading: loadingMy } = useMyLeaveRequests();
+  const { data: pendingRequests, isLoading: loadingPending } = usePendingLeaveRequests();
+  const approveRequest = useApproveLeaveRequest();
+  const rejectRequest = useRejectLeaveRequest();
+  const cancelRequest = useCancelLeaveRequest();
+  
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -13,10 +35,20 @@ export default function LeavePage() {
           <p className="text-muted-foreground">Request and manage time off</p>
         </div>
         <WriteGate>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Request Leave
-          </Button>
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Request Leave
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>New Leave Request</DialogTitle>
+              </DialogHeader>
+              <LeaveRequestForm onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
+            </DialogContent>
+          </Dialog>
         </WriteGate>
       </div>
 
@@ -24,9 +56,13 @@ export default function LeavePage() {
         <TabsList>
           <TabsTrigger value="my-leave">My Leave</TabsTrigger>
           <RoleGate role="manager">
-            <TabsTrigger value="team">Team Requests</TabsTrigger>
+            <TabsTrigger value="team">
+              Team Requests
+              {pendingRequests && pendingRequests.length > 0 && (
+                <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
+              )}
+            </TabsTrigger>
           </RoleGate>
-          <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="my-leave">
@@ -36,10 +72,47 @@ export default function LeavePage() {
               <CardDescription>View and manage your leave requests</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No leave requests found.</p>
-              </div>
+              {loadingMy ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : !myRequests?.length ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No leave requests found.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Dates</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {myRequests.map((req) => (
+                      <TableRow key={req.id}>
+                        <TableCell>
+                          <Badge style={{ backgroundColor: (req as any).leave_type?.color }} variant="secondary">
+                            {(req as any).leave_type?.name}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>{req.total_days}</TableCell>
+                        <TableCell><Badge className={statusColors[req.status]}>{req.status}</Badge></TableCell>
+                        <TableCell>
+                          {req.status === 'pending' && (
+                            <WriteGate>
+                              <Button variant="ghost" size="sm" onClick={() => cancelRequest.mutate(req.id)}>Cancel</Button>
+                            </WriteGate>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -48,30 +121,52 @@ export default function LeavePage() {
           <RoleGate role="manager">
             <Card>
               <CardHeader>
-                <CardTitle>Team Leave Requests</CardTitle>
-                <CardDescription>Approve or reject leave requests from your team</CardDescription>
+                <CardTitle>Pending Approvals</CardTitle>
+                <CardDescription>Review and approve team leave requests</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <p>No pending requests from your team.</p>
-                </div>
+                {loadingPending ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : !pendingRequests?.length ? (
+                  <div className="text-center py-12 text-muted-foreground"><p>No pending requests.</p></div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Dates</TableHead>
+                        <TableHead>Days</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingRequests.map((req) => (
+                        <TableRow key={req.id}>
+                          <TableCell>{(req as any).employee?.first_name} {(req as any).employee?.last_name}</TableCell>
+                          <TableCell><Badge variant="secondary">{(req as any).leave_type?.name}</Badge></TableCell>
+                          <TableCell>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d')}</TableCell>
+                          <TableCell>{req.total_days}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <WriteGate>
+                                <Button size="sm" variant="default" onClick={() => approveRequest.mutate({ id: req.id })}>
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => rejectRequest.mutate({ id: req.id })}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </WriteGate>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </RoleGate>
-        </TabsContent>
-
-        <TabsContent value="calendar">
-          <Card>
-            <CardHeader>
-              <CardTitle>Leave Calendar</CardTitle>
-              <CardDescription>View team availability</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Calendar view coming soon.</p>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>
