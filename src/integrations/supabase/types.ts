@@ -2275,7 +2275,18 @@ export type Database = {
           slug: string
         }[]
       }
+      get_company_id_by_slug: {
+        Args: { company_slug: string }
+        Returns: string
+      }
       get_current_employee: { Args: { _company_id: string }; Returns: string }
+      get_employee_login_info: {
+        Args: { p_company_id: string; p_employee_number: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       get_platform_admin_role: { Args: { _user_id: string }; Returns: string }
       get_user_companies: {
         Args: never

@@ -153,32 +153,38 @@ export default function Auth() {
     setIsLoading(true);
     
     try {
-      // Find the employee by company slug and employee number
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('slug', companySlug.toLowerCase().trim())
-        .single();
+      let companyId: string;
       
-      if (companyError || !company) {
-        toast.error('Company not found. Please check the company code.');
-        setIsLoading(false);
-        return;
+      // If we're on a domain-based login, use the company ID we already have
+      if (isDomainBased && domainCompany) {
+        companyId = domainCompany.id;
+      } else {
+        // Otherwise, look up company by slug using RPC (bypasses RLS)
+        const { data: foundCompanyId, error: companyError } = await supabase
+          .rpc('get_company_id_by_slug', { company_slug: companySlug.toLowerCase().trim() });
+        
+        if (companyError || !foundCompanyId) {
+          toast.error('Company not found. Please check the company code.');
+          setIsLoading(false);
+          return;
+        }
+        companyId = foundCompanyId;
       }
       
-      // Find employee
-      const { data: employee, error: empError } = await supabase
-        .from('employees')
-        .select('user_id, email')
-        .eq('company_id', company.id)
-        .eq('employee_number', employeeId.trim())
-        .single();
+      // Find employee using RPC (bypasses RLS)
+      const { data: employeeData, error: empError } = await supabase
+        .rpc('get_employee_login_info', { 
+          p_company_id: companyId, 
+          p_employee_number: employeeId.trim() 
+        });
       
-      if (empError || !employee) {
+      if (empError || !employeeData || employeeData.length === 0) {
         toast.error('Employee not found. Please check your Employee ID.');
         setIsLoading(false);
         return;
       }
+      
+      const employee = employeeData[0];
       
       if (!employee.user_id) {
         toast.error('No user account linked to this employee. Please contact your administrator.');
