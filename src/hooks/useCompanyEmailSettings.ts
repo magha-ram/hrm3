@@ -56,7 +56,9 @@ async function invokeWithRetry<T>(
   // Ensure we have a fresh session
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
-    throw new Error('Not authenticated. Please log in again.');
+    // Force sign out and throw
+    await supabase.auth.signOut();
+    throw new Error('Session expired. Please log in again.');
   }
 
   const { data, error } = await supabase.functions.invoke(functionName, { body });
@@ -64,15 +66,25 @@ async function invokeWithRetry<T>(
   if (error) {
     const errorMessage = error.message || '';
     // Check for auth-related errors
-    if (errorMessage.includes('401') || errorMessage.includes('JWT') || errorMessage.includes('Invalid')) {
+    if (errorMessage.includes('401') || errorMessage.includes('JWT') || errorMessage.includes('Invalid') || errorMessage.includes('Unauthorized')) {
       // Try to refresh the session
       const { error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError) {
+        // Force sign out and throw
+        await supabase.auth.signOut();
         throw new Error('Session expired. Please log in again.');
       }
       // Retry the request
       const { data: retryData, error: retryError } = await supabase.functions.invoke(functionName, { body });
-      if (retryError) throw retryError;
+      if (retryError) {
+        // If still auth error after refresh, sign out
+        const retryMsg = retryError.message || '';
+        if (retryMsg.includes('401') || retryMsg.includes('JWT') || retryMsg.includes('Invalid') || retryMsg.includes('Unauthorized')) {
+          await supabase.auth.signOut();
+          throw new Error('Session expired. Please log in again.');
+        }
+        throw retryError;
+      }
       return retryData as T;
     }
     throw error;
