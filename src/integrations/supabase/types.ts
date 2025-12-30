@@ -1291,6 +1291,39 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_admins: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1602,6 +1635,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       get_current_employee: { Args: { _company_id: string }; Returns: string }
+      get_platform_admin_role: { Args: { _user_id: string }; Returns: string }
       get_user_companies: {
         Args: never
         Returns: {
@@ -1680,6 +1714,8 @@ export type Database = {
         Args: { _employee_id: string; _user_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_platform_owner: { Args: { _user_id: string }; Returns: boolean }
       set_primary_company: { Args: { _company_id: string }; Returns: boolean }
       validate_tenant_access: {
         Args: { _company_id: string }

@@ -1,5 +1,7 @@
 export type AppRole = 'super_admin' | 'company_admin' | 'hr_manager' | 'manager' | 'employee';
 
+export type PlatformAdminRole = 'owner' | 'admin' | 'support';
+
 export interface UserCompany {
   company_id: string;
   company_name: string;
@@ -19,6 +21,8 @@ export interface UserContext {
   current_role: AppRole | null;
   current_employee_id: string | null;
   companies: UserCompany[] | null;
+  is_platform_admin: boolean;
+  platform_admin_role: PlatformAdminRole | null;
 }
 
 export interface AuthState {
@@ -27,6 +31,8 @@ export interface AuthState {
   isAuthenticated: boolean;
   currentCompanyId: string | null;
   currentRole: AppRole | null;
+  isPlatformAdmin: boolean;
+  platformAdminRole: PlatformAdminRole | null;
 }
 
 export const ROLE_HIERARCHY: Record<AppRole, number> = {
