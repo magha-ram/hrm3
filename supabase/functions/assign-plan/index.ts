@@ -137,7 +137,7 @@ serve(async (req: Request): Promise<Response> => {
     periodEnd.setMonth(periodEnd.getMonth() + (billingInterval === "yearly" ? 12 : 1));
 
     if (currentSub) {
-      // Update existing subscription
+      // Update existing subscription - clear trial_ends_at when upgrading to active
       const { error: updateError } = await supabaseAdmin
         .from("company_subscriptions")
         .update({
@@ -146,6 +146,7 @@ serve(async (req: Request): Promise<Response> => {
           billing_interval: billingInterval,
           current_period_start: now.toISOString(),
           current_period_end: periodEnd.toISOString(),
+          trial_ends_at: null, // Clear trial date when plan becomes active
           stripe_customer_id: body.stripe_customer_id || currentSub.stripe_customer_id,
           stripe_subscription_id: body.stripe_subscription_id || currentSub.stripe_subscription_id,
           updated_at: now.toISOString(),
