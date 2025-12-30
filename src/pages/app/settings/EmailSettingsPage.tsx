@@ -1,5 +1,5 @@
 // Company Email Settings Configuration
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, Send, ChevronDown, CheckCircle2, XCircle, HelpCircle, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Mail, Send, ChevronDown, CheckCircle2, XCircle, HelpCircle, Eye, EyeOff, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useCompanyEmailSettings, type EmailProvider } from '@/hooks/useCompanyEmailSettings';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 const PROVIDER_OPTIONS: { value: EmailProvider; label: string; description: string }[] = [
   { value: 'smtp', label: 'SMTP', description: 'Connect to any SMTP server' },
@@ -23,25 +24,26 @@ const PROVIDER_OPTIONS: { value: EmailProvider; label: string; description: stri
 ];
 
 export default function EmailSettingsPage() {
-  const { settings, isLoading, saveSettings, isSaving, sendTestEmail, isTesting } = useCompanyEmailSettings();
+  const queryClient = useQueryClient();
+  const { settings, isLoading, error, saveSettings, isSaving, sendTestEmail, isTesting } = useCompanyEmailSettings();
   
-  const [usePlatformDefault, setUsePlatformDefault] = useState(settings?.use_platform_default ?? true);
-  const [provider, setProvider] = useState<EmailProvider>((settings?.provider as EmailProvider) ?? 'smtp');
-  const [fromEmail, setFromEmail] = useState(settings?.from_email ?? '');
-  const [fromName, setFromName] = useState(settings?.from_name ?? '');
+  const [usePlatformDefault, setUsePlatformDefault] = useState(true);
+  const [provider, setProvider] = useState<EmailProvider>('smtp');
+  const [fromEmail, setFromEmail] = useState('');
+  const [fromName, setFromName] = useState('');
   
   // SMTP settings
-  const [smtpHost, setSmtpHost] = useState(settings?.smtp_host ?? '');
-  const [smtpPort, setSmtpPort] = useState(settings?.smtp_port?.toString() ?? '587');
-  const [smtpUsername, setSmtpUsername] = useState(settings?.smtp_username ?? '');
+  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpUsername, setSmtpUsername] = useState('');
   const [smtpPassword, setSmtpPassword] = useState('');
-  const [smtpSecure, setSmtpSecure] = useState(settings?.smtp_secure ?? true);
+  const [smtpSecure, setSmtpSecure] = useState(true);
   
   // API settings
   const [apiKey, setApiKey] = useState('');
   
   // AWS SES settings
-  const [awsRegion, setAwsRegion] = useState(settings?.aws_region ?? 'us-east-1');
+  const [awsRegion, setAwsRegion] = useState('us-east-1');
   const [awsAccessKeyId, setAwsAccessKeyId] = useState('');
   const [awsSecretAccessKey, setAwsSecretAccessKey] = useState('');
   
@@ -52,8 +54,20 @@ export default function EmailSettingsPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
 
-  // Update state when settings load - use useEffect instead
-  // Note: Initial values are set in useState, this is just a placeholder callback
+  // Sync state when settings load
+  useEffect(() => {
+    if (settings) {
+      setUsePlatformDefault(settings.use_platform_default ?? true);
+      setProvider((settings.provider as EmailProvider) ?? 'smtp');
+      setFromEmail(settings.from_email ?? '');
+      setFromName(settings.from_name ?? '');
+      setSmtpHost(settings.smtp_host ?? '');
+      setSmtpPort(settings.smtp_port?.toString() ?? '587');
+      setSmtpUsername(settings.smtp_username ?? '');
+      setSmtpSecure(settings.smtp_secure ?? true);
+      setAwsRegion(settings.aws_region ?? 'us-east-1');
+    }
+  }, [settings]);
 
   const handleSave = async () => {
     try {
@@ -67,7 +81,7 @@ export default function EmailSettingsPage() {
         smtp_username: provider === 'smtp' ? smtpUsername : undefined,
         smtp_password: provider === 'smtp' && smtpPassword ? smtpPassword : undefined,
         smtp_secure: provider === 'smtp' ? smtpSecure : undefined,
-        api_key: ['resend', 'mailersend', 'sendgrid'].includes(provider) && apiKey ? apiKey : undefined,
+        api_key: ['resend', 'mailersend', 'sendgrid', 'brevo'].includes(provider) && apiKey ? apiKey : undefined,
         aws_region: provider === 'ses' ? awsRegion : undefined,
         aws_access_key_id: provider === 'ses' && awsAccessKeyId ? awsAccessKeyId : undefined,
         aws_secret_access_key: provider === 'ses' && awsSecretAccessKey ? awsSecretAccessKey : undefined,
@@ -86,10 +100,47 @@ export default function EmailSettingsPage() {
     sendTestEmail(testEmailAddress);
   };
 
+  const handleRetry = () => {
+    queryClient.invalidateQueries({ queryKey: ['company-email-settings'] });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    const errorMessage = error.message || 'Failed to load email settings';
+    const isAuthError = errorMessage.includes('log in') || errorMessage.includes('expired') || errorMessage.includes('authenticated');
+    
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold">Email Configuration</h2>
+          <p className="text-sm text-muted-foreground">
+            Configure how your company sends email notifications
+          </p>
+        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              {isAuthError 
+                ? 'Your session has expired. Please sign out and sign in again.' 
+                : `Couldn't load email settings: ${errorMessage}`}
+            </span>
+            {!isAuthError && (
+              <Button variant="outline" size="sm" onClick={handleRetry}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -260,7 +311,7 @@ export default function EmailSettingsPage() {
           )}
 
           {/* API Key Settings */}
-          {['resend', 'mailersend', 'sendgrid'].includes(provider) && (
+          {['resend', 'mailersend', 'sendgrid', 'brevo'].includes(provider) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">{provider.charAt(0).toUpperCase() + provider.slice(1)} API Key</CardTitle>

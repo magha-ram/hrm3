@@ -29,6 +29,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Log request info for debugging
+  const hasAuth = !!req.headers.get('Authorization');
+  console.log(`[manage-email-settings] Method: ${req.method}, Has Auth: ${hasAuth}`);
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -37,19 +41,26 @@ serve(async (req) => {
     // Verify authorization
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+      console.log('[manage-email-settings] Missing authorization header');
+      return new Response(JSON.stringify({ 
+        code: 'AUTH_MISSING',
+        error: 'Missing authorization header' 
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     // Get user from token
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+      console.log('[manage-email-settings] Invalid token:', authError?.message);
+      return new Response(JSON.stringify({ 
+        code: 'AUTH_INVALID',
+        error: 'Invalid or expired token. Please log in again.' 
+      }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -60,8 +71,13 @@ serve(async (req) => {
     const action = body.action || 'save'; // 'get', 'save', or 'delete'
     const companyId = body.company_id;
 
+    console.log(`[manage-email-settings] Action: ${action}, Company: ${companyId}, User: ${user.id}`);
+
     if (!companyId) {
-      return new Response(JSON.stringify({ error: 'company_id is required' }), {
+      return new Response(JSON.stringify({ 
+        code: 'VALIDATION_ERROR',
+        error: 'company_id is required' 
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -74,7 +90,11 @@ serve(async (req) => {
     });
 
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: 'Not authorized' }), {
+      console.log(`[manage-email-settings] User ${user.id} is not admin for company ${companyId}`);
+      return new Response(JSON.stringify({ 
+        code: 'NOT_ADMIN',
+        error: 'Not authorized to manage email settings for this company' 
+      }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
