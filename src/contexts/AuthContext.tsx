@@ -55,6 +55,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Defer Supabase calls with setTimeout to prevent deadlock
           setTimeout(() => {
             fetchUserContext().then(setUser);
+            
+            // Log login event
+            if (event === 'SIGNED_IN') {
+              supabase.from('security_events').insert({
+                event_type: 'login_success' as const,
+                user_id: session.user.id,
+                description: 'User signed in successfully',
+                user_agent: navigator.userAgent,
+                metadata: {
+                  provider: session.user.app_metadata?.provider || 'email',
+                  timestamp: new Date().toISOString(),
+                },
+              }).then(({ error }) => {
+                if (error) console.error('Failed to log login event:', error);
+              });
+            }
           }, 0);
         } else {
           setUser(null);
@@ -110,6 +126,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    // Log logout event before signing out
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      await supabase.from('security_events').insert({
+        event_type: 'login_success' as const,
+        user_id: currentUser.id,
+        description: 'User signed out',
+        user_agent: navigator.userAgent,
+        metadata: {
+          action: 'logout',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
