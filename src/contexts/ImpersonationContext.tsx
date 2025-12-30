@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
@@ -28,9 +28,44 @@ export const useImpersonation = () => {
 };
 
 export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isPlatformAdmin, currentCompanyId, user } = useAuth();
+  const { isPlatformAdmin, currentCompanyId } = useAuth();
   const [impersonatedCompany, setImpersonatedCompany] = useState<ImpersonatedCompany | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const previousUserIdRef = useRef<string | null>(null);
+
+  // Clear impersonation state on auth changes (logout, user switch)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const currentUserId = session?.user?.id || null;
+        
+        // Clear impersonation if:
+        // 1. User signed out
+        // 2. User changed (different user logged in)
+        // 3. No session exists
+        if (
+          event === 'SIGNED_OUT' ||
+          !session ||
+          (previousUserIdRef.current && previousUserIdRef.current !== currentUserId)
+        ) {
+          sessionIdRef.current = null;
+          setImpersonatedCompany(null);
+        }
+        
+        previousUserIdRef.current = currentUserId;
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Also clear if user loses platform admin status
+  useEffect(() => {
+    if (impersonatedCompany && !isPlatformAdmin) {
+      sessionIdRef.current = null;
+      setImpersonatedCompany(null);
+    }
+  }, [isPlatformAdmin, impersonatedCompany]);
 
   const startImpersonation = useCallback(async (company: ImpersonatedCompany) => {
     if (!isPlatformAdmin) {
