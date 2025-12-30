@@ -7,3 +7,4 @@ export { default as PlatformAnalyticsPage } from './PlatformAnalyticsPage';
 export { default as PlatformSettingsPage } from './PlatformSettingsPage';
 export { default as PlatformAuditLogsPage } from './PlatformAuditLogsPage';
 export { default as PlatformImpersonationLogsPage } from './PlatformImpersonationLogsPage';
+export { default as PlatformWebhooksPage } from './PlatformWebhooksPage';

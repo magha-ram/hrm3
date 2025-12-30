@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  UserCog
+  UserCog,
+  Webhook
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,11 @@ const platformNavItems = [
     name: 'Impersonation Logs', 
     path: '/platform/impersonation-logs', 
     icon: UserCog 
+  },
+  { 
+    name: 'Webhooks', 
+    path: '/platform/webhooks', 
+    icon: Webhook 
   },
   { 
     name: 'Settings', 
