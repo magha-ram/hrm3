@@ -38,14 +38,21 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
+    // Get the actual auth user ID directly from Supabase
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      toast.error('Authentication required');
+      return;
+    }
+
     // Generate a session ID for this impersonation
     const sessionId = crypto.randomUUID();
     sessionIdRef.current = sessionId;
 
     // Log impersonation start to dedicated table
     try {
-      await supabase.from('impersonation_logs').insert({
-        admin_user_id: user?.user_id,
+      const { error: logError } = await supabase.from('impersonation_logs').insert({
+        admin_user_id: authUser.id, // Use auth.uid() directly
         company_id: company.id,
         company_name: company.name,
         action: 'start',
@@ -55,38 +62,52 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
           company_slug: company.slug,
         },
       });
+
+      if (logError) {
+        console.error('Failed to log impersonation start:', logError);
+        // Don't block impersonation if logging fails
+      }
     } catch (err) {
       console.error('Failed to log impersonation start:', err);
     }
 
     setImpersonatedCompany(company);
     toast.success(`Now viewing as ${company.name}`);
-  }, [isPlatformAdmin, user?.user_id]);
+  }, [isPlatformAdmin]);
 
   const stopImpersonation = useCallback(async () => {
     if (impersonatedCompany) {
+      // Get the actual auth user ID directly from Supabase
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
       // Log impersonation end
-      try {
-        await supabase.from('impersonation_logs').insert({
-          admin_user_id: user?.user_id,
-          company_id: impersonatedCompany.id,
-          company_name: impersonatedCompany.name,
-          action: 'end',
-          session_id: sessionIdRef.current,
-          user_agent: navigator.userAgent,
-          metadata: {
-            company_slug: impersonatedCompany.slug,
-          },
-        });
-      } catch (err) {
-        console.error('Failed to log impersonation end:', err);
+      if (authUser) {
+        try {
+          const { error: logError } = await supabase.from('impersonation_logs').insert({
+            admin_user_id: authUser.id, // Use auth.uid() directly
+            company_id: impersonatedCompany.id,
+            company_name: impersonatedCompany.name,
+            action: 'end',
+            session_id: sessionIdRef.current,
+            user_agent: navigator.userAgent,
+            metadata: {
+              company_slug: impersonatedCompany.slug,
+            },
+          });
+
+          if (logError) {
+            console.error('Failed to log impersonation end:', logError);
+          }
+        } catch (err) {
+          console.error('Failed to log impersonation end:', err);
+        }
       }
     }
 
     sessionIdRef.current = null;
     setImpersonatedCompany(null);
     toast.info('Impersonation ended');
-  }, [impersonatedCompany, user?.user_id]);
+  }, [impersonatedCompany]);
 
   // The effective company ID is the impersonated company if impersonating,
   // otherwise the user's actual current company
