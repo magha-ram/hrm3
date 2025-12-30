@@ -4,14 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Check, Crown, AlertTriangle, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import { Check, Crown, AlertTriangle, ArrowUp, ArrowDown, Loader2, Clock, Gift } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { TrialExtensionRequestDialog } from '@/components/TrialExtensionRequestDialog';
 
 export default function BillingSettingsPage() {
-  const { planName, isTrialing, trialDaysRemaining, isFrozen, isAdmin } = useTenant();
+  const { planName, isTrialing, trialDaysRemaining, isFrozen, isAdmin, companyId } = useTenant();
   const { data: plans, isLoading: plansLoading } = usePlans();
   const { data: subscription } = useSubscription();
   const { mutate: changePlan, isPending: isChanging } = useChangePlan();
@@ -20,6 +23,43 @@ export default function BillingSettingsPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<'monthly' | 'yearly'>('monthly');
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
+
+  // Fetch extension requests for this company
+  const { data: extensionRequests } = useQuery({
+    queryKey: ['trial-extension-requests', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const { data, error } = await supabase
+        .from('trial_extension_requests')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId && isTrialing,
+  });
+
+  // Fetch platform trial settings
+  const { data: trialSettings } = useQuery({
+    queryKey: ['platform-trial-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'trial')
+        .maybeSingle();
+      if (error) throw error;
+      return data?.value as { extend_allowed?: boolean; max_extensions?: number } || {};
+    },
+    enabled: isTrialing,
+  });
+
+  const pendingRequest = extensionRequests?.find(r => r.status === 'pending');
+  const approvedCount = extensionRequests?.filter(r => r.status === 'approved').length || 0;
+  const maxExtensions = trialSettings?.max_extensions || 2;
+  const canRequestExtension = trialSettings?.extend_allowed && approvedCount < maxExtensions && !pendingRequest;
 
   const handlePlanSelect = (planId: string) => {
     setSelectedPlan(planId);
@@ -111,6 +151,90 @@ export default function BillingSettingsPage() {
           </CardContent>
         )}
       </Card>
+
+      {/* Trial Extension Section */}
+      {isTrialing && isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              Trial Extension
+            </CardTitle>
+            <CardDescription>
+              Need more time to evaluate? Request a trial extension.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Extensions used:</span>
+              <span className="font-medium">
+                {approvedCount} / {maxExtensions}
+              </span>
+            </div>
+
+            {pendingRequest && (
+              <Alert>
+                <Clock className="h-4 w-4" />
+                <AlertTitle>Extension Request Pending</AlertTitle>
+                <AlertDescription>
+                  You have a pending extension request for {pendingRequest.requested_days} days. 
+                  We'll notify you once it's reviewed.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!trialSettings?.extend_allowed && (
+              <p className="text-sm text-muted-foreground">
+                Trial extensions are not available at this time.
+              </p>
+            )}
+
+            {trialSettings?.extend_allowed && approvedCount >= maxExtensions && !pendingRequest && (
+              <p className="text-sm text-muted-foreground">
+                You've used all available trial extensions. Please upgrade to continue.
+              </p>
+            )}
+
+            {canRequestExtension && (
+              <Button 
+                variant="outline" 
+                onClick={() => setExtensionDialogOpen(true)}
+                className="w-full"
+              >
+                <Gift className="h-4 w-4 mr-2" />
+                Request Extension
+              </Button>
+            )}
+
+            {extensionRequests && extensionRequests.length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <p className="text-sm font-medium">Request History</p>
+                {extensionRequests.slice(0, 3).map((request) => (
+                  <div key={request.id} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {request.requested_days} days
+                    </span>
+                    <Badge 
+                      variant={
+                        request.status === 'approved' ? 'default' : 
+                        request.status === 'rejected' ? 'destructive' : 
+                        'secondary'
+                      }
+                    >
+                      {request.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <TrialExtensionRequestDialog 
+        open={extensionDialogOpen} 
+        onOpenChange={setExtensionDialogOpen} 
+      />
 
       {/* Billing Interval Toggle */}
       <Card>

@@ -19,14 +19,18 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Clock, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface TrialExtensionRequestDialogProps {
+export interface TrialExtensionRequestDialogProps {
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function TrialExtensionRequestDialog({ trigger }: TrialExtensionRequestDialogProps) {
+export function TrialExtensionRequestDialog({ trigger, open: controlledOpen, onOpenChange }: TrialExtensionRequestDialogProps) {
   const { companyId, isTrialing } = useTenant();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [reason, setReason] = useState('');
   const [requestedDays, setRequestedDays] = useState('7');
 
