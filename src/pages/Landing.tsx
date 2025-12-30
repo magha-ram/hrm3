@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Building2, 
   Users, 
@@ -11,7 +12,8 @@ import {
   ArrowRight,
   CheckCircle2,
   Zap,
-  Globe
+  Globe,
+  LayoutDashboard
 } from 'lucide-react';
 
 const features = [
@@ -55,6 +57,10 @@ const benefits = [
 ];
 
 export default function Landing() {
+  const { isAuthenticated, isPlatformAdmin } = useAuth();
+  
+  const dashboardLink = isPlatformAdmin ? '/platform/dashboard' : '/app/dashboard';
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -67,15 +73,26 @@ export default function Landing() {
             <span className="text-xl font-bold">HR Platform</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link to="/auth">
-              <Button variant="ghost">Sign In</Button>
-            </Link>
-            <Link to="/auth">
-              <Button>
-                Get Started
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to={dashboardLink}>
+                <Button>
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link to="/auth">
+                  <Button>
+                    Get Started
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
