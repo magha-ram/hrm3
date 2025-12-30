@@ -25,11 +25,7 @@ import {
   Edit,
   Clock,
   CheckCircle,
-  XCircle,
-  Server,
-  Wifi,
-  WifiOff,
-  Info
+  XCircle
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -64,19 +60,11 @@ interface SubdomainChangeRequest {
   reviewed_at: string | null;
 }
 
-interface DnsHealthCheck {
-  domain: string;
-  isHealthy: boolean;
-  rootResolved: boolean;
-  wildcardConfigured: boolean;
-  ipAddress?: string;
-  messages: string[];
-}
 
 export default function DomainSettingsPage() {
   const { companyId } = useTenant();
   const { user } = useAuth();
-  const { baseDomain, isCustomDomain, isLocalhost, isLovable } = useBaseDomain();
+  const { baseDomain, isCustomDomain, isLovable } = useBaseDomain();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState<string | null>(null);
   const [newDomain, setNewDomain] = useState('');
@@ -88,9 +76,6 @@ export default function DomainSettingsPage() {
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; message: string } | null>(null);
   
-  // DNS health check state
-  const [dnsHealthCheck, setDnsHealthCheck] = useState<DnsHealthCheck | null>(null);
-  const [isCheckingDns, setIsCheckingDns] = useState(false);
   // Fetch company domains
   const { data: domains, isLoading } = useQuery({
     queryKey: ['company-domains', companyId],
@@ -274,26 +259,6 @@ export default function DomainSettingsPage() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  // Check DNS health for the custom domain
-  const checkDnsHealth = async () => {
-    if (!isCustomDomain) return;
-    
-    setIsCheckingDns(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('check-domain-health', {
-        body: { domain: baseDomain },
-      });
-      
-      if (error) throw error;
-      setDnsHealthCheck(data);
-    } catch (error) {
-      console.error('Error checking DNS health:', error);
-      toast.error('Failed to check DNS configuration');
-    } finally {
-      setIsCheckingDns(false);
-    }
-  };
-
   const subdomainRecord = domains?.find(d => d.subdomain);
   const customDomains = domains?.filter(d => d.custom_domain) || [];
   
@@ -316,195 +281,6 @@ export default function DomainSettingsPage() {
           Manage your company's subdomain and custom domains
         </p>
       </div>
-
-      {/* DNS Configuration for Custom Domain */}
-      {isCustomDomain && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
-              DNS Configuration for Subdomain Routing
-            </CardTitle>
-            <CardDescription>
-              Configure wildcard DNS to enable company subdomains on <code className="bg-muted px-1 rounded">{baseDomain}</code>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <p className="font-medium mb-2">Required DNS Records</p>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Add these A records at your domain registrar to enable subdomain-based company routing:
-                </p>
-              </AlertDescription>
-            </Alert>
-            
-            <div className="space-y-3">
-              {/* Root domain record */}
-              <div className="p-3 bg-muted rounded-lg border">
-                <div className="grid grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">Type</p>
-                    <p className="font-mono font-medium">A</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">Name</p>
-                    <p className="font-mono font-medium">{baseDomain.split('.')[0]}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">Value</p>
-                    <div className="flex items-center gap-1">
-                      <p className="font-mono font-medium">185.158.133.1</p>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={() => copyToClipboard('185.158.133.1', 'root-ip')}
-                      >
-                        {copied === 'root-ip' ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">Purpose</p>
-                    <p className="text-xs">Root domain access</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Wildcard record */}
-              <div className="p-3 bg-muted rounded-lg border border-dashed border-primary/30">
-                <div className="grid grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">Type</p>
-                    <p className="font-mono font-medium">A</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">Name</p>
-                    <div className="flex items-center gap-1">
-                      <p className="font-mono font-medium">*.{baseDomain.split('.')[0]}</p>
-                      <Badge variant="secondary" className="text-xs">Wildcard</Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">Value</p>
-                    <div className="flex items-center gap-1">
-                      <p className="font-mono font-medium">185.158.133.1</p>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={() => copyToClipboard('185.158.133.1', 'wildcard-ip')}
-                      >
-                        {copied === 'wildcard-ip' ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs mb-1">Purpose</p>
-                    <p className="text-xs text-primary font-medium">Company subdomains</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <Separator />
-            
-            {/* DNS Health Check */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-sm">DNS Health Check</p>
-                  <p className="text-xs text-muted-foreground">Verify your DNS configuration is correct</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={checkDnsHealth}
-                  disabled={isCheckingDns}
-                >
-                  {isCheckingDns ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  Check DNS
-                </Button>
-              </div>
-              
-              {dnsHealthCheck && (
-                <div className="p-3 rounded-lg border space-y-2">
-                  <div className="flex items-center gap-2">
-                    {dnsHealthCheck.isHealthy ? (
-                      <>
-                        <Wifi className="h-5 w-5 text-green-500" />
-                        <span className="font-medium text-green-600">DNS Configuration Healthy</span>
-                      </>
-                    ) : (
-                      <>
-                        <WifiOff className="h-5 w-5 text-yellow-500" />
-                        <span className="font-medium text-yellow-600">DNS Configuration Incomplete</span>
-                      </>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-1 text-sm">
-                    <div className="flex items-center gap-2">
-                      {dnsHealthCheck.rootResolved ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-500" />
-                      )}
-                      <span>Root domain ({baseDomain})</span>
-                      {dnsHealthCheck.ipAddress && (
-                        <code className="text-xs bg-muted px-1 rounded">{dnsHealthCheck.ipAddress}</code>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {dnsHealthCheck.wildcardConfigured ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-500" />
-                      )}
-                      <span>Wildcard subdomain (*.{baseDomain})</span>
-                    </div>
-                  </div>
-                  
-                  {dnsHealthCheck.messages.length > 0 && (
-                    <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                      {dnsHealthCheck.messages.map((msg, idx) => (
-                        <p key={idx}>• {msg}</p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 dark:text-blue-200 text-sm">
-                <p className="font-medium">Subdomain Access</p>
-                <p className="mt-1">
-                  Once configured, companies can access the platform at their subdomain:
-                </p>
-                <code className="block mt-2 bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded text-xs">
-                  {subdomainRecord?.subdomain || 'company-name'}.{baseDomain}
-                </code>
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Platform Subdomain */}
       <Card>
