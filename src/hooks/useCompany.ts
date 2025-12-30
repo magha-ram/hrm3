@@ -112,3 +112,8 @@ export function useCurrentCompany() {
   const { currentCompanyId } = useAuth();
   return useCompany(currentCompanyId);
 }
+
+// Hook that respects impersonation - use this for viewing company data as admin
+export function useEffectiveCompany(effectiveCompanyId: string | null) {
+  return useCompany(effectiveCompanyId);
+}

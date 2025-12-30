@@ -4,6 +4,7 @@ import { AppSidebar } from './AppSidebar';
 import { AppHeader } from './AppHeader';
 import { FrozenBanner } from './FrozenBanner';
 import { TrialBanner } from './TrialBanner';
+import { ImpersonationBanner } from '@/components/platform/ImpersonationBanner';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { Loader2 } from 'lucide-react';
 
@@ -23,6 +24,7 @@ export function AppLayout() {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <SidebarInset className="flex-1 flex flex-col">
+          <ImpersonationBanner />
           <AppHeader />
           <FrozenBanner />
           <TrialBanner />
