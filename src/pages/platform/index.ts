@@ -5,3 +5,4 @@ export { default as PlatformCompanyDetailPage } from './PlatformCompanyDetailPag
 export { default as PlatformPlansPage } from './PlatformPlansPage';
 export { default as PlatformAnalyticsPage } from './PlatformAnalyticsPage';
 export { default as PlatformSettingsPage } from './PlatformSettingsPage';
+export { default as PlatformAuditLogsPage } from './PlatformAuditLogsPage';

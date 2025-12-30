@@ -53,6 +53,7 @@ const PlatformCompanyDetailPage = lazy(() => import("./pages/platform/PlatformCo
 const PlatformPlansPage = lazy(() => import("./pages/platform/PlatformPlansPage"));
 const PlatformAnalyticsPage = lazy(() => import("./pages/platform/PlatformAnalyticsPage"));
 const PlatformSettingsPage = lazy(() => import("./pages/platform/PlatformSettingsPage"));
+const PlatformAuditLogsPage = lazy(() => import("./pages/platform/PlatformAuditLogsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -107,6 +108,7 @@ const App = () => (
                     <Route path="companies/:companyId" element={<PlatformCompanyDetailPage />} />
                     <Route path="plans" element={<PlatformPlansPage />} />
                     <Route path="analytics" element={<PlatformAnalyticsPage />} />
+                    <Route path="audit-logs" element={<PlatformAuditLogsPage />} />
                     <Route path="settings" element={<PlatformSettingsPage />} />
                   </Route>
 

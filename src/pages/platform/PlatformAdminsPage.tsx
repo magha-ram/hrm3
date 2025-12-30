@@ -135,18 +135,18 @@ export default function PlatformAdminsPage() {
     },
   });
 
-  // Deactivate mutation
-  const deactivateMutation = useMutation({
-    mutationFn: async (adminId: string) => {
+  // Toggle active status mutation
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ adminId, isActive }: { adminId: string; isActive: boolean }) => {
       const { error } = await supabase
         .from('platform_admins')
-        .update({ is_active: false })
+        .update({ is_active: !isActive })
         .eq('id', adminId);
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success('Platform admin deactivated');
+    onSuccess: (_, { isActive }) => {
+      toast.success(isActive ? 'Platform admin deactivated' : 'Platform admin reactivated');
       queryClient.invalidateQueries({ queryKey: ['platform-admins'] });
     },
     onError: (error: Error) => {
@@ -327,14 +327,17 @@ export default function PlatformAdminsPage() {
                       </TableCell>
                       {isOwner && (
                         <TableCell className="text-right">
-                          {!isCurrentUser && admin.is_active && (
+                          {!isCurrentUser && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => deactivateMutation.mutate(admin.id)}
-                              disabled={deactivateMutation.isPending}
+                              onClick={() => toggleActiveMutation.mutate({ 
+                                adminId: admin.id, 
+                                isActive: admin.is_active 
+                              })}
+                              disabled={toggleActiveMutation.isPending}
                             >
-                              Deactivate
+                              {admin.is_active ? 'Deactivate' : 'Reactivate'}
                             </Button>
                           )}
                         </TableCell>
