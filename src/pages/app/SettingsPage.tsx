@@ -1,0 +1,44 @@
+import { Outlet } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NavLink } from '@/components/NavLink';
+import { useLocation } from 'react-router-dom';
+import { SETTINGS_NAV } from '@/config/modules';
+import { useTenant } from '@/contexts/TenantContext';
+import { hasMinimumRole } from '@/types/auth';
+
+export default function SettingsPage() {
+  const location = useLocation();
+  const { role } = useTenant();
+
+  const visibleSettings = SETTINGS_NAV.filter(item => hasMinimumRole(role, item.minRole));
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-muted-foreground">Manage your company settings and preferences</p>
+      </div>
+
+      <div className="flex gap-6">
+        <div className="w-48 space-y-1">
+          {visibleSettings.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors"
+              activeClassName="bg-muted font-medium"
+            >
+              <item.icon className="h-4 w-4" />
+              {item.name}
+            </NavLink>
+          ))}
+        </div>
+
+        <div className="flex-1">
+          <Outlet />
+        </div>
+      </div>
+    </div>
+  );
+}
