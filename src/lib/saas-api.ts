@@ -29,6 +29,14 @@ export interface FreezeCompanyParams {
   reason?: string;
 }
 
+export interface CreateSuperAdminParams {
+  company_id: string;
+  email: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
@@ -88,4 +96,8 @@ export async function assignPlan(params: AssignPlanParams): Promise<ApiResponse<
 
 export async function freezeCompany(params: FreezeCompanyParams): Promise<ApiResponse<{ company: { id: string; name: string; is_active: boolean } }>> {
   return callEdgeFunction('freeze-company', params);
+}
+
+export async function createSuperAdmin(params: CreateSuperAdminParams): Promise<ApiResponse<{ user_id: string; is_new_user: boolean }>> {
+  return callEdgeFunction('create-super-admin', params);
 }

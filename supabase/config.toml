@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.send-notification]
 verify_jwt = false
+
+[functions.create-super-admin]
+verify_jwt = true
