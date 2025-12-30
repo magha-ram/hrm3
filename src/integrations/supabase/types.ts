@@ -231,6 +231,86 @@ export type Database = {
         }
         Relationships: []
       }
+      company_email_settings: {
+        Row: {
+          api_key: string | null
+          aws_access_key_id: string | null
+          aws_region: string | null
+          aws_secret_access_key: string | null
+          company_id: string
+          created_at: string
+          from_email: string | null
+          from_name: string | null
+          id: string
+          is_verified: boolean | null
+          last_test_at: string | null
+          last_test_result: Json | null
+          provider: string | null
+          smtp_host: string | null
+          smtp_password: string | null
+          smtp_port: number | null
+          smtp_secure: boolean | null
+          smtp_username: string | null
+          updated_at: string
+          use_platform_default: boolean
+          verified_at: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          aws_access_key_id?: string | null
+          aws_region?: string | null
+          aws_secret_access_key?: string | null
+          company_id: string
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_test_at?: string | null
+          last_test_result?: Json | null
+          provider?: string | null
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_username?: string | null
+          updated_at?: string
+          use_platform_default?: boolean
+          verified_at?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          aws_access_key_id?: string | null
+          aws_region?: string | null
+          aws_secret_access_key?: string | null
+          company_id?: string
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_test_at?: string | null
+          last_test_result?: Json | null
+          provider?: string | null
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_username?: string | null
+          updated_at?: string
+          use_platform_default?: boolean
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_email_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_subscriptions: {
         Row: {
           billing_interval: Database["public"]["Enums"]["plan_interval"]
