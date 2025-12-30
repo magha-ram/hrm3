@@ -25,7 +25,9 @@ import {
   Edit,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  Settings,
+  HelpCircle
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -75,6 +77,10 @@ export default function DomainSettingsPage() {
   const [requestReason, setRequestReason] = useState('');
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; message: string } | null>(null);
+  
+  // DNS Setup dialog state
+  const [showDnsSetupDialog, setShowDnsSetupDialog] = useState(false);
+  const [selectedDomainForDns, setSelectedDomainForDns] = useState<CompanyDomain | null>(null);
   
   // Fetch company domains
   const { data: domains, isLoading } = useQuery({
@@ -233,28 +239,16 @@ export default function DomainSettingsPage() {
     },
   });
 
-  // Auto-verify domain mutation (skip DNS check)
-  const autoVerifyDomainMutation = useMutation({
-    mutationFn: async (domainId: string) => {
-      const { error } = await supabase
-        .from('company_domains')
-        .update({
-          is_verified: true,
-          verified_at: new Date().toISOString(),
-        })
-        .eq('id', domainId)
-        .eq('company_id', companyId);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company-domains', companyId] });
-      toast.success('Domain auto-verified successfully!');
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to auto-verify domain');
-    },
-  });
+  // Open DNS setup dialog
+  const openDnsSetup = (domain: CompanyDomain) => {
+    setSelectedDomainForDns(domain);
+    setShowDnsSetupDialog(true);
+  };
+
+  // Open external DNS checker
+  const openDnsChecker = (domain: string) => {
+    window.open(`https://dnschecker.org/#A/${domain}`, '_blank');
+  };
 
   // Delete domain mutation
   const deleteDomainMutation = useMutation({
@@ -469,8 +463,16 @@ export default function DomainSettingsPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => openDnsSetup(domain)}
+                        >
+                          <Settings className="h-4 w-4 mr-1" />
+                          Setup DNS
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
                           onClick={() => verifyDomainMutation.mutate(domain.id)}
-                          disabled={verifyDomainMutation.isPending || autoVerifyDomainMutation.isPending}
+                          disabled={verifyDomainMutation.isPending}
                         >
                           {verifyDomainMutation.isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -478,19 +480,6 @@ export default function DomainSettingsPage() {
                             <RefreshCw className="h-4 w-4 mr-1" />
                           )}
                           Verify DNS
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => autoVerifyDomainMutation.mutate(domain.id)}
-                          disabled={verifyDomainMutation.isPending || autoVerifyDomainMutation.isPending}
-                        >
-                          {autoVerifyDomainMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Check className="h-4 w-4 mr-1" />
-                          )}
-                          Auto Verify
                         </Button>
                       </>
                     )}
@@ -621,6 +610,190 @@ export default function DomainSettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* DNS Setup Dialog */}
+      <Dialog open={showDnsSetupDialog} onOpenChange={setShowDnsSetupDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              DNS Configuration
+            </DialogTitle>
+            <DialogDescription>
+              Configure your DNS records to point your domain to our platform.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedDomainForDns && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium mb-1">Domain:</p>
+                <p className="font-mono text-sm">{selectedDomainForDns.custom_domain}</p>
+              </div>
+
+              {/* Step-by-step instructions */}
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
+                    1
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">Add an A Record</p>
+                    <p className="text-xs text-muted-foreground">
+                      Go to your DNS provider and add an A record pointing to our IP address.
+                    </p>
+                  </div>
+                </div>
+
+                {/* DNS Record Table */}
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium">Type</th>
+                        <th className="px-3 py-2 text-left font-medium">Name</th>
+                        <th className="px-3 py-2 text-left font-medium">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t">
+                        <td className="px-3 py-2 font-mono">A</td>
+                        <td className="px-3 py-2 font-mono">@</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono">185.158.133.1</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyToClipboard('185.158.133.1', 'dns-ip')}
+                            >
+                              {copied === 'dns-ip' ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr className="border-t bg-muted/50">
+                        <td className="px-3 py-2 font-mono">TXT</td>
+                        <td className="px-3 py-2 font-mono">_hrplatform-verify</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono truncate max-w-[120px]">{selectedDomainForDns.verification_token}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyToClipboard(selectedDomainForDns.verification_token || '', 'dns-txt')}
+                            >
+                              {copied === 'dns-txt' ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
+                    2
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">Wait for DNS Propagation</p>
+                    <p className="text-xs text-muted-foreground">
+                      DNS changes can take up to 48 hours to propagate worldwide.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
+                    3
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">Verify Your Domain</p>
+                    <p className="text-xs text-muted-foreground">
+                      Once DNS is configured, click "Verify DNS" to complete setup.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* DNS Checker Button */}
+              <div className="flex flex-col gap-2 pt-2 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => openDnsChecker(selectedDomainForDns.custom_domain || '')}
+                  className="w-full"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Check DNS Propagation
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Opens dnschecker.org to verify your DNS records globally
+                </p>
+              </div>
+
+              {/* DNS Provider Links */}
+              <div className="pt-2 border-t">
+                <p className="text-xs font-medium mb-2 flex items-center gap-1">
+                  <HelpCircle className="h-3 w-3" />
+                  DNS Provider Guides
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { name: 'Cloudflare', url: 'https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/' },
+                    { name: 'GoDaddy', url: 'https://www.godaddy.com/help/add-an-a-record-19238' },
+                    { name: 'Namecheap', url: 'https://www.namecheap.com/support/knowledgebase/article.aspx/319/2237/how-can-i-set-up-an-a-address-record-for-my-domain/' },
+                    { name: 'Google Domains', url: 'https://support.google.com/domains/answer/9211383' },
+                  ].map((provider) => (
+                    <Button
+                      key={provider.name}
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => window.open(provider.url, '_blank')}
+                    >
+                      {provider.name}
+                      <ExternalLink className="h-3 w-3 ml-1" />
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDnsSetupDialog(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedDomainForDns) {
+                  verifyDomainMutation.mutate(selectedDomainForDns.id);
+                  setShowDnsSetupDialog(false);
+                }
+              }}
+              disabled={verifyDomainMutation.isPending}
+            >
+              {verifyDomainMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Verify DNS
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Subdomain Change Request Dialog */}
       <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
