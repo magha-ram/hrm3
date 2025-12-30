@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { HelpCircle, Book, MessageCircle, Mail, ExternalLink, FileText, Video, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { HelpCircle, Book, MessageCircle, Mail, FileText, Video, Users, Clock, Info } from 'lucide-react';
 
 export default function HelpPage() {
   const resources = [
@@ -8,29 +8,25 @@ export default function HelpPage() {
       icon: Book,
       title: 'Documentation',
       description: 'Browse our comprehensive guides and tutorials',
-      action: 'View Docs',
-      href: '#',
+      status: 'coming_soon',
     },
     {
       icon: Video,
       title: 'Video Tutorials',
       description: 'Watch step-by-step video guides',
-      action: 'Watch Now',
-      href: '#',
+      status: 'coming_soon',
     },
     {
       icon: FileText,
       title: 'API Reference',
       description: 'Technical documentation for developers',
-      action: 'View API',
-      href: '#',
+      status: 'enterprise',
     },
     {
       icon: Users,
       title: 'Community',
       description: 'Connect with other users and share tips',
-      action: 'Join Community',
-      href: '#',
+      status: 'coming_soon',
     },
   ];
 
@@ -39,13 +35,13 @@ export default function HelpPage() {
       icon: MessageCircle,
       title: 'Live Chat',
       description: 'Chat with our support team in real-time',
-      availability: 'Available Mon-Fri, 9am-5pm',
+      availability: 'Coming Soon',
     },
     {
       icon: Mail,
       title: 'Email Support',
-      description: 'Send us a detailed message',
-      availability: 'Response within 24 hours',
+      description: 'Send us a detailed message for assistance',
+      availability: 'Coming Soon',
     },
   ];
 
@@ -64,7 +60,15 @@ export default function HelpPage() {
     },
     {
       question: 'Can I export my data?',
-      answer: 'Yes, most modules support data export. Look for the export button in the relevant section.',
+      answer: 'Yes, most modules support data export. Look for the "Export" button in sections like Audit Logs and Compliance.',
+    },
+    {
+      question: 'How do I invite team members?',
+      answer: 'Go to Settings > Users & Roles, click "Invite User", enter their email and select their role.',
+    },
+    {
+      question: 'How do I manage user permissions?',
+      answer: 'User permissions are based on roles. Admins can change user roles in Settings > Users & Roles.',
     },
   ];
 
@@ -78,24 +82,42 @@ export default function HelpPage() {
         <p className="text-muted-foreground">Get help with using the HR Portal</p>
       </div>
 
+      {/* Info Banner */}
+      <Card className="bg-muted/50 border-dashed">
+        <CardContent className="py-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Support Resources Coming Soon</p>
+              <p className="text-sm text-muted-foreground">
+                We're building out our help center and support channels. In the meantime, 
+                check the FAQs below for quick answers to common questions.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Resources */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Resources</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {resources.map((resource) => (
-            <Card key={resource.title} className="hover:border-primary/50 transition-colors">
+            <Card key={resource.title} className="opacity-75">
               <CardHeader className="pb-2">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary w-fit">
-                  <resource.icon className="h-5 w-5" />
+                <div className="flex items-center justify-between">
+                  <div className="p-2 rounded-lg bg-muted text-muted-foreground">
+                    <resource.icon className="h-5 w-5" />
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {resource.status === 'enterprise' ? 'Enterprise' : 'Coming Soon'}
+                  </Badge>
                 </div>
                 <CardTitle className="text-base mt-2">{resource.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription className="mb-4">{resource.description}</CardDescription>
-                <Button variant="outline" size="sm" className="w-full" disabled>
-                  {resource.action}
-                  <ExternalLink className="h-3 w-3 ml-2" />
-                </Button>
+                <CardDescription>{resource.description}</CardDescription>
               </CardContent>
             </Card>
           ))}
@@ -107,23 +129,23 @@ export default function HelpPage() {
         <h2 className="text-lg font-semibold mb-4">Contact Support</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {supportOptions.map((option) => (
-            <Card key={option.title}>
+            <Card key={option.title} className="opacity-75">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-muted">
-                    <option.icon className="h-5 w-5" />
+                    <option.icon className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-base">{option.title}</CardTitle>
                     <CardDescription>{option.description}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">{option.availability}</p>
-                <Button variant="secondary" size="sm" disabled>
-                  Coming Soon
-                </Button>
+                <Badge variant="outline" className="gap-1">
+                  <Clock className="h-3 w-3" />
+                  {option.availability}
+                </Badge>
               </CardContent>
             </Card>
           ))}

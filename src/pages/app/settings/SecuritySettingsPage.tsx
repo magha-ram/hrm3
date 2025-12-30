@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, Key, Smartphone, Clock, AlertTriangle, Save, Loader2 } from 'lucide-react';
+import { Shield, Key, Smartphone, Clock, AlertTriangle, Save, Loader2, Lock, Info } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,30 +76,6 @@ export default function SecuritySettingsPage() {
       setIsSaving(false);
     }
   };
-
-  const securityItems = [
-    {
-      icon: Key,
-      title: 'Password Policy',
-      description: 'Minimum password requirements for all users',
-      status: 'Configured',
-      statusVariant: 'default' as const,
-    },
-    {
-      icon: Smartphone,
-      title: 'Multi-Factor Authentication (MFA)',
-      description: 'Require additional verification for account access',
-      status: 'Not Configured',
-      statusVariant: 'secondary' as const,
-    },
-    {
-      icon: Shield,
-      title: 'Single Sign-On (SSO)',
-      description: 'Enterprise authentication integration',
-      status: 'Enterprise Plan',
-      statusVariant: 'secondary' as const,
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -178,25 +155,89 @@ export default function SecuritySettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {securityItems.map((item, index) => (
-            <div key={item.title}>
-              <div className="flex items-start gap-4 py-3">
-                <div className="p-2 rounded-lg bg-muted">
-                  <item.icon className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">{item.title}</h4>
-                    <Badge variant={item.statusVariant}>{item.status}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {item.description}
-                  </p>
+          {/* Password Policy */}
+          <div className="flex items-start gap-4 py-3">
+            <div className="p-2 rounded-lg bg-muted">
+              <Key className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Password Policy</h4>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Badge variant="secondary">
+                      <Lock className="h-3 w-3 mr-1" />
+                      Platform Default
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Password requirements are configured at the platform level for security
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Minimum 8 characters with complexity requirements enforced by the platform
+              </p>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* MFA */}
+          <div className="flex items-start gap-4 py-3">
+            <div className="p-2 rounded-lg bg-muted">
+              <Smartphone className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Multi-Factor Authentication (MFA)</h4>
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        Coming Soon
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      MFA configuration will be available in a future update
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
-              {index < securityItems.length - 1 && <Separator />}
+              <p className="text-sm text-muted-foreground mt-1">
+                Require additional verification for account access. Currently configured per-user in Compliance settings.
+              </p>
             </div>
-          ))}
+          </div>
+
+          <Separator />
+
+          {/* SSO */}
+          <div className="flex items-start gap-4 py-3">
+            <div className="p-2 rounded-lg bg-muted">
+              <Shield className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Single Sign-On (SSO)</h4>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Badge variant="secondary" className="gap-1">
+                      <Info className="h-3 w-3" />
+                      Enterprise Plan
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    SSO integration is available on Enterprise plans. Contact sales to upgrade.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enterprise authentication integration with SAML/OIDC providers
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

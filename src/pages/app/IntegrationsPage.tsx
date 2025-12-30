@@ -1,14 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { 
-  Plug, Plus, Settings, CheckCircle, AlertCircle, Clock,
+  Plug, Clock, CheckCircle,
   CreditCard, MessageSquare, Mail, Calendar, Database,
-  FileText, Users, Zap, ExternalLink
+  FileText, Users, Zap, Info
 } from 'lucide-react';
 import { ModuleGuard } from '@/components/ModuleGuard';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Integration {
   id: string;
@@ -16,8 +14,7 @@ interface Integration {
   description: string;
   category: string;
   icon: any;
-  status: 'connected' | 'available' | 'coming_soon';
-  configurable?: boolean;
+  status: 'connected' | 'coming_soon' | 'enterprise';
 }
 
 const integrations: Integration[] = [
@@ -27,8 +24,7 @@ const integrations: Integration[] = [
     description: 'Send notifications and updates to Slack channels',
     category: 'Communication',
     icon: MessageSquare,
-    status: 'available',
-    configurable: true,
+    status: 'coming_soon',
   },
   {
     id: 'microsoft_teams',
@@ -36,8 +32,7 @@ const integrations: Integration[] = [
     description: 'Integrate with Teams for notifications',
     category: 'Communication',
     icon: MessageSquare,
-    status: 'available',
-    configurable: true,
+    status: 'coming_soon',
   },
   {
     id: 'google_calendar',
@@ -45,8 +40,7 @@ const integrations: Integration[] = [
     description: 'Sync leave and events with Google Calendar',
     category: 'Calendar',
     icon: Calendar,
-    status: 'available',
-    configurable: true,
+    status: 'coming_soon',
   },
   {
     id: 'outlook_calendar',
@@ -54,8 +48,7 @@ const integrations: Integration[] = [
     description: 'Sync with Microsoft Outlook calendars',
     category: 'Calendar',
     icon: Calendar,
-    status: 'available',
-    configurable: true,
+    status: 'coming_soon',
   },
   {
     id: 'stripe',
@@ -87,8 +80,7 @@ const integrations: Integration[] = [
     description: 'Connect with 5000+ apps via Zapier',
     category: 'Automation',
     icon: Zap,
-    status: 'available',
-    configurable: true,
+    status: 'coming_soon',
   },
   {
     id: 'webhooks',
@@ -96,8 +88,7 @@ const integrations: Integration[] = [
     description: 'Send custom webhooks for events',
     category: 'Developer',
     icon: Database,
-    status: 'available',
-    configurable: true,
+    status: 'coming_soon',
   },
   {
     id: 'api',
@@ -105,8 +96,7 @@ const integrations: Integration[] = [
     description: 'Full API access for custom integrations',
     category: 'Developer',
     icon: Database,
-    status: 'available',
-    configurable: true,
+    status: 'enterprise',
   },
   {
     id: 'okta',
@@ -114,8 +104,7 @@ const integrations: Integration[] = [
     description: 'Single sign-on with Okta',
     category: 'Authentication',
     icon: Users,
-    status: 'available',
-    configurable: true,
+    status: 'enterprise',
   },
   {
     id: 'azure_ad',
@@ -123,8 +112,7 @@ const integrations: Integration[] = [
     description: 'Microsoft Azure Active Directory SSO',
     category: 'Authentication',
     icon: Users,
-    status: 'available',
-    configurable: true,
+    status: 'enterprise',
   },
   {
     id: 'sendgrid',
@@ -138,8 +126,8 @@ const integrations: Integration[] = [
 
 const statusConfig = {
   connected: { label: 'Connected', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: CheckCircle },
-  available: { label: 'Available', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', icon: Plug },
   coming_soon: { label: 'Coming Soon', color: 'bg-muted text-muted-foreground', icon: Clock },
+  enterprise: { label: 'Enterprise', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', icon: Zap },
 };
 
 function IntegrationCard({ integration }: { integration: Integration }) {
@@ -147,45 +135,31 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const Icon = integration.icon;
 
   return (
-    <Card className={integration.status === 'coming_soon' ? 'opacity-60' : ''}>
+    <Card className="opacity-75">
       <CardContent className="pt-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Icon className="h-6 w-6 text-primary" />
+            <div className="p-2 bg-muted rounded-lg">
+              <Icon className="h-6 w-6 text-muted-foreground" />
             </div>
             <div>
               <h3 className="font-semibold">{integration.name}</h3>
               <p className="text-sm text-muted-foreground">{integration.category}</p>
             </div>
           </div>
-          <Badge className={config.color}>
-            {config.label}
-          </Badge>
+          <Tooltip>
+            <TooltipTrigger>
+              <Badge className={config.color}>
+                {config.label}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              {integration.status === 'coming_soon' && 'This integration is planned for a future release'}
+              {integration.status === 'enterprise' && 'Available on Enterprise plan'}
+            </TooltipContent>
+          </Tooltip>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">{integration.description}</p>
-        {integration.status === 'available' && (
-          <Button variant="outline" size="sm" className="w-full">
-            <Settings className="h-4 w-4 mr-2" />
-            Configure
-          </Button>
-        )}
-        {integration.status === 'connected' && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Switch id={`${integration.id}-enabled`} defaultChecked />
-              <Label htmlFor={`${integration.id}-enabled`}>Enabled</Label>
-            </div>
-            <Button variant="ghost" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-        {integration.status === 'coming_soon' && (
-          <Button variant="ghost" size="sm" className="w-full" disabled>
-            Notify Me
-          </Button>
-        )}
+        <p className="text-sm text-muted-foreground">{integration.description}</p>
       </CardContent>
     </Card>
   );
@@ -199,101 +173,79 @@ export default function IntegrationsPage() {
     <ModuleGuard moduleId="integrations">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Integrations</h1>
-          <p className="text-muted-foreground">Connect with your favorite tools and services</p>
+          <div>
+            <h1 className="text-2xl font-bold">Integrations</h1>
+            <p className="text-muted-foreground">Connect with your favorite tools and services</p>
+          </div>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Request Integration
-        </Button>
-      </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Connected</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{connectedCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Available</CardTitle>
-            <Plug className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {integrations.filter(i => i.status === 'available').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Coming Soon</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {integrations.filter(i => i.status === 'coming_soon').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">API Status</CardTitle>
-            <Zap className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Active</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* API Access Card */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/20 rounded-lg">
-                <Database className="h-8 w-8 text-primary" />
-              </div>
+        {/* Info Banner */}
+        <Card className="bg-muted/50 border-dashed">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-lg font-semibold">Enterprise API Access</h3>
-                <p className="text-muted-foreground">
-                  Full REST API access for custom integrations and automation
+                <p className="font-medium">Integrations Coming Soon</p>
+                <p className="text-sm text-muted-foreground">
+                  We're working on bringing these integrations to you. Check back soon for updates,
+                  or contact support if you have specific integration needs.
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline">
-                View Docs
-                <ExternalLink className="h-4 w-4 ml-2" />
-              </Button>
-              <Button>
-                Generate API Key
-              </Button>
+          </CardContent>
+        </Card>
+
+        {/* Stats */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Connected</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{connectedCount}</div>
+              <p className="text-xs text-muted-foreground">Active integrations</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Coming Soon</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {integrations.filter(i => i.status === 'coming_soon').length}
+              </div>
+              <p className="text-xs text-muted-foreground">In development</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Enterprise</CardTitle>
+              <Zap className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {integrations.filter(i => i.status === 'enterprise').length}
+              </div>
+              <p className="text-xs text-muted-foreground">Upgrade required</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Integration Categories */}
+        {categories.map((category) => (
+          <div key={category} className="space-y-4">
+            <h2 className="text-lg font-semibold">{category}</h2>
+            <div className="grid gap-4 md:grid-cols-3">
+              {integrations
+                .filter(i => i.category === category)
+                .map((integration) => (
+                  <IntegrationCard key={integration.id} integration={integration} />
+                ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Integration Categories */}
-      {categories.map((category) => (
-        <div key={category} className="space-y-4">
-          <h2 className="text-lg font-semibold">{category}</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            {integrations
-              .filter(i => i.category === category)
-              .map((integration) => (
-                <IntegrationCard key={integration.id} integration={integration} />
-              ))}
-          </div>
-        </div>
-      ))}
+        ))}
       </div>
     </ModuleGuard>
   );
