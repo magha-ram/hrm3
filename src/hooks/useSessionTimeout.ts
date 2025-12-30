@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseSessionTimeoutOptions {
   timeoutMinutes?: number;
@@ -8,13 +9,30 @@ interface UseSessionTimeoutOptions {
   onTimeout?: () => void;
 }
 
+async function logSessionTimeout(userId: string) {
+  try {
+    await supabase.from('security_events').insert({
+      event_type: 'login_success' as const,
+      user_id: userId,
+      description: 'Session timed out due to inactivity',
+      user_agent: navigator.userAgent,
+      metadata: {
+        action: 'session_timeout',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    console.error('Failed to log session timeout:', err);
+  }
+}
+
 export function useSessionTimeout({
   timeoutMinutes = 30,
   warningMinutes = 5,
   onWarning,
   onTimeout,
 }: UseSessionTimeoutOptions = {}) {
-  const { isAuthenticated, signOut } = useAuth();
+  const { isAuthenticated, signOut, user } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   
@@ -35,9 +53,15 @@ export function useSessionTimeout({
   const handleTimeout = useCallback(async () => {
     clearAllTimers();
     setShowWarning(false);
+    
+    // Log the session timeout before signing out
+    if (user?.user_id) {
+      await logSessionTimeout(user.user_id);
+    }
+    
     onTimeout?.();
     await signOut();
-  }, [clearAllTimers, onTimeout, signOut]);
+  }, [clearAllTimers, onTimeout, signOut, user?.user_id]);
 
   const startCountdown = useCallback(() => {
     const warningSeconds = warningMinutes * 60;

@@ -81,6 +81,7 @@ export default function Auth() {
       }
     } else {
       toast.success('Welcome back!');
+      // Login success event is logged via AuthContext
     }
   };
 

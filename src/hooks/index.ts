@@ -12,5 +12,9 @@ export { useIsFrozen, useDisableWrites, type FrozenState } from './useIsFrozen';
 export { useModuleAccess, type ModuleAccess } from './useModuleAccess';
 export { usePlans, useSubscription, useChangePlan, useFreezeCompany, useSubscriptionHealth } from './useSubscription';
 
+// Security hooks
+export { useSecurityLogger } from './useSecurityLogger';
+export { useSessionTimeout } from './useSessionTimeout';
+
 // UI hooks
 export { useIsMobile } from './use-mobile';
