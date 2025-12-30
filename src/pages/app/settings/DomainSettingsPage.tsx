@@ -786,6 +786,128 @@ export default function DomainSettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Wildcard Subdomain Setup Guide */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Wildcard Subdomain Setup (Platform Admin)
+          </CardTitle>
+          <CardDescription>
+            Setup guide for enabling automatic company subdomains
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <HelpCircle className="h-4 w-4" />
+            <AlertDescription>
+              This section is for platform administrators setting up wildcard DNS for automatic company subdomain routing (e.g., <code className="bg-muted px-1 rounded">company.hr.nateshkumar.tech</code>).
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-4">
+            {/* Vercel Instructions */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">Vercel</Badge>
+                <span className="font-medium text-sm">Recommended for Production</span>
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-3">
+                  <div className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+                  <div>
+                    <p className="font-medium">Configure DNS at your registrar</p>
+                    <div className="mt-2 bg-muted p-3 rounded font-mono text-xs space-y-1">
+                      <p>Type: A</p>
+                      <p>Name: *.hr (or your subdomain prefix)</p>
+                      <p>Value: 76.76.21.21</p>
+                    </div>
+                    <p className="text-muted-foreground mt-1">
+                      Or use CNAME: <code className="bg-muted px-1 rounded">cname.vercel-dns.com</code>
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+                  <div>
+                    <p className="font-medium">Add domains in Vercel</p>
+                    <ul className="text-muted-foreground mt-1 space-y-1">
+                      <li>• Add <code className="bg-muted px-1 rounded">hr.nateshkumar.tech</code></li>
+                      <li>• Add <code className="bg-muted px-1 rounded">*.hr.nateshkumar.tech</code> (wildcard)</li>
+                    </ul>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</div>
+                  <div>
+                    <p className="font-medium">Vercel auto-provisions SSL</p>
+                    <p className="text-muted-foreground">Wildcard certificates are handled automatically</p>
+                  </div>
+                </div>
+              </div>
+
+              <Button variant="outline" size="sm" asChild>
+                <a href="https://vercel.com/docs/projects/domains/add-a-wildcard-domain" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Vercel Wildcard Docs
+                </a>
+              </Button>
+            </div>
+
+            {/* Lovable Instructions */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">Lovable</Badge>
+                <span className="font-medium text-sm">Alternative Hosting</span>
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-3">
+                  <div className="h-5 w-5 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</div>
+                  <div>
+                    <p className="font-medium">Configure DNS</p>
+                    <div className="mt-2 bg-muted p-3 rounded font-mono text-xs space-y-1">
+                      <p>Type: A, Name: @ → 185.158.133.1 (root)</p>
+                      <p>Type: A, Name: *.hr → 185.158.133.1 (wildcard)</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="h-5 w-5 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</div>
+                  <div>
+                    <p className="font-medium">Add domains in Lovable</p>
+                    <p className="text-muted-foreground">Project Settings → Domains → Add wildcard domain</p>
+                  </div>
+                </div>
+              </div>
+
+              <Button variant="outline" size="sm" asChild>
+                <a href="https://docs.lovable.dev/features/custom-domain" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Lovable Domain Docs
+                </a>
+              </Button>
+            </div>
+
+            {/* How it works */}
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <p className="font-medium text-sm">How Wildcard Subdomains Work</p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>1. User visits <code className="bg-background px-1 rounded">sala.hr.nateshkumar.tech</code></p>
+                <p>2. DNS resolves <code className="bg-background px-1 rounded">*.hr.nateshkumar.tech</code> to your server</p>
+                <p>3. App detects subdomain <code className="bg-background px-1 rounded">sala</code></p>
+                <p>4. Database lookup finds company with that subdomain</p>
+                <p>5. Company-specific login page is shown</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Help section */}
       <Card>
         <CardHeader>
