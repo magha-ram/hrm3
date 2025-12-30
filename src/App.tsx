@@ -36,6 +36,7 @@ const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
 // Settings sub-pages
 const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
 const BillingSettingsPage = lazy(() => import("./pages/app/settings/BillingSettingsPage"));
+const SuperAdminPage = lazy(() => import("./pages/app/settings/SuperAdminPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,6 +97,7 @@ const App = () => (
                     <Route path="settings" element={<SettingsPage />}>
                       <Route path="company" element={<CompanySettingsPage />} />
                       <Route path="billing" element={<BillingSettingsPage />} />
+                      <Route path="super-admins" element={<SuperAdminPage />} />
                     </Route>
                   </Route>
 
