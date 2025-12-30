@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { EmailService } from "../_shared/email/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -113,28 +114,27 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // For actual email providers, call the send-email function
-    const { error: emailError } = await supabaseAdmin.functions.invoke("send-email", {
-      body: {
-        to: body.to,
-        subject: "Test Email from HR Platform",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #333;">Test Email</h1>
-            <p>This is a test email to verify your email configuration is working correctly.</p>
-            <p style="color: #666; font-size: 14px;">Sent from: ${fromName} (${fromAddress})</p>
-            <p style="color: #666; font-size: 14px;">Provider: ${provider}</p>
-            <p style="color: #666; font-size: 14px;">Timestamp: ${new Date().toISOString()}</p>
-          </div>
-        `,
-        text: `Test Email\n\nThis is a test email to verify your email configuration is working correctly.\n\nSent from: ${fromName} (${fromAddress})\nProvider: ${provider}\nTimestamp: ${new Date().toISOString()}`,
-      },
+    // For actual email providers, use EmailService directly
+    const emailService = new EmailService();
+    const result = await emailService.sendRaw({
+      to: { email: body.to },
+      subject: "Test Email from HR Platform",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">Test Email</h1>
+          <p>This is a test email to verify your email configuration is working correctly.</p>
+          <p style="color: #666; font-size: 14px;">Sent from: ${fromName} (${fromAddress})</p>
+          <p style="color: #666; font-size: 14px;">Provider: ${provider}</p>
+          <p style="color: #666; font-size: 14px;">Timestamp: ${new Date().toISOString()}</p>
+        </div>
+      `,
+      text: `Test Email\n\nThis is a test email to verify your email configuration is working correctly.\n\nSent from: ${fromName} (${fromAddress})\nProvider: ${provider}\nTimestamp: ${new Date().toISOString()}`,
     });
 
-    if (emailError) {
-      console.error("Error sending test email:", emailError);
+    if (!result.success) {
+      console.error("Error sending test email:", result.error);
       return new Response(
-        JSON.stringify({ error: "Email Error", message: emailError.message }),
+        JSON.stringify({ error: "Email Error", message: result.error }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -145,7 +145,8 @@ serve(async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         message: `Test email sent to ${body.to}`,
-        provider
+        provider: result.provider,
+        messageId: result.messageId
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
