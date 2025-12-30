@@ -5,16 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Search, Filter, MoreHorizontal, Eye, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Eye, Pencil, Trash2, Loader2, Upload, Download, FileSpreadsheet } from 'lucide-react';
 import { WriteGate, RoleGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useEmployees, useDeleteEmployee, type Employee } from '@/hooks/useEmployees';
 import { EmployeeForm } from '@/components/employees/EmployeeForm';
 import { EmployeeDetail } from '@/components/employees/EmployeeDetail';
+import { BulkImportDialog } from '@/components/employees/BulkImportDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ReadOnlyPageBanner } from '@/components/platform/ImpersonationRestricted';
+import { exportEmployeesToCSV, downloadEmployeeImportTemplate } from '@/lib/export-utils';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
@@ -33,6 +35,13 @@ export default function EmployeesPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
+  const handleExportEmployees = () => {
+    if (employees && employees.length > 0) {
+      exportEmployeesToCSV(employees as any);
+    }
+  };
 
   const filteredEmployees = employees?.filter(emp => {
     const searchLower = search.toLowerCase();
@@ -75,28 +84,59 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-bold">Employees</h1>
           <p className="text-muted-foreground">Manage your organization's employees</p>
         </div>
-        <WriteGate>
-          <RoleGate role="hr_manager">
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => setEditingEmployee(null)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Employee
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editingEmployee ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
-                </DialogHeader>
-                <EmployeeForm 
-                  employee={editingEmployee} 
-                  onSuccess={handleFormClose}
-                  onCancel={handleFormClose}
-                />
-              </DialogContent>
-            </Dialog>
-          </RoleGate>
-        </WriteGate>
+        <div className="flex items-center gap-2">
+          {/* Export/Import Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Import/Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportEmployees} disabled={!employees?.length}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Employees
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadEmployeeImportTemplate}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Download Template
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <WriteGate>
+                <RoleGate role="hr_manager">
+                  <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Bulk Import
+                  </DropdownMenuItem>
+                </RoleGate>
+              </WriteGate>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <WriteGate>
+            <RoleGate role="hr_manager">
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setEditingEmployee(null)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Employee
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>{editingEmployee ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
+                  </DialogHeader>
+                  <EmployeeForm 
+                    employee={editingEmployee} 
+                    onSuccess={handleFormClose}
+                    onCancel={handleFormClose}
+                  />
+                </DialogContent>
+              </Dialog>
+            </RoleGate>
+          </WriteGate>
+        </div>
       </div>
 
       {/* Filters */}
@@ -246,6 +286,9 @@ export default function EmployeesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Import Dialog */}
+      <BulkImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
       </div>
     </ModuleGuard>
   );
