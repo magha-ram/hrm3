@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import {
   Table,
   TableBody,
@@ -32,7 +33,8 @@ import {
   Briefcase,
   HardDrive,
   UserCheck,
-  Eye
+  Eye,
+  AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
@@ -117,6 +119,44 @@ export default function PlatformCompanyDetailPage() {
     },
     enabled: !!companyId,
   });
+
+  // Fetch storage usage (sum of file_size from employee_documents)
+  const { data: storageUsage } = useQuery({
+    queryKey: ['platform-company-storage', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('employee_documents')
+        .select('file_size')
+        .eq('company_id', companyId!);
+
+      if (error) throw error;
+      
+      // Sum all file sizes (in bytes)
+      const totalBytes = data?.reduce((sum, doc) => sum + (doc.file_size || 0), 0) || 0;
+      return totalBytes;
+    },
+    enabled: !!companyId,
+  });
+
+  // Helper to format bytes
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Calculate storage percentage
+  const getStoragePercentage = (): number => {
+    if (!storageUsage || !subscription?.plans?.max_storage_gb) return 0;
+    const maxBytes = subscription.plans.max_storage_gb * 1024 * 1024 * 1024;
+    return Math.min((storageUsage / maxBytes) * 100, 100);
+  };
+
+  const storagePercentage = getStoragePercentage();
+  const isStorageWarning = storagePercentage >= 80;
+  const isStorageCritical = storagePercentage >= 95;
 
   // Fetch available plans
   const { data: plans } = useQuery({
@@ -467,22 +507,55 @@ export default function PlatformCompanyDetailPage() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className={isStorageCritical ? 'border-destructive' : isStorageWarning ? 'border-yellow-500' : ''}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <HardDrive className="h-4 w-4 text-muted-foreground" />
               Storage
+              {isStorageCritical && (
+                <Badge variant="destructive" className="ml-auto">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Critical
+                </Badge>
+              )}
+              {isStorageWarning && !isStorageCritical && (
+                <Badge variant="secondary" className="ml-auto bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Warning
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <div className="text-2xl font-bold">
-              -
+              {formatBytes(storageUsage || 0)}
               {subscription?.plans?.max_storage_gb && (
                 <span className="text-sm font-normal text-muted-foreground">
                   {' '}/ {subscription.plans.max_storage_gb} GB
                 </span>
               )}
             </div>
+            {subscription?.plans?.max_storage_gb && (
+              <div className="space-y-1">
+                <Progress 
+                  value={storagePercentage} 
+                  className={`h-2 ${isStorageCritical ? '[&>div]:bg-destructive' : isStorageWarning ? '[&>div]:bg-yellow-500' : ''}`}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {storagePercentage.toFixed(1)}% used
+                </p>
+              </div>
+            )}
+            {isStorageCritical && (
+              <p className="text-xs text-destructive">
+                Storage is almost full. Consider upgrading the plan or cleaning up old documents.
+              </p>
+            )}
+            {isStorageWarning && !isStorageCritical && (
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                Storage is running low. Monitor usage closely.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
