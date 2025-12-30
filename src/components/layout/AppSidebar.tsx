@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
@@ -5,7 +6,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES, UTILITY_NAV, SETTINGS_NAV } from '@/config/modules';
 import { hasMinimumRole } from '@/types/auth';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X } from 'lucide-react';
+import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -24,10 +25,36 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+
+function formatDuration(startedAt: Date | null): string {
+  if (!startedAt) return '';
+  const seconds = Math.floor((Date.now() - startedAt.getTime()) / 1000);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  }
+  return `${secs}s`;
+}
 
 export function AppSidebar() {
   const location = useLocation();
@@ -35,7 +62,22 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { role, isAdmin, planName, isTrialing } = useTenant();
   const { accessibleModules, moduleAccess, isFrozen } = useModuleAccess();
-  const { isImpersonating, impersonatedCompany, stopImpersonation } = useImpersonation();
+  const { isImpersonating, impersonatedCompany, stopImpersonation, impersonationStartedAt } = useImpersonation();
+  const [duration, setDuration] = useState('');
+
+  // Update duration every second
+  useEffect(() => {
+    if (!impersonationStartedAt) {
+      setDuration('');
+      return;
+    }
+    
+    const updateDuration = () => setDuration(formatDuration(impersonationStartedAt));
+    updateDuration();
+    
+    const interval = setInterval(updateDuration, 1000);
+    return () => clearInterval(interval);
+  }, [impersonationStartedAt]);
 
   const isActive = (path: string) => location.pathname.startsWith(path);
   const isSettingsActive = location.pathname.startsWith('/settings');
@@ -50,31 +92,73 @@ export function AppSidebar() {
             collapsed ? "flex items-center justify-center" : ""
           )}>
             {collapsed ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-amber-600 hover:text-amber-700 hover:bg-amber-500/20"
-                onClick={() => stopImpersonation()}
-                title="Exit impersonation"
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-amber-600 hover:text-amber-700 hover:bg-amber-500/20"
+                    title="Exit impersonation"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Exit Impersonation?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You are currently viewing as <strong>{impersonatedCompany.name}</strong>.
+                      {duration && <> Session duration: {duration}.</>}
+                      <br /><br />
+                      Are you sure you want to exit impersonation mode?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => stopImpersonation()}>Exit Impersonation</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : (
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
                 <Eye className="h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] uppercase tracking-wide font-medium opacity-75">Viewing as</p>
                   <p className="text-xs font-semibold truncate">{impersonatedCompany.name}</p>
+                  {duration && (
+                    <p className="text-[10px] opacity-75 flex items-center gap-1 mt-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      {duration}
+                    </p>
+                  )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 shrink-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/20"
-                  onClick={() => stopImpersonation()}
-                  title="Exit impersonation"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0 text-amber-600 hover:text-amber-700 hover:bg-amber-500/20"
+                      title="Exit impersonation"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Exit Impersonation?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You are currently viewing as <strong>{impersonatedCompany.name}</strong>.
+                        {duration && <> Session duration: {duration}.</>}
+                        <br /><br />
+                        Are you sure you want to exit impersonation mode?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => stopImpersonation()}>Exit Impersonation</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             )}
           </div>

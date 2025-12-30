@@ -15,6 +15,7 @@ interface ImpersonationContextValue {
   startImpersonation: (company: ImpersonatedCompany) => Promise<void>;
   stopImpersonation: () => Promise<void>;
   effectiveCompanyId: string | null;
+  impersonationStartedAt: Date | null;
 }
 
 const ImpersonationContext = createContext<ImpersonationContextValue | undefined>(undefined);
@@ -30,6 +31,7 @@ export const useImpersonation = () => {
 export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isPlatformAdmin, currentCompanyId } = useAuth();
   const [impersonatedCompany, setImpersonatedCompany] = useState<ImpersonatedCompany | null>(null);
+  const [impersonationStartedAt, setImpersonationStartedAt] = useState<Date | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const previousUserIdRef = useRef<string | null>(null);
 
@@ -50,6 +52,7 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
         ) {
           sessionIdRef.current = null;
           setImpersonatedCompany(null);
+          setImpersonationStartedAt(null);
         }
         
         previousUserIdRef.current = currentUserId;
@@ -64,6 +67,7 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
     if (impersonatedCompany && !isPlatformAdmin) {
       sessionIdRef.current = null;
       setImpersonatedCompany(null);
+      setImpersonationStartedAt(null);
     }
   }, [isPlatformAdmin, impersonatedCompany]);
 
@@ -87,7 +91,7 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
     // Log impersonation start to dedicated table
     try {
       const { error: logError } = await supabase.from('impersonation_logs').insert({
-        admin_user_id: authUser.id, // Use auth.uid() directly
+        admin_user_id: authUser.id,
         company_id: company.id,
         company_name: company.name,
         action: 'start',
@@ -100,13 +104,13 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (logError) {
         console.error('Failed to log impersonation start:', logError);
-        // Don't block impersonation if logging fails
       }
     } catch (err) {
       console.error('Failed to log impersonation start:', err);
     }
 
     setImpersonatedCompany(company);
+    setImpersonationStartedAt(new Date());
     toast.success(`Now viewing as ${company.name}`);
   }, [isPlatformAdmin]);
 
@@ -119,7 +123,7 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
       if (authUser) {
         try {
           const { error: logError } = await supabase.from('impersonation_logs').insert({
-            admin_user_id: authUser.id, // Use auth.uid() directly
+            admin_user_id: authUser.id,
             company_id: impersonatedCompany.id,
             company_name: impersonatedCompany.name,
             action: 'end',
@@ -127,6 +131,9 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
             user_agent: navigator.userAgent,
             metadata: {
               company_slug: impersonatedCompany.slug,
+              duration_seconds: impersonationStartedAt 
+                ? Math.floor((Date.now() - impersonationStartedAt.getTime()) / 1000) 
+                : null,
             },
           });
 
@@ -141,8 +148,9 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
 
     sessionIdRef.current = null;
     setImpersonatedCompany(null);
+    setImpersonationStartedAt(null);
     toast.info('Impersonation ended');
-  }, [impersonatedCompany]);
+  }, [impersonatedCompany, impersonationStartedAt]);
 
   // The effective company ID is the impersonated company if impersonating,
   // otherwise the user's actual current company
@@ -154,6 +162,7 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
     startImpersonation,
     stopImpersonation,
     effectiveCompanyId,
+    impersonationStartedAt,
   };
 
   return (
