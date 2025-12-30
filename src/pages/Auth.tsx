@@ -15,7 +15,7 @@ const passwordSchema = z.string().min(8, 'Password must be at least 8 characters
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { signIn, signUp, isAuthenticated, isLoading: authLoading, currentCompanyId, isPlatformAdmin } = useAuth();
+  const { signIn, signUp, isAuthenticated, isLoading: authLoading, currentCompanyId, isPlatformAdmin, user } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
@@ -28,7 +28,8 @@ export default function Auth() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    // Wait for both auth loading AND user context to be loaded before redirecting
+    if (!authLoading && isAuthenticated && user !== null) {
       if (isPlatformAdmin) {
         navigate('/platform/dashboard', { replace: true });
       } else if (currentCompanyId) {
@@ -37,7 +38,7 @@ export default function Auth() {
         navigate('/onboarding', { replace: true });
       }
     }
-  }, [isAuthenticated, authLoading, currentCompanyId, isPlatformAdmin, navigate]);
+  }, [isAuthenticated, authLoading, currentCompanyId, isPlatformAdmin, user, navigate]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
