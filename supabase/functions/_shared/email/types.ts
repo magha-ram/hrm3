@@ -54,7 +54,8 @@ export type EmailTemplateType =
   | 'leave_request_rejected'
   | 'payroll_processed'
   | 'subscription_expiring'
-  | 'company_frozen';
+  | 'company_frozen'
+  | 'suspicious_login';
 
 export interface EmailTemplateData {
   user_invitation: {
@@ -105,5 +106,14 @@ export interface EmailTemplateData {
     companyName: string;
     reason: string;
     supportEmail: string;
+  };
+  suspicious_login: {
+    userName: string;
+    loginTime: string;
+    browser: string;
+    location: string;
+    ipAddress: string;
+    reason: string;
+    secureAccountUrl: string;
   };
 }

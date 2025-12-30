@@ -53,12 +53,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           // Defer Supabase calls with setTimeout to prevent deadlock
-          setTimeout(() => {
+          setTimeout(async () => {
             fetchUserContext().then(setUser);
             
             // Log login event
             if (event === 'SIGNED_IN') {
-              supabase.from('security_events').insert({
+              await supabase.from('security_events').insert({
                 event_type: 'login_success' as const,
                 user_id: session.user.id,
                 description: 'User signed in successfully',
@@ -67,9 +67,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   provider: session.user.app_metadata?.provider || 'email',
                   timestamp: new Date().toISOString(),
                 },
-              }).then(({ error }) => {
-                if (error) console.error('Failed to log login event:', error);
               });
+
+              // Check for suspicious login (new device/location)
+              try {
+                await supabase.functions.invoke('check-suspicious-login', {
+                  body: {
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString(),
+                  },
+                });
+              } catch (err) {
+                console.error('Failed to check suspicious login:', err);
+              }
             }
           }, 0);
         } else {
