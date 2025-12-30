@@ -825,7 +825,7 @@ export default function PlatformCompanyDetailPage() {
   );
 }
 
-// Domain Management Card Component
+// Domain Management Card Component - View only, with subdomain change request approval
 function DomainManagementCard({ 
   companyId, 
   companyDomains, 
@@ -837,237 +837,209 @@ function DomainManagementCard({
   isLoading: boolean;
   onRefresh: () => void;
 }) {
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editingDomain, setEditingDomain] = useState<any | null>(null);
-  const [subdomain, setSubdomain] = useState('');
-  const [customDomain, setCustomDomain] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const queryClient = useQueryClient();
 
-  const handleSave = async () => {
-    if (!subdomain && !customDomain) {
-      toast.error('Please enter a subdomain or custom domain');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      if (editingDomain) {
-        // Update existing domain
-        const { error } = await supabase
-          .from('company_domains')
-          .update({
-            subdomain: subdomain || null,
-            custom_domain: customDomain || null,
-            is_verified: !!subdomain, // Auto-verify subdomains
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingDomain.id);
-
-        if (error) throw error;
-        toast.success('Domain updated successfully');
-      } else {
-        // Add new domain
-        const { error } = await supabase
-          .from('company_domains')
-          .insert({
-            company_id: companyId,
-            subdomain: subdomain || null,
-            custom_domain: customDomain || null,
-            is_primary: !companyDomains?.length,
-            is_verified: !!subdomain,
-            is_active: true
-          });
-
-        if (error) throw error;
-        toast.success('Domain added successfully');
-      }
-      
-      setShowAddDialog(false);
-      setEditingDomain(null);
-      setSubdomain('');
-      setCustomDomain('');
-      onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save domain');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async (domainId: string) => {
-    if (!confirm('Are you sure you want to delete this domain?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('company_domains')
-        .delete()
-        .eq('id', domainId);
+  // Fetch pending subdomain change requests for this company
+  const { data: subdomainRequests, isLoading: isLoadingRequests } = useQuery({
+    queryKey: ['subdomain-change-requests-platform', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subdomain_change_requests')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      toast.success('Domain deleted');
-      onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to delete domain');
-    }
-  };
+      return data;
+    },
+    enabled: !!companyId,
+  });
 
-  const handleToggleActive = async (domain: any) => {
-    try {
-      const { error } = await supabase
+  const pendingRequest = subdomainRequests?.find((r: any) => r.status === 'pending');
+
+  // Approve subdomain change request
+  const approveRequestMutation = useMutation({
+    mutationFn: async ({ requestId, notes }: { requestId: string; notes: string }) => {
+      const request = subdomainRequests?.find((r: any) => r.id === requestId);
+      if (!request) throw new Error('Request not found');
+
+      // Find the subdomain record to update
+      const subdomainRecord = companyDomains?.find(d => d.subdomain);
+      if (!subdomainRecord) throw new Error('No subdomain record found');
+
+      // Update the company_domains with new subdomain
+      const { error: updateDomainError } = await supabase
         .from('company_domains')
-        .update({ is_active: !domain.is_active })
-        .eq('id', domain.id);
+        .update({ 
+          subdomain: request.requested_subdomain,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subdomainRecord.id);
+
+      if (updateDomainError) throw updateDomainError;
+
+      // Mark request as approved
+      const { error: updateRequestError } = await supabase
+        .from('subdomain_change_requests')
+        .update({
+          status: 'approved',
+          reviewed_by: (await supabase.auth.getUser()).data.user?.id,
+          reviewed_at: new Date().toISOString(),
+          review_notes: notes || null,
+        })
+        .eq('id', requestId);
+
+      if (updateRequestError) throw updateRequestError;
+    },
+    onSuccess: () => {
+      toast.success('Subdomain change approved and updated');
+      queryClient.invalidateQueries({ queryKey: ['subdomain-change-requests-platform', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['platform-company-domains', companyId] });
+      setReviewNotes('');
+      onRefresh();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Reject subdomain change request
+  const rejectRequestMutation = useMutation({
+    mutationFn: async ({ requestId, notes }: { requestId: string; notes: string }) => {
+      const { error } = await supabase
+        .from('subdomain_change_requests')
+        .update({
+          status: 'rejected',
+          reviewed_by: (await supabase.auth.getUser()).data.user?.id,
+          reviewed_at: new Date().toISOString(),
+          review_notes: notes || null,
+        })
+        .eq('id', requestId);
 
       if (error) throw error;
-      toast.success(domain.is_active ? 'Domain deactivated' : 'Domain activated');
-      onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update domain');
-    }
-  };
-
-  const openEdit = (domain: any) => {
-    setEditingDomain(domain);
-    setSubdomain(domain.subdomain || '');
-    setCustomDomain(domain.custom_domain || '');
-    setShowAddDialog(true);
-  };
-
-  const openAdd = () => {
-    setEditingDomain(null);
-    setSubdomain('');
-    setCustomDomain('');
-    setShowAddDialog(true);
-  };
+    },
+    onSuccess: () => {
+      toast.success('Subdomain change request rejected');
+      queryClient.invalidateQueries({ queryKey: ['subdomain-change-requests-platform', companyId] });
+      setReviewNotes('');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Domains
-              </CardTitle>
-              <CardDescription>Subdomains and custom domains for this company</CardDescription>
-            </div>
-            <Button size="sm" onClick={openAdd}>
-              Add Domain
-            </Button>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Domains
+            </CardTitle>
+            <CardDescription>Subdomains and custom domains for this company (view only)</CardDescription>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-20" />
-          ) : companyDomains?.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">No domains configured</p>
-          ) : (
-            <div className="space-y-3">
-              {companyDomains?.map((domain) => (
-                <div key={domain.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-mono text-sm">
-                        {domain.subdomain ? `${domain.subdomain}.hrplatform.com` : domain.custom_domain}
-                      </p>
-                      <div className="flex gap-2 mt-1">
-                        {domain.is_primary && (
-                          <Badge variant="default" className="text-xs">Primary</Badge>
-                        )}
-                        {domain.subdomain && (
-                          <Badge variant="secondary" className="text-xs">Subdomain</Badge>
-                        )}
-                        {domain.custom_domain && (
-                          <Badge variant="outline" className="text-xs">Custom</Badge>
-                        )}
-                        {domain.is_verified ? (
-                          <Badge variant="default" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                            Verified
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-xs">Pending</Badge>
-                        )}
-                      </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Pending Subdomain Change Request */}
+        {pendingRequest && (
+          <div className="p-4 border rounded-lg space-y-3 bg-yellow-50/50 dark:bg-yellow-950/50 border-yellow-200 dark:border-yellow-900">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  Subdomain Change Request
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  From: <code className="bg-muted px-1 rounded">{pendingRequest.current_subdomain}</code>
+                  {' → '}
+                  To: <code className="bg-muted px-1 rounded">{pendingRequest.requested_subdomain}</code>
+                </p>
+              </div>
+              <Badge variant="secondary">Pending</Badge>
+            </div>
+            
+            {pendingRequest.reason && (
+              <div className="text-sm">
+                <p className="text-muted-foreground">Reason:</p>
+                <p className="mt-1">{pendingRequest.reason}</p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Add review notes (optional)"
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                rows={2}
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => approveRequestMutation.mutate({ requestId: pendingRequest.id, notes: reviewNotes })}
+                  disabled={approveRequestMutation.isPending || rejectRequestMutation.isPending}
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => rejectRequestMutation.mutate({ requestId: pendingRequest.id, notes: reviewNotes })}
+                  disabled={approveRequestMutation.isPending || rejectRequestMutation.isPending}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Reject
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <Skeleton className="h-20" />
+        ) : companyDomains?.length === 0 ? (
+          <p className="text-muted-foreground text-center py-4">No domains configured</p>
+        ) : (
+          <div className="space-y-3">
+            {companyDomains?.map((domain) => (
+              <div key={domain.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-mono text-sm">
+                      {domain.subdomain ? `${domain.subdomain}.hrplatform.com` : domain.custom_domain}
+                    </p>
+                    <div className="flex gap-2 mt-1">
+                      {domain.is_primary && (
+                        <Badge variant="default" className="text-xs">Primary</Badge>
+                      )}
+                      {domain.subdomain && (
+                        <Badge variant="secondary" className="text-xs">Subdomain</Badge>
+                      )}
+                      {domain.custom_domain && (
+                        <Badge variant="outline" className="text-xs">Custom</Badge>
+                      )}
+                      {domain.is_verified ? (
+                        <Badge variant="default" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">Pending</Badge>
+                      )}
+                      {!domain.is_active && (
+                        <Badge variant="destructive" className="text-xs">Inactive</Badge>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleToggleActive(domain)}
-                    >
-                      {domain.is_active ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => openEdit(domain)}
-                    >
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => handleDelete(domain.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingDomain ? 'Edit Domain' : 'Add Domain'}</DialogTitle>
-            <DialogDescription>
-              {editingDomain ? 'Update the subdomain or custom domain' : 'Add a subdomain or custom domain for this company'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Subdomain</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={subdomain}
-                  onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="company-name"
-                />
-                <span className="text-sm text-muted-foreground whitespace-nowrap">.hrplatform.com</span>
               </div>
-              <p className="text-xs text-muted-foreground">Subdomains are auto-verified</p>
-            </div>
-
-            <div className="text-center text-sm text-muted-foreground">— or —</div>
-
-            <div className="space-y-2">
-              <Label>Custom Domain</Label>
-              <Input
-                value={customDomain}
-                onChange={(e) => setCustomDomain(e.target.value.toLowerCase())}
-                placeholder="hr.company.com"
-              />
-              <p className="text-xs text-muted-foreground">Custom domains require DNS verification</p>
-            </div>
+            ))}
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? 'Saving...' : editingDomain ? 'Update' : 'Add Domain'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

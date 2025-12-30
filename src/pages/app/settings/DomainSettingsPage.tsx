@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -18,9 +20,22 @@ import {
   ExternalLink,
   Shield,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Edit,
+  Clock,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { format } from 'date-fns';
 
 interface CompanyDomain {
   id: string;
@@ -33,12 +48,31 @@ interface CompanyDomain {
   verified_at: string | null;
 }
 
+interface SubdomainChangeRequest {
+  id: string;
+  current_subdomain: string;
+  requested_subdomain: string;
+  reason: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  review_notes: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
 export default function DomainSettingsPage() {
   const { companyId } = useTenant();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState<string | null>(null);
   const [newDomain, setNewDomain] = useState('');
   const [baseDomain, setBaseDomain] = useState('hrplatform.com');
+  
+  // Subdomain change request state
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [requestedSubdomain, setRequestedSubdomain] = useState('');
+  const [requestReason, setRequestReason] = useState('');
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; message: string } | null>(null);
 
   // Fetch base domain from platform settings
   useEffect(() => {
@@ -72,10 +106,93 @@ export default function DomainSettingsPage() {
     enabled: !!companyId,
   });
 
+  // Fetch subdomain change requests
+  const { data: changeRequests } = useQuery({
+    queryKey: ['subdomain-change-requests', companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subdomain_change_requests')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as SubdomainChangeRequest[];
+    },
+    enabled: !!companyId,
+  });
+
+  const pendingRequest = changeRequests?.find(r => r.status === 'pending');
+  const pastRequests = changeRequests?.filter(r => r.status !== 'pending') || [];
+
+  // Check subdomain availability
+  const checkAvailability = async (subdomain: string) => {
+    if (!subdomain || subdomain.length < 3) {
+      setAvailabilityResult(null);
+      return;
+    }
+
+    setIsCheckingAvailability(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subdomain-availability', {
+        body: { subdomain: subdomain.toLowerCase(), exclude_company_id: companyId },
+      });
+
+      if (error) throw error;
+      setAvailabilityResult(data);
+    } catch (error) {
+      console.error('Error checking availability:', error);
+      setAvailabilityResult({ available: false, message: 'Failed to check availability' });
+    } finally {
+      setIsCheckingAvailability(false);
+    }
+  };
+
+  // Debounce availability check
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (requestedSubdomain) {
+        checkAvailability(requestedSubdomain);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [requestedSubdomain]);
+
+  // Submit subdomain change request
+  const submitRequestMutation = useMutation({
+    mutationFn: async () => {
+      const subdomainRecord = domains?.find(d => d.subdomain);
+      if (!subdomainRecord) throw new Error('No current subdomain found');
+
+      const { error } = await supabase
+        .from('subdomain_change_requests')
+        .insert({
+          company_id: companyId,
+          current_subdomain: subdomainRecord.subdomain,
+          requested_subdomain: requestedSubdomain.toLowerCase(),
+          reason: requestReason || null,
+          requested_by: user?.user_id,
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subdomain-change-requests', companyId] });
+      setShowRequestDialog(false);
+      setRequestedSubdomain('');
+      setRequestReason('');
+      setAvailabilityResult(null);
+      toast.success('Subdomain change request submitted. Waiting for approval.');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to submit request');
+    },
+  });
+
   // Add custom domain mutation
   const addDomainMutation = useMutation({
     mutationFn: async (domain: string) => {
-      // Generate verification token
       const verificationToken = crypto.randomUUID().split('-')[0];
       
       const { data, error } = await supabase
@@ -210,6 +327,15 @@ export default function DomainSettingsPage() {
                     <Copy className="h-4 w-4" />
                   )}
                 </Button>
+                {!pendingRequest && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowRequestDialog(true)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Request Change
+                  </Button>
+                )}
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Badge variant="default" className="gap-1">
@@ -223,6 +349,51 @@ export default function DomainSettingsPage() {
                   </code>
                 </span>
               </div>
+
+              {/* Pending Request Alert */}
+              {pendingRequest && (
+                <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                    <p className="font-medium">Subdomain change request pending</p>
+                    <p className="text-sm mt-1">
+                      Requested: <code className="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{pendingRequest.requested_subdomain}.{baseDomain}</code>
+                    </p>
+                    <p className="text-xs mt-1 text-yellow-600 dark:text-yellow-400">
+                      Submitted {format(new Date(pendingRequest.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Past Requests */}
+              {pastRequests.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-sm font-medium mb-2">Request History</p>
+                  <div className="space-y-2">
+                    {pastRequests.slice(0, 3).map((request) => (
+                      <div key={request.id} className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded">
+                        <div className="flex items-center gap-2">
+                          {request.status === 'approved' ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          )}
+                          <span className="font-mono">{request.requested_subdomain}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={request.status === 'approved' ? 'default' : 'secondary'}>
+                            {request.status}
+                          </Badge>
+                          <span className="text-muted-foreground text-xs">
+                            {format(new Date(request.created_at), 'MMM d, yyyy')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <Alert>
@@ -400,8 +571,8 @@ export default function DomainSettingsPage() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <p>
-            <strong>Subdomain:</strong> Your company automatically gets a subdomain based on your company code.
-            Employees can bookmark this URL for easy access.
+            <strong>Subdomain:</strong> Your company gets a subdomain based on your company code.
+            To change it, submit a request for platform admin approval.
           </p>
           <p>
             <strong>Custom Domain:</strong> Point your own domain to our platform for a fully branded experience.
@@ -415,6 +586,96 @@ export default function DomainSettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Subdomain Change Request Dialog */}
+      <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Subdomain Change</DialogTitle>
+            <DialogDescription>
+              Submit a request to change your company's subdomain. Platform admins will review and approve your request.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Current Subdomain</Label>
+              <div className="px-3 py-2 bg-muted rounded font-mono text-sm">
+                {subdomainRecord?.subdomain}.{baseDomain}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-subdomain">New Subdomain</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="new-subdomain"
+                  value={requestedSubdomain}
+                  onChange={(e) => setRequestedSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="your-company"
+                  className="flex-1"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">.{baseDomain}</span>
+              </div>
+              
+              {/* Availability indicator */}
+              {requestedSubdomain && (
+                <div className="flex items-center gap-2 text-sm">
+                  {isCheckingAvailability ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-muted-foreground">Checking availability...</span>
+                    </>
+                  ) : availabilityResult ? (
+                    availabilityResult.available ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-green-600">{availabilityResult.message}</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 text-red-500" />
+                        <span className="text-red-600">{availabilityResult.message}</span>
+                      </>
+                    )
+                  ) : null}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason for Change (optional)</Label>
+              <Textarea
+                id="reason"
+                value={requestReason}
+                onChange={(e) => setRequestReason(e.target.value)}
+                placeholder="Tell us why you'd like to change your subdomain..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRequestDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => submitRequestMutation.mutate()}
+              disabled={
+                !requestedSubdomain ||
+                requestedSubdomain.length < 3 ||
+                !availabilityResult?.available ||
+                submitRequestMutation.isPending
+              }
+            >
+              {submitRequestMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
