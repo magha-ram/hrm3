@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Eye, Bell, CheckCircle2, XCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Eye, Bell, CheckCircle2, XCircle, AlertCircle, ExternalLink, Globe, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
@@ -222,6 +222,157 @@ function SecretStatusRow({
         <span className="text-xs text-yellow-600">Using default</span>
       )}
     </div>
+  );
+}
+
+interface DomainHealthCheckResult {
+  domain: string;
+  wildcardConfigured: boolean;
+  rootResolvable: boolean;
+  testSubdomainResolvable: boolean;
+  ipAddress: string | null;
+  message: string;
+  details: string[];
+}
+
+function DomainHealthCheckCard({ baseDomain }: { baseDomain: string }) {
+  const [isChecking, setIsChecking] = useState(false);
+  const [result, setResult] = useState<DomainHealthCheckResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const runHealthCheck = async () => {
+    if (!baseDomain) {
+      setError('Please enter a base domain in the branding settings above');
+      return;
+    }
+
+    setIsChecking(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('check-domain-health', {
+        body: { domain: baseDomain },
+      });
+
+      if (fnError) throw fnError;
+      if (data.error) throw new Error(data.error);
+
+      setResult(data as DomainHealthCheckResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Health check failed');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle>Domain Health Check</CardTitle>
+              <CardDescription>Verify DNS is configured for subdomain routing</CardDescription>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={runHealthCheck} 
+            disabled={isChecking || !baseDomain}
+          >
+            {isChecking ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            <span className="ml-2">{isChecking ? 'Checking...' : 'Run Check'}</span>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!baseDomain && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Enter a base domain in the branding settings above to run a health check.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {result && (
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className={`p-4 rounded-lg border ${
+              result.wildcardConfigured && result.rootResolvable 
+                ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800' 
+                : result.rootResolvable 
+                  ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800'
+                  : 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                {result.wildcardConfigured && result.rootResolvable ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                ) : result.rootResolvable ? (
+                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" />
+                )}
+                <span className="font-medium">{result.message}</span>
+              </div>
+              {result.ipAddress && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  IP Address: {result.ipAddress}
+                </p>
+              )}
+            </div>
+
+            {/* Details */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Check Details</h4>
+              <div className="space-y-1 text-sm">
+                {result.details.map((detail, i) => (
+                  <div key={i} className="flex items-start gap-2 text-muted-foreground">
+                    <span className="font-mono">{detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* DNS Instructions if wildcard not configured */}
+            {!result.wildcardConfigured && result.rootResolvable && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-medium mb-2">To enable subdomain routing, add a wildcard DNS record:</p>
+                  <code className="block bg-muted p-2 rounded text-sm">
+                    *.{result.domain} → {result.ipAddress || 'your-server-ip'}
+                  </code>
+                  <p className="text-xs mt-2">
+                    This allows subdomains like company.{result.domain} to resolve to your server.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+
+        {!result && !error && baseDomain && (
+          <p className="text-sm text-muted-foreground">
+            Click "Run Check" to verify that <strong>{baseDomain}</strong> is properly configured for subdomain routing.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -496,6 +647,9 @@ export default function PlatformSettingsPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Domain Health Check */}
+        <DomainHealthCheckCard baseDomain={branding.base_domain} />
 
         {/* Registration Settings */}
         <Card>
