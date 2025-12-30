@@ -261,6 +261,25 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // Create subdomain for the company
+    const { error: domainError } = await supabaseAdmin
+      .from("company_domains")
+      .insert({
+        company_id: company.id,
+        subdomain: slug,
+        is_primary: true,
+        is_verified: true,
+        is_active: true,
+        verified_at: new Date().toISOString(),
+      });
+
+    if (domainError) {
+      console.error("Error creating company domain:", domainError);
+      // Non-fatal, company still functional
+    } else {
+      console.log(`Subdomain created: ${slug}`);
+    }
+
     // Log audit event
     await supabaseAdmin.from("audit_logs").insert({
       company_id: company.id,

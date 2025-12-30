@@ -231,6 +231,56 @@ export type Database = {
         }
         Relationships: []
       }
+      company_domains: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          custom_domain: string | null
+          id: string
+          is_active: boolean | null
+          is_primary: boolean | null
+          is_verified: boolean | null
+          subdomain: string | null
+          updated_at: string | null
+          verification_token: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          custom_domain?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          subdomain?: string | null
+          updated_at?: string | null
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          custom_domain?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          subdomain?: string | null
+          updated_at?: string | null
+          verification_token?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_domains_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_email_settings: {
         Row: {
           api_key: string | null
