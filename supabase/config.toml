@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.freeze-company]
 verify_jwt = true
+
+[functions.check-subscription-health]
+verify_jwt = false
