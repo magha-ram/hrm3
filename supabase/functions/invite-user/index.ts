@@ -132,12 +132,12 @@ serve(async (req: Request): Promise<Response> => {
     // Check if user already exists
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
-      .select("id")
+      .select("id, max_companies")
       .eq("email", body.email.toLowerCase())
       .maybeSingle();
 
     if (existingProfile) {
-      // Check if already a member
+      // Check if already a member of this company
       const { data: existingMember } = await supabaseAdmin
         .from("company_users")
         .select("id")
@@ -149,6 +149,26 @@ serve(async (req: Request): Promise<Response> => {
         return new Response(
           JSON.stringify({ error: "Conflict", message: "User is already a member of this company" }),
           { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check if user has reached their company limit
+      const { count: currentCompanyCount } = await supabaseAdmin
+        .from("company_users")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", existingProfile.id)
+        .eq("is_active", true);
+
+      const maxCompanies = existingProfile.max_companies || 1;
+
+      if ((currentCompanyCount || 0) >= maxCompanies) {
+        console.log(`User ${body.email} has reached company limit: ${currentCompanyCount}/${maxCompanies}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Company Limit Reached", 
+            message: `This user can only belong to ${maxCompanies} company(ies). They need to contact platform support to increase their limit.` 
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
