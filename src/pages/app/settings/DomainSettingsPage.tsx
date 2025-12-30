@@ -27,7 +27,10 @@ import {
   CheckCircle,
   XCircle,
   Settings,
-  HelpCircle
+  HelpCircle,
+  Activity,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -62,6 +65,16 @@ interface SubdomainChangeRequest {
   reviewed_at: string | null;
 }
 
+interface DomainHealthResult {
+  domain: string;
+  wildcardConfigured: boolean;
+  rootResolvable: boolean;
+  testSubdomainResolvable: boolean;
+  ipAddress: string | null;
+  message: string;
+  details: string[];
+}
+
 
 export default function DomainSettingsPage() {
   const { companyId } = useTenant();
@@ -81,6 +94,12 @@ export default function DomainSettingsPage() {
   // DNS Setup dialog state
   const [showDnsSetupDialog, setShowDnsSetupDialog] = useState(false);
   const [selectedDomainForDns, setSelectedDomainForDns] = useState<CompanyDomain | null>(null);
+  
+  // Health check state
+  const [healthResults, setHealthResults] = useState<Record<string, DomainHealthResult>>({});
+  const [checkingHealthFor, setCheckingHealthFor] = useState<string | null>(null);
+  const [showHealthDialog, setShowHealthDialog] = useState(false);
+  const [selectedDomainForHealth, setSelectedDomainForHealth] = useState<CompanyDomain | null>(null);
   
   // Fetch company domains
   const { data: domains, isLoading } = useQuery({
@@ -248,6 +267,44 @@ export default function DomainSettingsPage() {
   // Open external DNS checker
   const openDnsChecker = (domain: string) => {
     window.open(`https://dnschecker.org/#A/${domain}`, '_blank');
+  };
+
+  // Check domain health
+  const checkDomainHealth = async (domain: CompanyDomain) => {
+    if (!domain.custom_domain) return;
+    
+    setCheckingHealthFor(domain.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-domain-health', {
+        body: { domain: domain.custom_domain },
+      });
+      
+      if (error) throw error;
+      
+      setHealthResults(prev => ({
+        ...prev,
+        [domain.id]: data as DomainHealthResult,
+      }));
+      
+      // Show health dialog
+      setSelectedDomainForHealth(domain);
+      setShowHealthDialog(true);
+    } catch (error) {
+      console.error('Health check failed:', error);
+      toast.error('Failed to check domain health');
+    } finally {
+      setCheckingHealthFor(null);
+    }
+  };
+
+  // Open health dialog for a domain
+  const openHealthDetails = (domain: CompanyDomain) => {
+    setSelectedDomainForHealth(domain);
+    setShowHealthDialog(true);
+    // If no cached result, trigger a check
+    if (!healthResults[domain.id]) {
+      checkDomainHealth(domain);
+    }
   };
 
   // Delete domain mutation
@@ -438,60 +495,161 @@ export default function DomainSettingsPage() {
               {customDomains.map((domain) => (
                 <div
                   key={domain.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
+                  className="p-4 border rounded-lg space-y-3"
                 >
-                  <div className="flex items-center gap-3">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-mono text-sm">{domain.custom_domain}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-mono text-sm">{domain.custom_domain}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {domain.is_verified ? (
+                            <Badge variant="default" className="gap-1">
+                              <Check className="h-3 w-3" />
+                              Verified
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Pending Verification
+                            </Badge>
+                          )}
+                          {domain.verified_at && (
+                            <span className="text-xs text-muted-foreground">
+                              since {format(new Date(domain.verified_at), 'MMM d, yyyy')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
                       {domain.is_verified ? (
-                        <Badge variant="default" className="mt-1 gap-1">
-                          <Check className="h-3 w-3" />
-                          Verified
-                        </Badge>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => checkDomainHealth(domain)}
+                            disabled={checkingHealthFor === domain.id}
+                          >
+                            {checkingHealthFor === domain.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Activity className="h-4 w-4 mr-1" />
+                            )}
+                            Check Health
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openDnsSetup(domain)}
+                          >
+                            <Settings className="h-4 w-4 mr-1" />
+                            DNS Records
+                          </Button>
+                        </>
                       ) : (
-                        <Badge variant="secondary" className="mt-1 gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          Pending Verification
-                        </Badge>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openDnsSetup(domain)}
+                          >
+                            <Settings className="h-4 w-4 mr-1" />
+                            Setup DNS
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => verifyDomainMutation.mutate(domain.id)}
+                            disabled={verifyDomainMutation.isPending}
+                          >
+                            {verifyDomainMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                            )}
+                            Verify DNS
+                          </Button>
+                        </>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteDomainMutation.mutate(domain.id)}
+                        disabled={deleteDomainMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {!domain.is_verified && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openDnsSetup(domain)}
-                        >
-                          <Settings className="h-4 w-4 mr-1" />
-                          Setup DNS
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => verifyDomainMutation.mutate(domain.id)}
-                          disabled={verifyDomainMutation.isPending}
-                        >
-                          {verifyDomainMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                          )}
-                          Verify DNS
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteDomainMutation.mutate(domain.id)}
-                      disabled={deleteDomainMutation.isPending}
+                  
+                  {/* Health status indicator for verified domains */}
+                  {domain.is_verified && healthResults[domain.id] && (
+                    <div 
+                      className={`flex items-center gap-2 p-2 rounded text-sm cursor-pointer hover:opacity-80 ${
+                        healthResults[domain.id].rootResolvable 
+                          ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300'
+                          : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300'
+                      }`}
+                      onClick={() => openHealthDetails(domain)}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                      {healthResults[domain.id].rootResolvable ? (
+                        <Wifi className="h-4 w-4" />
+                      ) : (
+                        <WifiOff className="h-4 w-4" />
+                      )}
+                      <span>{healthResults[domain.id].message}</span>
+                    </div>
+                  )}
+
+                  {/* DNS Records display for verified domains */}
+                  {domain.is_verified && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Required DNS Records</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="p-2 bg-muted rounded text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium">A Record</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => copyToClipboard('185.158.133.1', `a-${domain.id}`)}
+                            >
+                              {copied === `a-${domain.id}` ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                          <div className="font-mono">
+                            <span className="text-muted-foreground">@</span> → <span>185.158.133.1</span>
+                          </div>
+                        </div>
+                        <div className="p-2 bg-muted rounded text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium">TXT Record</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => copyToClipboard(domain.verification_token || '', `txt-${domain.id}`)}
+                            >
+                              {copied === `txt-${domain.id}` ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                          <div className="font-mono">
+                            <span className="text-muted-foreground">_hrplatform-verify</span> → <span className="truncate">{domain.verification_token}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -880,6 +1038,186 @@ export default function DomainSettingsPage() {
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Domain Health Check Dialog */}
+      <Dialog open={showHealthDialog} onOpenChange={setShowHealthDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Domain Health Check
+            </DialogTitle>
+            <DialogDescription>
+              DNS health status for your custom domain
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedDomainForHealth && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium mb-1">Domain:</p>
+                <p className="font-mono text-sm">{selectedDomainForHealth.custom_domain}</p>
+              </div>
+
+              {checkingHealthFor === selectedDomainForHealth.id ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : healthResults[selectedDomainForHealth.id] ? (
+                <div className="space-y-4">
+                  {/* Overall Status */}
+                  <div className={`p-4 rounded-lg ${
+                    healthResults[selectedDomainForHealth.id].rootResolvable 
+                      ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      {healthResults[selectedDomainForHealth.id].rootResolvable ? (
+                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      )}
+                      <span className={`font-medium ${
+                        healthResults[selectedDomainForHealth.id].rootResolvable 
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-red-700 dark:text-red-300'
+                      }`}>
+                        {healthResults[selectedDomainForHealth.id].message}
+                      </span>
+                    </div>
+                    {healthResults[selectedDomainForHealth.id].ipAddress && (
+                      <p className="text-sm text-muted-foreground">
+                        Resolves to: <code className="bg-background px-1 rounded">{healthResults[selectedDomainForHealth.id].ipAddress}</code>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Status Checks */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Status Checks</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
+                        {healthResults[selectedDomainForHealth.id].rootResolvable ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500" />
+                        )}
+                        <span>Root domain resolution</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
+                        {healthResults[selectedDomainForHealth.id].wildcardConfigured ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500" />
+                        )}
+                        <span>Wildcard DNS configured</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Details</p>
+                    <div className="bg-muted p-3 rounded-lg space-y-1">
+                      {healthResults[selectedDomainForHealth.id].details.map((detail, idx) => (
+                        <p key={idx} className="text-xs font-mono">
+                          {detail}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Required DNS Records */}
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-sm font-medium">Required DNS Records</p>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium">Type</th>
+                            <th className="px-3 py-2 text-left font-medium">Name</th>
+                            <th className="px-3 py-2 text-left font-medium">Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t">
+                            <td className="px-3 py-2 font-mono">A</td>
+                            <td className="px-3 py-2 font-mono">@</td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono">185.158.133.1</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => copyToClipboard('185.158.133.1', 'health-ip')}
+                                >
+                                  {copied === 'health-ip' ? (
+                                    <Check className="h-3 w-3 text-green-500" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr className="border-t bg-muted/50">
+                            <td className="px-3 py-2 font-mono">TXT</td>
+                            <td className="px-3 py-2 font-mono">_hrplatform-verify</td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono truncate max-w-[120px]">{selectedDomainForHealth.verification_token}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => copyToClipboard(selectedDomainForHealth.verification_token || '', 'health-txt')}
+                                >
+                                  {copied === 'health-txt' ? (
+                                    <Check className="h-3 w-3 text-green-500" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No health data available</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => openDnsChecker(selectedDomainForHealth?.custom_domain || '')}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Check DNS Online
+            </Button>
+            <Button
+              onClick={() => selectedDomainForHealth && checkDomainHealth(selectedDomainForHealth)}
+              disabled={checkingHealthFor === selectedDomainForHealth?.id}
+            >
+              {checkingHealthFor === selectedDomainForHealth?.id ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh
             </Button>
           </DialogFooter>
         </DialogContent>
