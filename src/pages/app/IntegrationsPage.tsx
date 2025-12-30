@@ -8,6 +8,7 @@ import {
   CreditCard, MessageSquare, Mail, Calendar, Database,
   FileText, Users, Zap, ExternalLink
 } from 'lucide-react';
+import { ModuleGuard } from '@/components/ModuleGuard';
 
 interface Integration {
   id: string;
@@ -195,8 +196,9 @@ export default function IntegrationsPage() {
   const connectedCount = integrations.filter(i => i.status === 'connected').length;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <ModuleGuard moduleId="integrations">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Integrations</h1>
           <p className="text-muted-foreground">Connect with your favorite tools and services</p>
@@ -292,6 +294,7 @@ export default function IntegrationsPage() {
           </div>
         </div>
       ))}
-    </div>
+      </div>
+    </ModuleGuard>
   );
 }

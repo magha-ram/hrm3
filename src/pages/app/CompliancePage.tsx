@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useSecurityEvents } from '@/hooks/useAuditLogs';
 import { useSOC2Checks, useMFAStatus } from '@/hooks/useSecurity';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { MFAStatusCard } from '@/components/security/MFASetup';
 import { SupportAccessManager } from '@/components/security/SupportAccessManager';
 import { format } from 'date-fns';
@@ -262,8 +263,9 @@ function SOC2ControlsSection() {
 
 export default function CompliancePage() {
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <ModuleGuard moduleId="compliance">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Compliance & Security</h1>
           <p className="text-muted-foreground">SOC2-friendly security controls and compliance monitoring</p>
@@ -390,6 +392,7 @@ export default function CompliancePage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </ModuleGuard>
   );
 }

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Calendar, Loader2, Check, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { useMyLeaveRequests, usePendingLeaveRequests, useApproveLeaveRequest, useRejectLeaveRequest, useCancelLeaveRequest } from '@/hooks/useLeave';
 import { LeaveRequestForm } from '@/components/leave/LeaveRequestForm';
 import { format } from 'date-fns';
@@ -28,8 +29,9 @@ export default function LeavePage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <ModuleGuard moduleId="leave">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Leave Management</h1>
           <p className="text-muted-foreground">Request and manage time off</p>
@@ -169,6 +171,7 @@ export default function LeavePage() {
           </RoleGate>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </ModuleGuard>
   );
 }
