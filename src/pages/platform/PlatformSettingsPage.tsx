@@ -22,6 +22,8 @@ interface BrandingSettings {
   logo_url: string | null;
   primary_color: string;
   platform_name: string;
+  base_domain: string;
+  support_email: string;
 }
 
 interface RegistrationSettings {
@@ -230,6 +232,8 @@ export default function PlatformSettingsPage() {
     logo_url: null,
     primary_color: '#3b82f6',
     platform_name: 'HR Platform',
+    base_domain: 'hrplatform.com',
+    support_email: 'support@hrplatform.com',
   });
   
   const [registration, setRegistration] = useState<RegistrationSettings>({
@@ -448,6 +452,33 @@ export default function PlatformSettingsPage() {
                     className="flex-1"
                   />
                 </div>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="base_domain">Base Domain</Label>
+                <Input
+                  id="base_domain"
+                  value={branding.base_domain}
+                  onChange={(e) => setBranding({ ...branding, base_domain: e.target.value })}
+                  placeholder="hrplatform.com"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used for company subdomains (e.g., company.{branding.base_domain || 'hrplatform.com'})
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="support_email">Support Email</Label>
+                <Input
+                  id="support_email"
+                  type="email"
+                  value={branding.support_email}
+                  onChange={(e) => setBranding({ ...branding, support_email: e.target.value })}
+                  placeholder="support@hrplatform.com"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Displayed to users for support inquiries
+                </p>
               </div>
             </div>
             <div className="space-y-2">
