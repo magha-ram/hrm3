@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TenantProvider } from "@/contexts/TenantContext";
+import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { lazy, Suspense } from "react";
 
 // Core pages (not lazy - needed immediately)
@@ -84,6 +85,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <TenantProvider>
+              <SessionTimeoutWarning timeoutMinutes={30} warningMinutes={5} />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public routes */}
