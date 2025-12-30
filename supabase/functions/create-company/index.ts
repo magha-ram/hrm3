@@ -184,6 +184,36 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // Get user profile for employee record
+    const { data: userProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("id", user.id)
+      .single();
+
+    // Create employee record for admin user
+    const { error: employeeError } = await supabaseAdmin
+      .from("employees")
+      .insert({
+        company_id: company.id,
+        user_id: user.id,
+        employee_number: "001",
+        first_name: userProfile?.first_name || "Admin",
+        last_name: userProfile?.last_name || "",
+        email: userProfile?.email || user.email,
+        employment_type: "full_time",
+        employment_status: "active",
+        hire_date: new Date().toISOString().split('T')[0],
+        job_title: "Administrator",
+      });
+
+    if (employeeError) {
+      console.error("Error creating employee record:", employeeError);
+      // Non-fatal, company still functional
+    } else {
+      console.log(`Employee record created for admin user: ${user.id}`);
+    }
+
     // Get free plan for trial subscription
     const { data: freePlan } = await supabaseAdmin
       .from("plans")
