@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { UserContext, AppRole, AuthState } from '@/types/auth';
+import { UserContext, AppRole, PlatformAdminRole, AuthState } from '@/types/auth';
 
 interface AuthContextValue extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -144,6 +144,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!session?.user,
     currentCompanyId: user?.current_company_id || null,
     currentRole: user?.current_role || null,
+    isPlatformAdmin: user?.is_platform_admin || false,
+    platformAdminRole: user?.platform_admin_role || null,
     signIn,
     signUp,
     signOut,

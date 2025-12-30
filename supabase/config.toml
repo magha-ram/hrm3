@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.create-super-admin]
 verify_jwt = false
+
+[functions.create-platform-admin]
+verify_jwt = false
