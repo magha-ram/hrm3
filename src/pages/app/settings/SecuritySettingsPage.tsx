@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { SecurityEventsViewer } from '@/components/security/SecurityEventsViewer';
+import { TrustedDevicesManager } from '@/components/security/TrustedDevicesManager';
 
 const SESSION_TIMEOUT_OPTIONS = [
   { value: '15', label: '15 minutes' },
@@ -198,6 +199,9 @@ export default function SecuritySettingsPage() {
           ))}
         </CardContent>
       </Card>
+
+      {/* Trusted Devices */}
+      <TrustedDevicesManager />
 
       {/* Security Events Viewer */}
       <SecurityEventsViewer />

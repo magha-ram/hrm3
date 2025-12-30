@@ -33,23 +33,36 @@ function parseUserAgent(userAgent: string): string {
   return 'Unknown Browser';
 }
 
+function parseOS(userAgent: string): string {
+  if (userAgent.includes('Windows NT 10')) return 'Windows 10/11';
+  if (userAgent.includes('Windows')) return 'Windows';
+  if (userAgent.includes('Mac OS X')) {
+    const match = userAgent.match(/Mac OS X (\d+[._]\d+)/);
+    return match ? `macOS ${match[1].replace('_', '.')}` : 'macOS';
+  }
+  if (userAgent.includes('Linux')) return 'Linux';
+  if (userAgent.includes('Android')) {
+    const match = userAgent.match(/Android (\d+)/);
+    return match ? `Android ${match[1]}` : 'Android';
+  }
+  if (userAgent.includes('iPhone') || userAgent.includes('iPad')) {
+    const match = userAgent.match(/OS (\d+)/);
+    return match ? `iOS ${match[1]}` : 'iOS';
+  }
+  return 'Unknown OS';
+}
+
 function getDeviceFingerprint(userAgent: string): string {
   // Create a simple fingerprint from the user agent
-  // In production, you'd use more sophisticated device fingerprinting
-  const parts = [];
-  
-  // OS detection
-  if (userAgent.includes('Windows')) parts.push('Windows');
-  else if (userAgent.includes('Mac OS')) parts.push('macOS');
-  else if (userAgent.includes('Linux')) parts.push('Linux');
-  else if (userAgent.includes('Android')) parts.push('Android');
-  else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) parts.push('iOS');
-  else parts.push('Unknown OS');
-  
-  // Browser
-  parts.push(parseUserAgent(userAgent));
-  
-  return parts.join(' - ');
+  const os = parseOS(userAgent);
+  const browser = parseUserAgent(userAgent);
+  return `${os} - ${browser}`;
+}
+
+function getDeviceName(userAgent: string): string {
+  const os = parseOS(userAgent);
+  const browser = parseUserAgent(userAgent);
+  return `${browser} on ${os}`;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -89,6 +102,9 @@ serve(async (req: Request): Promise<Response> => {
     const body: CheckLoginRequest = await req.json();
     const currentUserAgent = body.userAgent;
     const currentFingerprint = getDeviceFingerprint(currentUserAgent);
+    const currentBrowser = parseUserAgent(currentUserAgent);
+    const currentOS = parseOS(currentUserAgent);
+    const currentDeviceName = getDeviceName(currentUserAgent);
 
     console.log(`Checking login for user ${user.id} with fingerprint: ${currentFingerprint}`);
 
@@ -107,109 +123,122 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get last 30 days of successful logins for this user
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const { data: recentLogins, error: loginsError } = await supabaseAdmin
-      .from('security_events')
-      .select('user_agent, created_at, metadata')
+    // Check if device exists in trusted_devices table
+    const { data: existingDevice } = await supabaseAdmin
+      .from('trusted_devices')
+      .select('id, is_trusted')
       .eq('user_id', user.id)
-      .eq('event_type', 'login_success')
-      .gte('created_at', thirtyDaysAgo.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .eq('device_fingerprint', currentFingerprint)
+      .single();
 
-    if (loginsError) {
-      console.error('Error fetching recent logins:', loginsError);
+    // Clear is_current flag from all devices for this user
+    await supabaseAdmin
+      .from('trusted_devices')
+      .update({ is_current: false })
+      .eq('user_id', user.id);
+
+    if (existingDevice) {
+      // Device exists - update last_used_at and set as current
+      console.log('Known device found, updating last_used_at');
+      await supabaseAdmin
+        .from('trusted_devices')
+        .update({
+          last_used_at: new Date().toISOString(),
+          is_current: true,
+        })
+        .eq('id', existingDevice.id);
+
       return new Response(
-        JSON.stringify({ suspicious: false, error: loginsError.message }),
+        JSON.stringify({ suspicious: false, reason: 'Known device' }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Skip the current login (first in list) and check if device is known
-    const previousLogins = recentLogins?.slice(1) || [];
-    const knownFingerprints = new Set(
-      previousLogins.map(login => getDeviceFingerprint(login.user_agent || ''))
-    );
+    // Get count of existing devices to determine if this is first login
+    const { count: deviceCount } = await supabaseAdmin
+      .from('trusted_devices')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
 
-    console.log(`Found ${previousLogins.length} previous logins, ${knownFingerprints.size} unique devices`);
-
-    // Check if this is a new device
-    const isNewDevice = previousLogins.length > 0 && !knownFingerprints.has(currentFingerprint);
-    
-    // If this is the first login ever, don't flag as suspicious
-    if (previousLogins.length === 0) {
-      console.log('First login for user, not flagging');
-      return new Response(
-        JSON.stringify({ suspicious: false, reason: 'First login' }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (isNewDevice) {
-      console.log('New device detected, sending security alert');
-
-      const userName = profile.first_name || profile.email.split('@')[0];
-      const loginTime = new Date().toLocaleString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZoneName: 'short'
-      });
-
-      // Log suspicious activity
-      await supabaseAdmin.from('security_events').insert({
-        event_type: 'suspicious_activity',
+    // Add new device to trusted_devices
+    console.log('Adding new device to trusted devices');
+    await supabaseAdmin
+      .from('trusted_devices')
+      .insert({
         user_id: user.id,
-        description: 'Login from new device detected',
-        user_agent: currentUserAgent,
-        severity: 'medium',
-        metadata: {
-          reason: 'new_device',
-          device_fingerprint: currentFingerprint,
-          known_devices: Array.from(knownFingerprints),
-        },
+        device_fingerprint: currentFingerprint,
+        device_name: currentDeviceName,
+        browser: currentBrowser,
+        os: currentOS,
+        is_current: true,
+        is_trusted: true,
       });
 
-      // Send email notification
-      try {
-        const emailService = new EmailService();
-        const result = await emailService.send({
-          template: 'suspicious_login',
-          data: {
-            userName,
-            loginTime,
-            browser: parseUserAgent(currentUserAgent),
-            location: 'Unknown (IP-based geolocation not enabled)',
-            ipAddress: 'Hidden for privacy',
-            reason: 'This login is from a new device we haven\'t seen before',
-            secureAccountUrl: `${Deno.env.get('SITE_URL') || 'https://preview--hr-flow-platform.lovable.app'}/settings/security`,
-          },
-          to: { email: profile.email, name: userName },
-        });
-
-        console.log('Email send result:', result);
-      } catch (emailError) {
-        console.error('Failed to send suspicious login email:', emailError);
-      }
-
+    // If this is the first device, don't flag as suspicious
+    if (!deviceCount || deviceCount === 0) {
+      console.log('First device for user, not flagging as suspicious');
       return new Response(
-        JSON.stringify({ 
-          suspicious: true, 
-          reason: 'new_device',
-          message: 'Login from new device detected'
-        }),
+        JSON.stringify({ suspicious: false, reason: 'First device' }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // New device detected - flag as suspicious and send alert
+    console.log('New device detected, sending security alert');
+
+    const userName = profile.first_name || profile.email.split('@')[0];
+    const loginTime = new Date().toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+
+    // Log suspicious activity
+    await supabaseAdmin.from('security_events').insert({
+      event_type: 'suspicious_activity',
+      user_id: user.id,
+      description: 'Login from new device detected',
+      user_agent: currentUserAgent,
+      severity: 'medium',
+      metadata: {
+        reason: 'new_device',
+        device_fingerprint: currentFingerprint,
+        device_name: currentDeviceName,
+      },
+    });
+
+    // Send email notification
+    try {
+      const emailService = new EmailService();
+      const result = await emailService.send({
+        template: 'suspicious_login',
+        data: {
+          userName,
+          loginTime,
+          browser: currentBrowser,
+          location: 'Unknown (IP-based geolocation not enabled)',
+          ipAddress: 'Hidden for privacy',
+          reason: 'This login is from a new device we haven\'t seen before',
+          secureAccountUrl: `${Deno.env.get('SITE_URL') || 'https://preview--hr-flow-platform.lovable.app'}/settings/security`,
+        },
+        to: { email: profile.email, name: userName },
+      });
+
+      console.log('Email send result:', result);
+    } catch (emailError) {
+      console.error('Failed to send suspicious login email:', emailError);
     }
 
     return new Response(
-      JSON.stringify({ suspicious: false, reason: 'Known device' }),
+      JSON.stringify({ 
+        suspicious: true, 
+        reason: 'new_device',
+        message: 'Login from new device detected'
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

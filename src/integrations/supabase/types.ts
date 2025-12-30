@@ -1572,6 +1572,54 @@ export type Database = {
           },
         ]
       }
+      trusted_devices: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device_fingerprint: string
+          device_name: string
+          first_seen_at: string
+          id: string
+          is_current: boolean | null
+          is_trusted: boolean | null
+          last_used_at: string
+          metadata: Json | null
+          os: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device_fingerprint: string
+          device_name: string
+          first_seen_at?: string
+          id?: string
+          is_current?: boolean | null
+          is_trusted?: boolean | null
+          last_used_at?: string
+          metadata?: Json | null
+          os?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device_fingerprint?: string
+          device_name?: string
+          first_seen_at?: string
+          id?: string
+          is_current?: boolean | null
+          is_trusted?: boolean | null
+          last_used_at?: string
+          metadata?: Json | null
+          os?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
