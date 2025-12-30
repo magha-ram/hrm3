@@ -32,8 +32,9 @@ serve(async (req: Request): Promise<Response> => {
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
+      console.error("Auth error:", authError?.message || "No user found");
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Session expired. Please refresh the page and try again." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
