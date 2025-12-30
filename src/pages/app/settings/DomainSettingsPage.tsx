@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useBaseDomain } from '@/hooks/useBaseDomain';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -62,10 +63,10 @@ interface SubdomainChangeRequest {
 export default function DomainSettingsPage() {
   const { companyId } = useTenant();
   const { user } = useAuth();
+  const { baseDomain } = useBaseDomain();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState<string | null>(null);
   const [newDomain, setNewDomain] = useState('');
-  const [baseDomain, setBaseDomain] = useState('hrplatform.com');
   
   // Subdomain change request state
   const [showRequestDialog, setShowRequestDialog] = useState(false);
@@ -73,23 +74,6 @@ export default function DomainSettingsPage() {
   const [requestReason, setRequestReason] = useState('');
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; message: string } | null>(null);
-
-  // Fetch base domain from platform settings
-  useEffect(() => {
-    const fetchBaseDomain = async () => {
-      const { data } = await supabase
-        .from('platform_settings')
-        .select('value')
-        .eq('key', 'base_domain')
-        .maybeSingle();
-      
-      if (data?.value) {
-        setBaseDomain(String(data.value).replace(/"/g, ''));
-      }
-    };
-    fetchBaseDomain();
-  }, []);
-
   // Fetch company domains
   const { data: domains, isLoading } = useQuery({
     queryKey: ['company-domains', companyId],
