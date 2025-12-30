@@ -21,7 +21,7 @@ export function useEmployees() {
         .from('employees')
         .select(`
           *,
-          department:departments(id, name),
+          department:departments!employees_department_id_fkey(id, name),
           manager:employees!employees_manager_id_fkey(id, first_name, last_name)
         `)
         .eq('company_id', companyId)
@@ -47,7 +47,7 @@ export function useEmployee(employeeId: string | null) {
         .from('employees')
         .select(`
           *,
-          department:departments(id, name),
+          department:departments!employees_department_id_fkey(id, name),
           manager:employees!employees_manager_id_fkey(id, first_name, last_name)
         `)
         .eq('id', employeeId)
