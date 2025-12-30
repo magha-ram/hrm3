@@ -46,6 +46,7 @@ const SecuritySettingsPage = lazy(() => import("./pages/app/settings/SecuritySet
 
 // Utility pages
 const HelpPage = lazy(() => import("./pages/app/HelpPage"));
+const EmailLogsPage = lazy(() => import("./pages/app/EmailLogsPage"));
 // Platform admin pages
 const PlatformDashboardPage = lazy(() => import("./pages/platform/PlatformDashboardPage"));
 const PlatformAdminsPage = lazy(() => import("./pages/platform/PlatformAdminsPage"));
@@ -142,6 +143,7 @@ const App = () => (
                       <Route path="users/invite" element={<InviteUsersPage />} />
                       <Route path="security" element={<SecuritySettingsPage />} />
                     </Route>
+                    <Route path="email-logs" element={<EmailLogsPage />} />
                     <Route path="help" element={<HelpPage />} />
                   </Route>
 

@@ -251,11 +251,14 @@ serve(async (req) => {
     });
 
     // Send email with credentials
+    let emailSent = false;
+    let emailError: string | undefined;
+    
     try {
       const emailService = new EmailService();
       const appUrl = Deno.env.get('APP_URL') || 'https://preview--hrraise.lovable.app';
 
-      await emailService.send({
+      const emailResult = await emailService.send({
         template: 'employee_account_created',
         to: [{ email: employee.email, name: `${employee.first_name} ${employee.last_name}` }],
         data: {
@@ -267,20 +270,44 @@ serve(async (req) => {
           loginUrl: `${appUrl}/auth`,
           loginType: loginType as 'email' | 'employee_id',
         },
+        context: {
+          companyId: company_id,
+          triggeredBy: authUser.id,
+          triggeredFrom: 'create-employee-user',
+          metadata: {
+            employee_id: employee_id,
+            employee_email: employee.email,
+            role: role,
+          },
+        },
       });
 
-      console.log(`Credentials email sent to ${employee.email}`);
-    } catch (emailError) {
-      console.error('Failed to send credentials email:', emailError);
-      // Don't fail the operation, just log the error
+      emailSent = emailResult.success;
+      if (!emailResult.success) {
+        emailError = emailResult.error;
+        console.error('Email sending failed:', emailResult.error);
+      } else {
+        console.log(`Credentials email sent to ${employee.email}`);
+      }
+    } catch (err) {
+      emailError = err instanceof Error ? err.message : 'Unknown email error';
+      console.error('Failed to send credentials email:', err);
     }
 
+    // Return success with email status
+    // If email failed, include the temporary password so admin can share it manually
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'User account created successfully. Login credentials have been sent to the employee\'s email.',
+        message: emailSent 
+          ? 'User account created successfully. Login credentials have been sent to the employee\'s email.'
+          : 'User account created successfully. Email notification failed - please share credentials manually.',
         user_id: newUser.user.id,
         login_type: loginType,
+        email_sent: emailSent,
+        email_error: emailError,
+        // Only include temporary password if email failed (so admin can share it)
+        temporary_password: emailSent ? undefined : temporaryPassword,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

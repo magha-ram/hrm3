@@ -6,7 +6,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES, UTILITY_NAV, SETTINGS_NAV } from '@/config/modules';
 import { hasMinimumRole } from '@/types/auth';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock } from 'lucide-react';
+import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Mail } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -263,6 +263,20 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive('/app/email-logs')} tooltip="Email Logs">
+                    <NavLink 
+                      to="/app/email-logs" 
+                      className="flex items-center gap-2"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <Mail className="h-4 w-4" />
+                      {!collapsed && <span>Email Logs</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive('/app/help')} tooltip="Help & Support">
                   <NavLink 

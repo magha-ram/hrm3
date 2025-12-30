@@ -464,6 +464,83 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          bcc_emails: string[] | null
+          cc_emails: string[] | null
+          company_id: string | null
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          provider: string | null
+          recipient_email: string
+          recipient_name: string | null
+          retry_count: number | null
+          sent_at: string | null
+          status: string
+          subject: string
+          template_type: string | null
+          triggered_by: string | null
+          triggered_from: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          bcc_emails?: string[] | null
+          cc_emails?: string[] | null
+          company_id?: string | null
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          provider?: string | null
+          recipient_email: string
+          recipient_name?: string | null
+          retry_count?: number | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          template_type?: string | null
+          triggered_by?: string | null
+          triggered_from?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          bcc_emails?: string[] | null
+          cc_emails?: string[] | null
+          company_id?: string | null
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          provider?: string | null
+          recipient_email?: string
+          recipient_name?: string | null
+          retry_count?: number | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          template_type?: string | null
+          triggered_by?: string | null
+          triggered_from?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_documents: {
         Row: {
           company_id: string
