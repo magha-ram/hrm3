@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,13 +7,15 @@ import { Progress } from '@/components/ui/progress';
 import { 
   Shield, CheckCircle, AlertTriangle, Clock, FileText,
   Lock, Eye, Users, Server, Key, Database, Globe,
-  ExternalLink, Download
+  ExternalLink, Download, Loader2
 } from 'lucide-react';
 import { useSecurityEvents } from '@/hooks/useAuditLogs';
-import { useSOC2Checks, useMFAStatus } from '@/hooks/useSecurity';
+import { useSOC2Checks, useMFAStatus, useSupportAccess } from '@/hooks/useSecurity';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { MFAStatusCard } from '@/components/security/MFASetup';
 import { SupportAccessManager } from '@/components/security/SupportAccessManager';
+import { exportComplianceReportToCSV } from '@/lib/export-utils';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 interface ComplianceItem {
@@ -262,6 +265,40 @@ function SOC2ControlsSection() {
 }
 
 export default function CompliancePage() {
+  const [isExporting, setIsExporting] = useState(false);
+  const { data: securityEvents } = useSecurityEvents();
+  const { data: mfaStatus } = useMFAStatus();
+  const { data: soc2Data } = useSOC2Checks();
+  const { activeAccess } = useSupportAccess();
+
+  const handleExportReport = async () => {
+    setIsExporting(true);
+    try {
+      const events = (securityEvents || []).map(e => ({
+        id: e.id,
+        created_at: e.created_at,
+        event_type: e.event_type,
+        description: e.description,
+        severity: e.severity,
+        is_resolved: e.is_resolved,
+      }));
+
+      exportComplianceReportToCSV({
+        securityEvents: events,
+        mfaEnabled: mfaStatus?.isVerified || false,
+        supportAccessCount: activeAccess?.length || 0,
+        complianceScore: soc2Data?.score || 0,
+      });
+
+      toast.success('Compliance report exported');
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export compliance report');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <ModuleGuard moduleId="compliance">
       <div className="p-6 space-y-6">
@@ -270,8 +307,12 @@ export default function CompliancePage() {
           <h1 className="text-2xl font-bold">Compliance & Security</h1>
           <p className="text-muted-foreground">SOC2-friendly security controls and compliance monitoring</p>
         </div>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
+        <Button variant="outline" onClick={handleExportReport} disabled={isExporting}>
+          {isExporting ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-2" />
+          )}
           Export Report
         </Button>
       </div>

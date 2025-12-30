@@ -13,6 +13,10 @@ import {
 } from 'lucide-react';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useAuditLogs, useAuditLogStats, useAuditLogTables, AuditLogFilters } from '@/hooks/useAuditLogs';
+import { useTenant } from '@/contexts/TenantContext';
+import { supabase } from '@/integrations/supabase/client';
+import { exportAuditLogsToCSV } from '@/lib/export-utils';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 type AuditAction = 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'export' | 'import';
@@ -101,17 +105,58 @@ export default function AuditLogPage() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<AuditLogFilters>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const pageSize = 50;
 
+  const { companyId } = useTenant();
   const { data, isLoading } = useAuditLogs(filters, page, pageSize);
   const { data: stats } = useAuditLogStats();
   const { data: tables } = useAuditLogTables();
 
   const totalPages = Math.ceil((data?.total || 0) / pageSize);
 
-  const handleExport = () => {
-    // Export functionality would go here
-    console.log('Exporting audit logs...');
+  const handleExport = async () => {
+    if (!companyId) return;
+    
+    setIsExporting(true);
+    try {
+      // Fetch all logs with current filters (up to 10000)
+      let query = supabase
+        .from('audit_logs')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(10000);
+
+      if (filters.action) query = query.eq('action', filters.action);
+      if (filters.tableName) query = query.eq('table_name', filters.tableName);
+      if (filters.startDate) query = query.gte('created_at', filters.startDate);
+      if (filters.endDate) query = query.lte('created_at', filters.endDate);
+
+      const { data: logs, error } = await query;
+      
+      if (error) throw error;
+      if (!logs || logs.length === 0) {
+        toast.info('No audit logs to export');
+        return;
+      }
+
+      exportAuditLogsToCSV(logs);
+      toast.success(`Exported ${logs.length} audit logs`);
+
+      // Log the export action
+      await supabase.from('audit_logs').insert([{
+        company_id: companyId,
+        action: 'export' as const,
+        table_name: 'audit_logs',
+        metadata: { exported_count: logs.length },
+      }]);
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export audit logs');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -127,9 +172,13 @@ export default function AuditLogPage() {
             <Filter className="h-4 w-4 mr-2" />
             Filters
           </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
+          <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Export CSV
           </Button>
         </div>
       </div>
