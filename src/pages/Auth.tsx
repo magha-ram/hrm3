@@ -104,10 +104,16 @@ export default function Auth() {
     }
   };
 
-  if (authLoading) {
+  // Show loading while auth is loading OR when authenticated but user context is still loading
+  if (authLoading || (isAuthenticated && user === null)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          {isAuthenticated && user === null && (
+            <p className="text-sm text-muted-foreground">Loading your account...</p>
+          )}
+        </div>
       </div>
     );
   }
