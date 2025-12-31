@@ -146,7 +146,7 @@ export default function PlatformPlansPage() {
           max_storage_gb: data.max_storage_gb,
           features,
           is_active: data.is_active,
-        })
+        }, { count: 'exact' })
         .eq('id', id);
 
       if (error) throw error;
@@ -200,8 +200,8 @@ export default function PlatformPlansPage() {
       const swapPlan = sortedPlans[swapIndex];
 
       await Promise.all([
-        supabase.from('plans').update({ sort_order: swapPlan.sort_order }).eq('id', currentPlan.id),
-        supabase.from('plans').update({ sort_order: currentPlan.sort_order }).eq('id', swapPlan.id),
+        supabase.from('plans').update({ sort_order: swapPlan.sort_order }, { count: 'exact' }).eq('id', currentPlan.id),
+        supabase.from('plans').update({ sort_order: currentPlan.sort_order }, { count: 'exact' }).eq('id', swapPlan.id),
       ]);
     },
     onSuccess: () => {
@@ -213,7 +213,7 @@ export default function PlatformPlansPage() {
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       const { error } = await supabase
         .from('plans')
-        .update({ is_active: !isActive })
+        .update({ is_active: !isActive }, { count: 'exact' })
         .eq('id', id);
       if (error) throw error;
     },
@@ -222,7 +222,7 @@ export default function PlatformPlansPage() {
       queryClient.invalidateQueries({ queryKey: ['platform-plans'] });
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error('Permission error updating plan status');
     },
   });
 
@@ -387,6 +387,7 @@ export default function PlatformPlansPage() {
                       <TableCell>
                         <Switch
                           checked={plan.is_active}
+                          disabled={toggleActiveMutation.isPending}
                           onCheckedChange={() => toggleActiveMutation.mutate({ id: plan.id, isActive: plan.is_active })}
                         />
                       </TableCell>
