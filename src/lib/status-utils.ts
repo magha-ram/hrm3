@@ -64,9 +64,20 @@ export const jobStatusColors: Record<string, string> = {
   on_hold: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
 };
 
+// Expense status colors
+export const expenseStatusColors: Record<string, string> = {
+  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  reimbursed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+};
+
+// Status type union
+export type StatusType = 'subscription' | 'employment' | 'leave' | 'payroll' | 'review' | 'candidate' | 'job' | 'expense';
+
 // Generic status color getter
-export function getStatusColor(status: string, type: 'subscription' | 'employment' | 'leave' | 'payroll' | 'review' | 'candidate' | 'job' = 'subscription'): string {
-  const colorMaps = {
+export function getStatusColor(status: string, type: StatusType = 'subscription'): string {
+  const colorMaps: Record<StatusType, Record<string, string>> = {
     subscription: subscriptionStatusColors,
     employment: employmentStatusColors,
     leave: leaveStatusColors,
@@ -74,6 +85,7 @@ export function getStatusColor(status: string, type: 'subscription' | 'employmen
     review: reviewStatusColors,
     candidate: candidateStatusColors,
     job: jobStatusColors,
+    expense: expenseStatusColors,
   };
   
   return colorMaps[type][status] || 'bg-muted text-muted-foreground';

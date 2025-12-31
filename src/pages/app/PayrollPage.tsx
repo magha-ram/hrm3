@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { RoleGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
+import { PayslipDownloadButton } from '@/components/payroll/PayslipDownloadButton';
 import { usePayrollRuns, usePayrollEntries, useCreatePayrollRun, useLockPayrollRun, usePayrollStats, useAddPayrollEntry } from '@/hooks/usePayroll';
 import { useEmployees } from '@/hooks/useEmployees';
 import { format } from 'date-fns';
@@ -301,6 +302,7 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
               <TableHead className="text-right">Bonuses</TableHead>
               <TableHead className="text-right">Deductions</TableHead>
               <TableHead className="text-right">Net Pay</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -324,6 +326,12 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
                 </TableCell>
                 <TableCell className="text-right font-semibold">
                   ${Number(entry.net_pay).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <PayslipDownloadButton 
+                    entryId={entry.id} 
+                    employeeName={`${(entry as any).employee?.first_name} ${(entry as any).employee?.last_name}`}
+                  />
                 </TableCell>
               </TableRow>
             ))}
