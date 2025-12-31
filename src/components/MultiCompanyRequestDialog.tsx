@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Building2, Loader2, Plus, Clock, CheckCircle, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -28,7 +28,7 @@ export function MultiCompanyRequestDialog({ trigger }: MultiCompanyRequestDialog
   const [requestedCount, setRequestedCount] = useState("2");
   const [reason, setReason] = useState("");
   const { user } = useAuth();
-  const { toast } = useToast();
+  
 
   const currentMax = user?.max_companies ?? 1;
   const currentCompanyCount = user?.companies?.length ?? 0;
@@ -65,31 +65,20 @@ export function MultiCompanyRequestDialog({ trigger }: MultiCompanyRequestDialog
       return data;
     },
     onSuccess: () => {
-      toast({
-        title: "Request Submitted",
-        description: "Your request has been submitted. Platform administrators will review it shortly.",
-      });
+      toast.success("Your request has been submitted. Platform administrators will review it shortly.");
       setReason("");
       setOpen(false);
       refetchPending();
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (reason.trim().length < 10) {
-      toast({
-        title: "Validation Error",
-        description: "Please provide a reason with at least 10 characters.",
-        variant: "destructive",
-      });
+      toast.error("Please provide a reason with at least 10 characters.");
       return;
     }
     submitRequest.mutate();

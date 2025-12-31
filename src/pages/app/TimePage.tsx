@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ModuleGate, WriteGate, RoleGate } from '@/components/PermissionGate';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTenant } from '@/contexts/TenantContext';
 import { 
@@ -53,7 +54,7 @@ export default function TimePage() {
   const pendingApprovals = teamEntries.filter(e => !e.is_approved && e.total_hours);
 
   return (
-    <ModuleGate module="time_tracking">
+    <ModuleGuard moduleId="time_tracking">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -294,6 +295,6 @@ export default function TimePage() {
           )}
         </Tabs>
       </div>
-    </ModuleGate>
+    </ModuleGuard>
   );
 }

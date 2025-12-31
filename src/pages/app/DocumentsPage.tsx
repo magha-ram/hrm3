@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WriteGate, RoleGate, ModuleGate } from '@/components/PermissionGate';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { DocumentUploadDialog } from '@/components/documents/DocumentUploadDialog';
 import { DocumentList } from '@/components/documents/DocumentList';
 import { DocumentTypeManager } from '@/components/documents/DocumentTypeManager';
@@ -35,7 +36,7 @@ export default function DocumentsPage() {
   const pendingVerificationCount = allDocuments.filter(d => !d.is_verified).length;
 
   return (
-    <ModuleGate module="documents">
+    <ModuleGuard moduleId="documents">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -156,6 +157,6 @@ export default function DocumentsPage() {
           onOpenChange={setUploadOpen}
         />
       </div>
-    </ModuleGate>
+    </ModuleGuard>
   );
 }

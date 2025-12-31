@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ModuleGate, WriteGate, RoleGate } from '@/components/PermissionGate';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { useJobs, useCandidates, usePipelineStats, useUpdateCandidateStatus, useUpdateJob } from '@/hooks/useRecruitment';
 import { useUserRole } from '@/hooks/useUserRole';
 import { JobFormDialog } from '@/components/recruitment/JobFormDialog';
@@ -37,7 +38,7 @@ export default function RecruitmentPage() {
   };
 
   return (
-    <ModuleGate module="recruitment">
+    <ModuleGuard moduleId="recruitment">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -341,6 +342,6 @@ export default function RecruitmentPage() {
         onOpenChange={setJobDialogOpen}
         job={editingJob}
       />
-    </ModuleGate>
+    </ModuleGuard>
   );
 }
