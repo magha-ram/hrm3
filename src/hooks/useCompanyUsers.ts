@@ -46,7 +46,6 @@ export function useCompanyUsers() {
         }
       }
 
-      
       // Map the profile field from separate query
       return (data || []).map(user => ({
         ...user,
@@ -54,5 +53,7 @@ export function useCompanyUsers() {
       })) as CompanyUser[];
     },
     enabled: !!companyId,
+    retry: 2,
+    staleTime: 30000,
   });
 }
