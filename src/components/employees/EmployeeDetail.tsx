@@ -1,17 +1,21 @@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import type { Employee } from '@/hooks/useEmployees';
+import { EducationSection } from './EducationSection';
+import { ExperienceSection } from './ExperienceSection';
 
 interface EmployeeDetailProps {
   employee: Employee & {
     department?: { id: string; name: string } | null;
     manager?: { id: string; first_name: string; last_name: string } | null;
   };
+  canEdit?: boolean;
 }
 
-export function EmployeeDetail({ employee }: EmployeeDetailProps) {
+export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProps) {
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-800',
     on_leave: 'bg-yellow-100 text-yellow-800',
@@ -44,63 +48,79 @@ export function EmployeeDetail({ employee }: EmployeeDetailProps) {
         </div>
       </div>
 
-      <Separator />
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList>
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="education">Education</TabsTrigger>
+          <TabsTrigger value="experience">Experience</TabsTrigger>
+        </TabsList>
 
-      {/* Details Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Employee Number</label>
-          <p className="mt-1">{employee.employee_number}</p>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Work Email</label>
-          <p className="mt-1">{employee.email}</p>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Phone</label>
-          <p className="mt-1">{employee.phone || '-'}</p>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Personal Email</label>
-          <p className="mt-1">{employee.personal_email || '-'}</p>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Department</label>
-          <p className="mt-1">{employee.department?.name || '-'}</p>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Manager</label>
-          <p className="mt-1">
-            {employee.manager 
-              ? `${employee.manager.first_name} ${employee.manager.last_name}` 
-              : '-'}
-          </p>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Hire Date</label>
-          <p className="mt-1">{format(new Date(employee.hire_date), 'MMM d, yyyy')}</p>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Work Location</label>
-          <p className="mt-1">{employee.work_location || '-'}</p>
-        </div>
-      </div>
-
-      {employee.date_of_birth && (
-        <>
-          <Separator />
+        <TabsContent value="details" className="space-y-6 mt-4">
+          {/* Details Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Date of Birth</label>
-              <p className="mt-1">{format(new Date(employee.date_of_birth), 'MMM d, yyyy')}</p>
+              <label className="text-sm font-medium text-muted-foreground">Employee Number</label>
+              <p className="mt-1">{employee.employee_number}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Gender</label>
-              <p className="mt-1">{employee.gender || '-'}</p>
+              <label className="text-sm font-medium text-muted-foreground">Work Email</label>
+              <p className="mt-1">{employee.email}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Phone</label>
+              <p className="mt-1">{employee.phone || '-'}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Personal Email</label>
+              <p className="mt-1">{employee.personal_email || '-'}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Department</label>
+              <p className="mt-1">{employee.department?.name || '-'}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Manager</label>
+              <p className="mt-1">
+                {employee.manager 
+                  ? `${employee.manager.first_name} ${employee.manager.last_name}` 
+                  : '-'}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Hire Date</label>
+              <p className="mt-1">{format(new Date(employee.hire_date), 'MMM d, yyyy')}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">Work Location</label>
+              <p className="mt-1">{employee.work_location || '-'}</p>
             </div>
           </div>
-        </>
-      )}
+
+          {employee.date_of_birth && (
+            <>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Date of Birth</label>
+                  <p className="mt-1">{format(new Date(employee.date_of_birth), 'MMM d, yyyy')}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Gender</label>
+                  <p className="mt-1">{employee.gender || '-'}</p>
+                </div>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="education" className="mt-4">
+          <EducationSection employeeId={employee.id} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="experience" className="mt-4">
+          <ExperienceSection employeeId={employee.id} canEdit={canEdit} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
