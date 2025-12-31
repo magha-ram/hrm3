@@ -252,10 +252,37 @@ export default function PlatformCompanyDetailPage() {
   // Change plan
   const changePlanMutation = useMutation({
     mutationFn: async (newPlanId: string) => {
+      // Get the new plan details to check if it's a paid plan
+      const { data: newPlan } = await supabase
+        .from('plans')
+        .select('price_monthly, price_yearly')
+        .eq('id', newPlanId)
+        .single();
+      
+      const isPaidPlan = newPlan && 
+        (newPlan.price_monthly > 0 || newPlan.price_yearly > 0);
+
       if (subscription) {
+        const now = new Date();
+        const periodEnd = new Date();
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+        
+        const updateData: Record<string, unknown> = { 
+          plan_id: newPlanId,
+          updated_at: now.toISOString(),
+        };
+        
+        // If upgrading to a paid plan, end trial immediately
+        if (isPaidPlan) {
+          updateData.status = 'active';
+          updateData.trial_ends_at = null;
+          updateData.current_period_start = now.toISOString();
+          updateData.current_period_end = periodEnd.toISOString();
+        }
+
         const { error } = await supabase
           .from('company_subscriptions')
-          .update({ plan_id: newPlanId })
+          .update(updateData)
           .eq('id', subscription.id);
 
         if (error) throw error;
@@ -274,7 +301,7 @@ export default function PlatformCompanyDetailPage() {
       }
     },
     onSuccess: () => {
-      toast.success('Plan updated');
+      toast.success('Plan updated successfully');
       queryClient.invalidateQueries({ queryKey: ['platform-company-subscription', companyId] });
     },
     onError: (error: Error) => {
