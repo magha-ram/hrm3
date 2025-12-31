@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Search, Users, Building2, Save, Loader2, Clock, CheckCircle, XCircle, Inbox } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -36,7 +36,7 @@ export default function PlatformUsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<number>(1);
-  const { toast } = useToast();
+  
   const queryClient = useQueryClient();
 
   // Fetch pending requests
@@ -115,18 +115,11 @@ export default function PlatformUsersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-users"] });
-      toast({
-        title: "Updated",
-        description: "User company limit has been updated.",
-      });
+      toast.success("User company limit has been updated.");
       setEditingUserId(null);
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     },
   });
 
@@ -154,17 +147,10 @@ export default function PlatformUsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-multi-company-requests"] });
       queryClient.invalidateQueries({ queryKey: ["platform-users"] });
-      toast({
-        title: "Request Approved",
-        description: "User's company limit has been updated.",
-      });
+      toast.success("User's company limit has been updated.");
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     },
   });
 
@@ -182,17 +168,10 @@ export default function PlatformUsersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-multi-company-requests"] });
-      toast({
-        title: "Request Rejected",
-        description: "The request has been rejected.",
-      });
+      toast.success("The request has been rejected.");
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     },
   });
 

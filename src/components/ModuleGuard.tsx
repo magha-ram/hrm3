@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
-import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { ModuleId } from '@/config/modules';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +12,16 @@ interface ModuleGuardProps {
   children: ReactNode;
 }
 
+/**
+ * ModuleGuard - Page-level protection component
+ * 
+ * Use this to wrap entire pages that require module access.
+ * Shows upgrade prompts or redirects when access is denied.
+ * 
+ * For inline UI elements, use ModuleGate from PermissionGate.tsx instead.
+ */
 export function ModuleGuard({ moduleId, children }: ModuleGuardProps) {
-  const { isLoading } = useTenant();
-  const { moduleAccess, isFrozen } = useModuleAccess();
+  const { isLoading, hasModule, isFrozen, role } = useTenant();
 
   if (isLoading) {
     return (
@@ -25,23 +31,13 @@ export function ModuleGuard({ moduleId, children }: ModuleGuardProps) {
     );
   }
 
-  const access = moduleAccess.find(m => m.module.id === moduleId);
-
-  if (!access) {
-    return <Navigate to="/app/dashboard" replace />;
-  }
-
-  if (access.hasAccess) {
-    return <>{children}</>;
-  }
-
-  // Show appropriate message based on reason
-  if (access.reason === 'frozen') {
+  // Check frozen state first
+  if (isFrozen) {
     return (
       <div className="p-6">
         <Card className="max-w-lg mx-auto">
           <CardHeader className="text-center">
-            <div className="mx-auto p-3 rounded-full bg-blue-100 text-blue-600 w-fit mb-4">
+            <div className="mx-auto p-3 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400 w-fit mb-4">
               <Snowflake className="h-8 w-8" />
             </div>
             <CardTitle>Account Frozen</CardTitle>
@@ -59,18 +55,18 @@ export function ModuleGuard({ moduleId, children }: ModuleGuardProps) {
     );
   }
 
-  if (access.reason === 'no_plan') {
+  // Check module access
+  if (!hasModule(moduleId)) {
     return (
       <div className="p-6">
         <Card className="max-w-lg mx-auto">
           <CardHeader className="text-center">
-            <div className="mx-auto p-3 rounded-full bg-amber-100 text-amber-600 w-fit mb-4">
+            <div className="mx-auto p-3 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-400 w-fit mb-4">
               <Crown className="h-8 w-8" />
             </div>
             <CardTitle>Upgrade Required</CardTitle>
             <CardDescription>
-              The <strong>{access.module.name}</strong> module is not included in your current plan.
-              Upgrade to access this feature.
+              This module is not included in your current plan. Upgrade to access this feature.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
@@ -83,9 +79,6 @@ export function ModuleGuard({ moduleId, children }: ModuleGuardProps) {
     );
   }
 
-  if (access.reason === 'no_role') {
-    return <Navigate to="/unauthorized" replace />;
-  }
-
-  return <Navigate to="/app/dashboard" replace />;
+  // Access granted
+  return <>{children}</>;
 }

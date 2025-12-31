@@ -16,5 +16,17 @@ export { usePlans, useSubscription, useChangePlan, useFreezeCompany, useSubscrip
 export { useSecurityLogger } from './useSecurityLogger';
 export { useSessionTimeout } from './useSessionTimeout';
 
+// Domain hooks
+export { useBaseDomain } from './useBaseDomain';
+export { useDomainCompany } from './useDomainCompany';
+export { useCompanyPrimaryDomain } from './useCompanyPrimaryDomain';
+export { useSubdomainHealth } from './useSubdomainHealth';
+
+// Data hooks
+export { useEmployees } from './useEmployees';
+export { useDepartments } from './useDepartments';
+export { useAllDocuments, useMyDocuments, useDocumentTypes } from './useDocuments';
+export { useDashboardStats } from './useDashboardStats';
+
 // UI hooks
 export { useIsMobile } from './use-mobile';

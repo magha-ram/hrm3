@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
-import { ModuleGate, WriteGate, RoleGate } from '@/components/PermissionGate';
+import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { ModuleGuard } from '@/components/ModuleGuard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { 
   useMyReviews, 
@@ -44,7 +45,7 @@ export default function PerformancePage() {
   const reviewsToAcknowledge = myReviews.filter(r => r.status === 'completed');
 
   return (
-    <ModuleGate module="performance">
+    <ModuleGuard moduleId="performance">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -375,6 +376,6 @@ export default function PerformancePage() {
         onOpenChange={setReviewDetailOpen}
         reviewId={selectedReviewId}
       />
-    </ModuleGate>
+    </ModuleGuard>
   );
 }
