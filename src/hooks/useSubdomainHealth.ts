@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDomainCompany } from './useDomainCompany';
 
+interface DnsResult {
+  provider: string;
+  success: boolean;
+  ip: string | null;
+}
+
 interface SubdomainHealthResult {
   isHealthy: boolean;
   subdomain: string;
@@ -9,6 +15,12 @@ interface SubdomainHealthResult {
   expectedIp: string;
   messages: string[];
   checkedAt: string;
+  // New global DNS fields
+  checkSource: string;
+  googleDnsIp: string | null;
+  cloudflareDnsIp: string | null;
+  propagationStatus: 'complete' | 'partial' | 'pending';
+  dnsResults: DnsResult[];
 }
 
 interface UseSubdomainHealthResult {
@@ -21,7 +33,7 @@ interface UseSubdomainHealthResult {
 
 const CACHE_KEY = 'subdomain_health_cache';
 const DISMISS_KEY = 'subdomain_health_dismissed';
-const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
+const CACHE_DURATION_MS = 15 * 60 * 1000; // 15 minutes (shorter for propagation monitoring)
 
 export function useSubdomainHealth(): UseSubdomainHealthResult {
   const { subdomain, baseDomain, isDomainBased } = useDomainCompany();
@@ -52,14 +64,21 @@ export function useSubdomainHealth(): UseSubdomainHealthResult {
   const checkHealth = useCallback(async () => {
     if (!subdomain || !baseDomain) return;
 
-    // Check cache first
+    // Check cache first (but with shorter duration during propagation)
     const cacheKey = `${CACHE_KEY}_${subdomain}`;
     const cachedData = localStorage.getItem(cacheKey);
     
     if (cachedData) {
       try {
         const { result, cachedAt } = JSON.parse(cachedData);
-        if (Date.now() - new Date(cachedAt).getTime() < CACHE_DURATION_MS) {
+        const cacheAge = Date.now() - new Date(cachedAt).getTime();
+        
+        // Use shorter cache for pending/partial propagation
+        const effectiveCacheDuration = result.propagationStatus === 'complete' 
+          ? CACHE_DURATION_MS * 4 // 1 hour for complete
+          : CACHE_DURATION_MS; // 15 minutes for pending/partial
+        
+        if (cacheAge < effectiveCacheDuration) {
           setHealth(result);
           return;
         }
@@ -89,6 +108,11 @@ export function useSubdomainHealth(): UseSubdomainHealthResult {
         expectedIp: data.expectedIp || '76.76.21.21',
         messages: data.messages || [],
         checkedAt: new Date().toISOString(),
+        checkSource: data.checkSource || 'Global (Google & Cloudflare DNS)',
+        googleDnsIp: data.googleDnsIp || null,
+        cloudflareDnsIp: data.cloudflareDnsIp || null,
+        propagationStatus: data.propagationStatus || 'pending',
+        dnsResults: data.dnsResults || [],
       };
 
       setHealth(result);
