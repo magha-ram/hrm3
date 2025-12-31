@@ -176,7 +176,7 @@ export default function Auth() {
       const { data: employeeData, error: empError } = await supabase
         .rpc('get_employee_login_info', { 
           p_company_id: companyId, 
-          p_employee_number: employeeId.trim() 
+          p_employee_number: employeeId.trim().toUpperCase() 
         });
       
       if (empError || !employeeData || employeeData.length === 0) {
