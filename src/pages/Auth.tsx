@@ -24,6 +24,7 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'employee' | 'admin' | 'signup'>('admin');
   const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
+  const [domainAuthTab, setDomainAuthTab] = useState<'employee' | 'admin'>('employee');
   
   // Admin login form states
   const [email, setEmail] = useState('');
@@ -257,9 +258,8 @@ export default function Auth() {
     );
   }
 
-  // State for domain-based auth tab
-  const [domainAuthTab, setDomainAuthTab] = useState<'employee' | 'admin'>('employee');
 
+  // Domain-based login - simplified UI for company subdomain/custom domain
   // Domain-based login - simplified UI for company subdomain/custom domain
   if (isDomainBased && domainCompany) {
     return (
