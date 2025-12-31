@@ -1,16 +1,25 @@
 import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Calendar, Building2, Briefcase } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, Calendar, Building2, Briefcase, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReadOnlyPageBanner } from '@/components/platform/ImpersonationRestricted';
+import { 
+  AttendanceAnalyticsCard, 
+  ExpenseAnalyticsCard, 
+  LeaveAnalyticsCard, 
+  PayrollAnalyticsCard 
+} from '@/components/analytics/HRAnalyticsCards';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export default function DashboardPage() {
   const { companyName, role, isTrialing, trialDaysRemaining, isFrozen, planName, isImpersonating } = useTenant();
-  const { accessibleModules } = useModuleAccess();
+  const { accessibleModules, canAccessModule } = useModuleAccess();
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
+  const { isHROrAbove } = useUserRole();
 
   const statItems = [
     { 
@@ -104,37 +113,57 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Quick Access */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Quick Access</h2>
-        {accessibleModules.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              No modules available. Contact your administrator for access.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {accessibleModules.slice(0, 8).map(({ module }) => (
-              <Link key={module.id} to={module.path}>
-                <Card className="hover:border-primary/50 transition-colors cursor-pointer group h-full">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        <module.icon className="h-4 w-4" />
+      {/* Tabbed Content: Quick Access & Analytics */}
+      <Tabs defaultValue="quick-access">
+        <TabsList>
+          <TabsTrigger value="quick-access">Quick Access</TabsTrigger>
+          {isHROrAbove && <TabsTrigger value="analytics" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            HR Analytics
+          </TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="quick-access" className="mt-4">
+          {accessibleModules.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No modules available. Contact your administrator for access.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {accessibleModules.slice(0, 8).map(({ module }) => (
+                <Link key={module.id} to={module.path}>
+                  <Card className="hover:border-primary/50 transition-colors cursor-pointer group h-full">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          <module.icon className="h-4 w-4" />
+                        </div>
+                        <CardTitle className="text-sm font-medium">{module.name}</CardTitle>
                       </div>
-                      <CardTitle className="text-sm font-medium">{module.name}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-xs">{module.description}</CardDescription>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="text-xs">{module.description}</CardDescription>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {isHROrAbove && (
+          <TabsContent value="analytics" className="mt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {canAccessModule('time_tracking') && <AttendanceAnalyticsCard />}
+              {canAccessModule('leave') && <LeaveAnalyticsCard />}
+              <ExpenseAnalyticsCard />
+              {canAccessModule('payroll') && <PayrollAnalyticsCard />}
+            </div>
+          </TabsContent>
         )}
-      </div>
+      </Tabs>
     </div>
   );
 }

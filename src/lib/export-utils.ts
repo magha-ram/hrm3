@@ -174,3 +174,130 @@ Jane,Smith,jane.smith@company.com,EMP-002,2024-02-01,Product Manager,full_time,a
   
   downloadFile(template, 'employee-import-template.csv');
 }
+
+/**
+ * Export expenses to CSV
+ */
+export function exportExpensesToCSV(
+  expenses: Array<{
+    expense_date: string;
+    description: string;
+    amount: number;
+    currency: string;
+    status: string;
+    created_at: string;
+    employee?: { first_name: string; last_name: string } | null;
+    category?: { name: string } | null;
+  }>,
+  filename?: string
+) {
+  const csvContent = convertToCSV(expenses, [
+    { key: 'expense_date', label: 'Date', format: (v) => format(new Date(v as string), 'yyyy-MM-dd') },
+    { key: 'employee', label: 'Employee', format: (v) => {
+      const emp = v as { first_name: string; last_name: string } | null;
+      return emp ? `${emp.first_name} ${emp.last_name}` : '';
+    }},
+    { key: 'category', label: 'Category', format: (v) => (v as { name: string } | null)?.name || '' },
+    { key: 'description', label: 'Description' },
+    { key: 'amount', label: 'Amount', format: (v) => String(v || 0) },
+    { key: 'currency', label: 'Currency' },
+    { key: 'status', label: 'Status', format: (v) => String(v).replace('_', ' ') },
+  ]);
+
+  const exportFilename = filename || `expenses-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  downloadFile(csvContent, exportFilename);
+}
+
+/**
+ * Export attendance/time entries to CSV
+ */
+export function exportAttendanceToCSV(
+  entries: Array<{
+    date: string;
+    clock_in: string | null;
+    clock_out: string | null;
+    total_hours: number | null;
+    attendance_status: string | null;
+    late_minutes: number | null;
+    employee?: { first_name: string; last_name: string } | null;
+  }>,
+  filename?: string
+) {
+  const csvContent = convertToCSV(entries, [
+    { key: 'date', label: 'Date' },
+    { key: 'employee', label: 'Employee', format: (v) => {
+      const emp = v as { first_name: string; last_name: string } | null;
+      return emp ? `${emp.first_name} ${emp.last_name}` : '';
+    }},
+    { key: 'clock_in', label: 'Clock In', format: (v) => v ? format(new Date(v as string), 'HH:mm:ss') : '-' },
+    { key: 'clock_out', label: 'Clock Out', format: (v) => v ? format(new Date(v as string), 'HH:mm:ss') : '-' },
+    { key: 'total_hours', label: 'Total Hours', format: (v) => v ? String((v as number).toFixed(2)) : '-' },
+    { key: 'attendance_status', label: 'Status', format: (v) => String(v || 'present').replace('_', ' ') },
+    { key: 'late_minutes', label: 'Late Minutes', format: (v) => v ? String(v) : '0' },
+  ]);
+
+  const exportFilename = filename || `attendance-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  downloadFile(csvContent, exportFilename);
+}
+
+/**
+ * Export leave requests to CSV
+ */
+export function exportLeaveRequestsToCSV(
+  requests: Array<{
+    start_date: string;
+    end_date: string;
+    total_days: number;
+    status: string;
+    reason: string | null;
+    employee?: { first_name: string; last_name: string } | null;
+    leave_type?: { name: string } | null;
+  }>,
+  filename?: string
+) {
+  const csvContent = convertToCSV(requests, [
+    { key: 'employee', label: 'Employee', format: (v) => {
+      const emp = v as { first_name: string; last_name: string } | null;
+      return emp ? `${emp.first_name} ${emp.last_name}` : '';
+    }},
+    { key: 'leave_type', label: 'Leave Type', format: (v) => (v as { name: string } | null)?.name || '' },
+    { key: 'start_date', label: 'Start Date' },
+    { key: 'end_date', label: 'End Date' },
+    { key: 'total_days', label: 'Total Days', format: (v) => String(v || 0) },
+    { key: 'status', label: 'Status', format: (v) => String(v).replace('_', ' ') },
+    { key: 'reason', label: 'Reason', format: (v) => String(v || '') },
+  ]);
+
+  const exportFilename = filename || `leave-requests-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  downloadFile(csvContent, exportFilename);
+}
+
+/**
+ * Export payroll entries to CSV
+ */
+export function exportPayrollToCSV(
+  entries: Array<{
+    base_salary: number;
+    gross_pay: number;
+    net_pay: number;
+    total_deductions: number | null;
+    employee?: { first_name: string; last_name: string; employee_number: string } | null;
+  }>,
+  runName: string,
+  filename?: string
+) {
+  const csvContent = convertToCSV(entries, [
+    { key: 'employee', label: 'Employee', format: (v) => {
+      const emp = v as { first_name: string; last_name: string } | null;
+      return emp ? `${emp.first_name} ${emp.last_name}` : '';
+    }},
+    { key: 'employee', label: 'Employee Number', format: (v) => (v as { employee_number: string } | null)?.employee_number || '' },
+    { key: 'base_salary', label: 'Base Salary', format: (v) => String(v || 0) },
+    { key: 'gross_pay', label: 'Gross Pay', format: (v) => String(v || 0) },
+    { key: 'total_deductions', label: 'Deductions', format: (v) => String(v || 0) },
+    { key: 'net_pay', label: 'Net Pay', format: (v) => String(v || 0) },
+  ]);
+
+  const exportFilename = filename || `payroll-${runName}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  downloadFile(csvContent, exportFilename);
+}
