@@ -180,60 +180,130 @@ async function verifyDomainOnVercel(domain: string): Promise<{ success: boolean;
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   try {
     // Verify required environment variables
     if (!VERCEL_API_TOKEN || !VERCEL_PROJECT_ID) {
       console.error('Missing Vercel configuration');
-      return new Response(
-        JSON.stringify({ error: 'Vercel integration not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'Vercel integration not configured' }, 500);
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+      console.error('Missing Supabase configuration');
+      return json({ error: 'Server misconfigured' }, 500);
+    }
+
+    // --- Auth (manual) ---
+    // We keep config.toml verify_jwt=false, but we still require a valid logged-in user here.
+    const authHeader = req.headers.get('Authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return json({ error: 'Missing Authorization header' }, 401);
+    }
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: userData, error: userError } = await authClient.auth.getUser();
+    if (userError || !userData?.user) {
+      console.error('Auth failed:', userError);
+      return json({ error: 'Invalid JWT' }, 401);
     }
 
     const { action, domain, domainId, companyId } = await req.json();
     console.log(`Processing action: ${action} for domain: ${domain}`);
 
     if (!action || !domain) {
-      return new Response(
-        JSON.stringify({ error: 'Action and domain are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return json({ error: 'Action and domain are required' }, 400);
     }
 
-    // Create Supabase client for database updates
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create service role client for DB updates / authorization checks
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // --- Authorization (platform admin OR company admin for companyId) ---
+    if (!companyId) {
+      return json({ error: 'companyId is required' }, 400);
+    }
+
+    const userId = userData.user.id;
+
+    const { data: platformAdmin, error: platformAdminError } = await adminClient
+      .from('platform_admins')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (platformAdminError) {
+      console.error('Failed to check platform_admins:', platformAdminError);
+      return json({ error: 'Authorization check failed' }, 500);
+    }
+
+    let allowed = Boolean(platformAdmin);
+
+    if (!allowed) {
+      const { data: companyUser, error: companyUserError } = await adminClient
+        .from('company_users')
+        .select('id, role')
+        .eq('user_id', userId)
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .in('role', ['super_admin', 'company_admin'])
+        .maybeSingle();
+
+      if (companyUserError) {
+        console.error('Failed to check company_users:', companyUserError);
+        return json({ error: 'Authorization check failed' }, 500);
+      }
+
+      allowed = Boolean(companyUser);
+    }
+
+    if (!allowed) {
+      return json({ error: 'Not authorized' }, 403);
+    }
 
     let result;
 
     switch (action) {
       case 'add': {
         result = await addDomainToVercel(domain);
-        
-        if (result.success && domainId) {
-          // Update database with Vercel status
-          await supabase
-            .from('company_domains')
-            .update({
-              vercel_status: result.data?.verified ? 'active' : 'pending',
-              vercel_verified: result.data?.verified || false,
-              vercel_error: null,
-            })
-            .eq('id', domainId);
-        } else if (!result.success && domainId) {
-          await supabase
-            .from('company_domains')
-            .update({
-              vercel_status: 'error',
-              vercel_error: result.error,
-            })
-            .eq('id', domainId);
+
+        if (domainId) {
+          if (result.success) {
+            await adminClient
+              .from('company_domains')
+              .update({
+                vercel_status: result.data?.verified ? 'active' : 'pending',
+                vercel_verified: result.data?.verified || false,
+                vercel_error: null,
+              })
+              .eq('id', domainId);
+          } else {
+            await adminClient
+              .from('company_domains')
+              .update({
+                vercel_status: 'error',
+                vercel_error: result.error,
+              })
+              .eq('id', domainId);
+          }
         }
+
         break;
       }
 
@@ -244,61 +314,69 @@ serve(async (req) => {
 
       case 'status': {
         result = await getDomainStatus(domain);
-        
+
         if (result.success && domainId) {
-          const status = result.verified && result.configured ? 'active' : 
-                        result.misconfigured ? 'misconfigured' : 'pending';
-          
-          await supabase
+          const status =
+            result.verified && result.configured
+              ? 'active'
+              : result.misconfigured
+                ? 'misconfigured'
+                : 'pending';
+
+          await adminClient
             .from('company_domains')
             .update({
               vercel_status: status,
               vercel_verified: result.verified || false,
-              is_verified: result.verified && result.configured,
-              is_active: result.verified && result.configured,
+              is_verified: Boolean(result.verified && result.configured),
+              is_active: Boolean(result.verified && result.configured),
               vercel_error: result.misconfigured ? 'DNS misconfigured' : null,
             })
             .eq('id', domainId);
         }
+
         break;
       }
 
       case 'verify': {
+        // If domain isn't attached to the project yet, attach it first, then verify.
+        const preflight = await getDomainStatus(domain);
+        if (!preflight.success && /not found/i.test(preflight.error || '')) {
+          console.log('Domain not found on project; attempting to add it first');
+          const addResult = await addDomainToVercel(domain);
+          if (!addResult.success) {
+            result = { success: false, error: addResult.error || 'Failed to add domain to Vercel' };
+            break;
+          }
+        }
+
         result = await verifyDomainOnVercel(domain);
-        
+
         if (result.success && domainId) {
-          await supabase
+          await adminClient
             .from('company_domains')
             .update({
               vercel_status: result.verified ? 'active' : 'pending',
               vercel_verified: result.verified || false,
-              is_verified: result.verified,
-              is_active: result.verified,
+              is_verified: result.verified || false,
+              is_active: result.verified || false,
               verified_at: result.verified ? new Date().toISOString() : null,
               vercel_error: null,
             })
             .eq('id', domainId);
         }
+
         break;
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: `Unknown action: ${action}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return json({ error: `Unknown action: ${action}` }, 400);
     }
 
-    return new Response(
-      JSON.stringify(result),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
+    return json(result);
   } catch (error) {
     console.error('Error in manage-vercel-domain:', error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
+
