@@ -9,6 +9,9 @@ interface SubdomainHealthResult {
   expectedIp: string;
   messages: string[];
   checkedAt: string;
+  ipMismatch?: boolean;
+  checkSource?: string;
+  propagationStatus?: 'complete' | 'partial' | 'pending';
 }
 
 interface UseSubdomainHealthResult {
@@ -89,6 +92,9 @@ export function useSubdomainHealth(): UseSubdomainHealthResult {
         expectedIp: data.expectedIp || '76.76.21.21',
         messages: data.messages || [],
         checkedAt: new Date().toISOString(),
+        ipMismatch: data.ipMismatch,
+        checkSource: data.checkSource,
+        propagationStatus: data.propagationStatus,
       };
 
       setHealth(result);
