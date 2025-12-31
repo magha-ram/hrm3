@@ -257,6 +257,9 @@ export default function Auth() {
     );
   }
 
+  // State for domain-based auth tab
+  const [domainAuthTab, setDomainAuthTab] = useState<'employee' | 'admin'>('employee');
+
   // Domain-based login - simplified UI for company subdomain/custom domain
   if (isDomainBased && domainCompany) {
     return (
@@ -285,56 +288,124 @@ export default function Auth() {
             </div>
 
             <Card className="border-border/50 shadow-xl">
-              <form onSubmit={handleEmployeeLogin}>
-                <CardHeader>
-                  <CardTitle>Sign In</CardTitle>
-                  <CardDescription>
-                    Enter your Employee ID and password
-                  </CardDescription>
+              <Tabs value={domainAuthTab} onValueChange={(v) => setDomainAuthTab(v as 'employee' | 'admin')}>
+                <CardHeader className="pb-4">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="employee">
+                      <IdCard className="h-4 w-4 mr-2" />
+                      Employee
+                    </TabsTrigger>
+                    <TabsTrigger value="admin">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Admin
+                    </TabsTrigger>
+                  </TabsList>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="domain-employee-id">Employee ID</Label>
-                    <div className="relative">
-                      <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="domain-employee-id"
-                        placeholder="e.g., EMP-001"
-                        value={employeeId}
-                        onChange={(e) => setEmployeeId(e.target.value)}
-                        className="pl-10"
-                        disabled={isLoading}
-                        autoFocus
-                      />
-                    </div>
-                    {errors.employeeId && <p className="text-sm text-destructive">{errors.employeeId}</p>}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="domain-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="domain-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={employeePassword}
-                        onChange={(e) => setEmployeePassword(e.target.value)}
-                        className="pl-10"
-                        disabled={isLoading}
-                      />
-                    </div>
-                    {errors.employeePassword && <p className="text-sm text-destructive">{errors.employeePassword}</p>}
-                  </div>
-                </CardContent>
-                
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Sign In
-                  </Button>
-                </CardFooter>
-              </form>
+
+                {/* Employee Login Tab */}
+                <TabsContent value="employee">
+                  <form onSubmit={handleEmployeeLogin}>
+                    <CardContent className="space-y-4">
+                      <CardDescription className="text-center">
+                        Sign in with your Employee ID
+                      </CardDescription>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="domain-employee-id">Employee ID</Label>
+                        <div className="relative">
+                          <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="domain-employee-id"
+                            placeholder="e.g., EMP-001"
+                            value={employeeId}
+                            onChange={(e) => setEmployeeId(e.target.value)}
+                            className="pl-10"
+                            disabled={isLoading}
+                            autoFocus
+                          />
+                        </div>
+                        {errors.employeeId && <p className="text-sm text-destructive">{errors.employeeId}</p>}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="domain-employee-password">Password</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="domain-employee-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={employeePassword}
+                            onChange={(e) => setEmployeePassword(e.target.value)}
+                            className="pl-10"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        {errors.employeePassword && <p className="text-sm text-destructive">{errors.employeePassword}</p>}
+                      </div>
+                    </CardContent>
+                    
+                    <CardFooter>
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Sign In
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </TabsContent>
+
+                {/* Admin Login Tab */}
+                <TabsContent value="admin">
+                  <form onSubmit={handleAdminLogin}>
+                    <CardContent className="space-y-4">
+                      <CardDescription className="text-center">
+                        Sign in with your admin email
+                      </CardDescription>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="domain-admin-email">Email</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="domain-admin-email"
+                            type="email"
+                            placeholder="admin@company.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="pl-10"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="domain-admin-password">Password</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="domain-admin-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="pl-10"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                      </div>
+                    </CardContent>
+                    
+                    <CardFooter>
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Sign In
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </TabsContent>
+              </Tabs>
             </Card>
             
             <p className="text-center text-sm text-muted-foreground mt-4">
