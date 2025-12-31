@@ -135,6 +135,14 @@ export function useAddPayrollEntry() {
       bonuses?: number;
       tax_deductions?: number;
       benefits_deductions?: number;
+      pf_deduction?: number;
+      days_present?: number;
+      days_absent?: number;
+      days_late?: number;
+      half_days?: number;
+      hours_worked?: number;
+      overtime_hours?: number;
+      total_late_minutes?: number;
       notes?: string;
     }) => {
       if (!companyId) throw new Error('No company selected');
@@ -150,8 +158,22 @@ export function useAddPayrollEntry() {
         throw new Error('Cannot modify a locked payroll run');
       }
 
+      // Check if PF is enabled for the company
+      const { data: company } = await supabase
+        .from('companies')
+        .select('pf_enabled, pf_employee_rate')
+        .eq('id', companyId)
+        .single();
+
+      // Calculate PF deduction if enabled and not provided
+      let pfDeduction = data.pf_deduction || 0;
+      if (company?.pf_enabled && !data.pf_deduction) {
+        const pfRate = company.pf_employee_rate || 0;
+        pfDeduction = (data.base_salary * pfRate) / 100;
+      }
+
       const grossPay = (data.base_salary || 0) + (data.overtime_pay || 0) + (data.bonuses || 0);
-      const totalDeductions = (data.tax_deductions || 0) + (data.benefits_deductions || 0);
+      const totalDeductions = (data.tax_deductions || 0) + (data.benefits_deductions || 0) + pfDeduction;
       const netPay = grossPay - totalDeductions;
 
       const { data: entry, error } = await supabase
@@ -165,9 +187,17 @@ export function useAddPayrollEntry() {
           bonuses: data.bonuses || 0,
           tax_deductions: data.tax_deductions || 0,
           benefits_deductions: data.benefits_deductions || 0,
+          pf_deduction: pfDeduction,
           gross_pay: grossPay,
           total_deductions: totalDeductions,
           net_pay: netPay,
+          days_present: data.days_present,
+          days_absent: data.days_absent,
+          days_late: data.days_late,
+          half_days: data.half_days,
+          hours_worked: data.hours_worked,
+          overtime_hours: data.overtime_hours,
+          total_late_minutes: data.total_late_minutes,
           notes: data.notes,
         })
         .select()

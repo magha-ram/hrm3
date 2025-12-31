@@ -56,7 +56,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
 import { Plus, Receipt, Check, X, Trash2, Settings } from 'lucide-react';
-import { getStatusColor, getStatusLabel } from '@/lib/status-utils';
+import { getStatusColor, formatStatus } from '@/lib/status-utils';
 
 const expenseSchema = z.object({
   category_id: z.string().min(1, 'Category is required'),
@@ -77,8 +77,8 @@ type ExpenseFormValues = z.infer<typeof expenseSchema>;
 type CategoryFormValues = z.infer<typeof categorySchema>;
 
 function ExpenseStatusBadge({ status }: { status: string }) {
-  const colorClass = getStatusColor('expense', status);
-  return <Badge className={colorClass}>{getStatusLabel('expense', status)}</Badge>;
+  const colorClass = getStatusColor(status, 'expense');
+  return <Badge className={colorClass}>{formatStatus(status)}</Badge>;
 }
 
 function ExpenseForm({ onSuccess }: { onSuccess: () => void }) {
@@ -483,7 +483,7 @@ export default function ExpensesPage() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
 
   return (
-    <ModuleGuard moduleId="expenses" fallbackMessage="Expenses module is not available on your plan.">
+    <ModuleGuard moduleId="expenses">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
