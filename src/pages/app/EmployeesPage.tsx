@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Loader2, Upload, Download, FileSpreadsheet, LayoutList, Network } from 'lucide-react';
 import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { useUserRole } from '@/hooks/useUserRole';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useEmployees, useDeleteEmployee, type Employee } from '@/hooks/useEmployees';
 import { useDepartments } from '@/hooks/useDepartments';
@@ -33,6 +34,7 @@ export default function EmployeesPage() {
   const { data: employees, isLoading } = useEmployees();
   const { data: departments } = useDepartments();
   const deleteEmployee = useDeleteEmployee();
+  const { isHROrAbove } = useUserRole();
   
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<EmployeeFiltersState>({
@@ -375,7 +377,7 @@ export default function EmployeesPage() {
             <DialogHeader>
               <DialogTitle>Employee Details</DialogTitle>
             </DialogHeader>
-            {selectedEmployee && <EmployeeDetail employee={selectedEmployee} />}
+            {selectedEmployee && <EmployeeDetail employee={selectedEmployee} canEdit={isHROrAbove} />}
           </DialogContent>
         </Dialog>
 
