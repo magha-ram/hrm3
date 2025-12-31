@@ -13,6 +13,56 @@ interface CreateCompanyRequest {
   size_range?: string;
 }
 
+// Vercel domain registration helper
+async function registerSubdomainWithVercel(
+  subdomain: string, 
+  baseDomain: string
+): Promise<{ success: boolean; verified?: boolean; error?: string }> {
+  const VERCEL_API_TOKEN = Deno.env.get('VERCEL_API_TOKEN');
+  const VERCEL_PROJECT_ID = Deno.env.get('VERCEL_PROJECT_ID');
+  const VERCEL_TEAM_ID = Deno.env.get('VERCEL_TEAM_ID');
+  
+  if (!VERCEL_API_TOKEN || !VERCEL_PROJECT_ID) {
+    console.log('Vercel integration not configured, skipping domain registration');
+    return { success: false, error: 'Vercel integration not configured' };
+  }
+  
+  const fullDomain = `${subdomain}.${baseDomain}`;
+  console.log(`Registering subdomain ${fullDomain} with Vercel project ${VERCEL_PROJECT_ID}`);
+  
+  const teamParam = VERCEL_TEAM_ID ? `&teamId=${VERCEL_TEAM_ID}` : '';
+  const url = `https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/domains?${teamParam}`;
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${VERCEL_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: fullDomain }),
+    });
+
+    const data = await response.json();
+    console.log('Vercel add subdomain response:', JSON.stringify(data));
+
+    if (!response.ok) {
+      // Domain might already exist (e.g., from a wildcard), which is fine
+      if (data.error?.code === 'domain_already_in_use') {
+        console.log('Subdomain already registered with Vercel (likely via wildcard)');
+        return { success: true, verified: true };
+      }
+      return { success: false, error: data.error?.message || 'Failed to add subdomain to Vercel' };
+    }
+
+    // For subdomains under a verified apex domain, Vercel often auto-verifies
+    return { success: true, verified: data.verified ?? false };
+  } catch (error) {
+    console.error('Error registering subdomain with Vercel:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -261,23 +311,54 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // Create subdomain for the company
-    const { error: domainError } = await supabaseAdmin
+    // Get base domain from platform settings or use default
+    let baseDomain = 'thefruitbazaar.com';
+    const { data: domainSettings } = await supabaseAdmin
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "base_domain")
+      .maybeSingle();
+    
+    if (domainSettings?.value && typeof domainSettings.value === 'string') {
+      baseDomain = domainSettings.value;
+    } else if (domainSettings?.value && typeof domainSettings.value === 'object') {
+      const settings = domainSettings.value as { domain?: string };
+      if (settings.domain) baseDomain = settings.domain;
+    }
+
+    // Register subdomain with Vercel first
+    console.log(`Registering subdomain ${slug} with Vercel...`);
+    const vercelResult = await registerSubdomainWithVercel(slug, baseDomain);
+    
+    // Determine initial domain status based on Vercel registration
+    const domainIsVerified = vercelResult.success && vercelResult.verified;
+    const vercelStatus = vercelResult.success 
+      ? (vercelResult.verified ? 'active' : 'pending') 
+      : 'error';
+    const vercelError = vercelResult.success ? null : vercelResult.error;
+
+    // Create subdomain for the company with Vercel status
+    const { data: domainRecord, error: domainError } = await supabaseAdmin
       .from("company_domains")
       .insert({
         company_id: company.id,
         subdomain: slug,
         is_primary: true,
-        is_verified: true,
+        is_verified: domainIsVerified,
         is_active: true,
-        verified_at: new Date().toISOString(),
-      });
+        verified_at: domainIsVerified ? new Date().toISOString() : null,
+        vercel_status: vercelStatus,
+        vercel_verified: vercelResult.verified ?? false,
+        vercel_error: vercelError,
+      })
+      .select()
+      .single();
 
     if (domainError) {
       console.error("Error creating company domain:", domainError);
       // Non-fatal, company still functional
     } else {
-      console.log(`Subdomain created: ${slug}`);
+      console.log(`Subdomain created: ${slug}, Vercel status: ${vercelStatus}`);
     }
 
     // Log audit event
@@ -287,7 +368,12 @@ serve(async (req: Request): Promise<Response> => {
       action: "create",
       table_name: "companies",
       record_id: company.id,
-      new_values: { name: company.name, slug: company.slug },
+      new_values: { 
+        name: company.name, 
+        slug: company.slug,
+        subdomain: slug,
+        vercel_registered: vercelResult.success,
+      },
     });
 
     console.log(`Company provisioning complete: ${company.id}`);
@@ -299,6 +385,13 @@ serve(async (req: Request): Promise<Response> => {
           id: company.id,
           name: company.name,
           slug: company.slug,
+        },
+        domain: {
+          subdomain: slug,
+          fullDomain: `${slug}.${baseDomain}`,
+          vercelRegistered: vercelResult.success,
+          vercelVerified: vercelResult.verified,
+          vercelError: vercelResult.error,
         },
       }),
       { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
