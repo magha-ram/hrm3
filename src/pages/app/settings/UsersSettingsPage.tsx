@@ -38,9 +38,9 @@ function formatRole(role: string) {
 
 export default function UsersSettingsPage() {
   const navigate = useNavigate();
-  const { isFrozen } = useTenant();
+  const { isFrozen, companyId, isLoading: tenantLoading } = useTenant();
   const { user } = useAuth();
-  const { data: users, isLoading, error } = useCompanyUsers();
+  const { data: users, isLoading, error, refetch } = useCompanyUsers();
   const { canManageUsers, reactivateUser } = useUserManagement();
 
   const [changeRoleUser, setChangeRoleUser] = useState<CompanyUser | null>(null);
@@ -55,6 +55,25 @@ export default function UsersSettingsPage() {
       userId: companyUser.user_id,
     });
   };
+
+  // Show loading while tenant context initializes
+  if (tenantLoading || !companyId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Users & Roles</CardTitle>
+          <CardDescription>Manage team members and their access levels</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -82,8 +101,12 @@ export default function UsersSettingsPage() {
           <CardDescription>Manage team members and their access levels</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-destructive">
-            Failed to load users. Please try again.
+          <div className="text-center py-8">
+            <p className="text-destructive mb-4">Failed to load users. Please try again.</p>
+            <Button variant="outline" onClick={() => refetch()}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
           </div>
         </CardContent>
       </Card>
