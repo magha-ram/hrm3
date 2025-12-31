@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChange } from '@/components/security/ForcePasswordChange';
 import { useDomainCompany } from '@/hooks/useDomainCompany';
+import { getCompanyPrimaryDomainUrl } from '@/hooks/useCompanyPrimaryDomain';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(8, 'Password must be at least 8 characters');
@@ -55,12 +56,41 @@ export default function Auth() {
       if (isPlatformAdmin) {
         navigate('/platform/dashboard', { replace: true });
       } else if (currentCompanyId) {
-        navigate('/app/dashboard', { replace: true });
+        // If on base domain (not subdomain/custom domain), redirect to company's primary domain
+        if (!isDomainBased) {
+          redirectToCompanyDomain(currentCompanyId);
+        } else {
+          navigate('/app/dashboard', { replace: true });
+        }
       } else {
         navigate('/onboarding', { replace: true });
       }
     }
-  }, [isAuthenticated, authLoading, currentCompanyId, isPlatformAdmin, user, navigate, showForcePasswordChange]);
+  }, [isAuthenticated, authLoading, currentCompanyId, isPlatformAdmin, user, navigate, showForcePasswordChange, isDomainBased]);
+
+  async function redirectToCompanyDomain(companyId: string) {
+    try {
+      const primaryDomainUrl = await getCompanyPrimaryDomainUrl(companyId);
+      
+      if (primaryDomainUrl) {
+        // Check if we're already on this domain
+        const currentHost = window.location.hostname;
+        const targetUrl = new URL(primaryDomainUrl);
+        
+        if (currentHost !== targetUrl.hostname) {
+          // Redirect to the primary domain with the dashboard path
+          window.location.href = `${primaryDomainUrl}/app/dashboard`;
+          return;
+        }
+      }
+      
+      // Fallback: stay on current domain
+      navigate('/app/dashboard', { replace: true });
+    } catch (error) {
+      console.error('Error redirecting to company domain:', error);
+      navigate('/app/dashboard', { replace: true });
+    }
+  }
 
   const validateAdminForm = (): boolean => {
     const newErrors: Record<string, string> = {};

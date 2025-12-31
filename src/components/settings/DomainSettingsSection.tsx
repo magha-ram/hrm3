@@ -23,7 +23,8 @@ import {
   Copy,
   ExternalLink,
   Activity,
-  Server
+  Server,
+  Star
 } from 'lucide-react';
 
 type HostingProvider = 'lovable' | 'vercel';
@@ -84,6 +85,7 @@ export function DomainSettingsSection() {
   const [requestedSubdomain, setRequestedSubdomain] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [pendingSubdomainRequest, setPendingSubdomainRequest] = useState<any>(null);
+  const [settingPrimary, setSettingPrimary] = useState<string | null>(null);
 
   // Load domains on mount
   useEffect(() => {
@@ -417,6 +419,41 @@ export function DomainSettingsSection() {
     toast.success('Copied to clipboard');
   }
 
+  async function handleSetPrimaryDomain(domainId: string) {
+    if (!companyId) return;
+    
+    setSettingPrimary(domainId);
+    
+    try {
+      // First, clear any existing primary domain for this company
+      await supabase
+        .from('company_domains')
+        .update({ is_primary: false })
+        .eq('company_id', companyId);
+      
+      // Then set the new primary
+      const { error } = await supabase
+        .from('company_domains')
+        .update({ is_primary: true })
+        .eq('id', domainId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setDomains(prev => prev.map(d => ({
+        ...d,
+        is_primary: d.id === domainId
+      })));
+      
+      toast.success('Primary domain updated. Users will be redirected here after login.');
+    } catch (error) {
+      console.error('Error setting primary domain:', error);
+      toast.error('Failed to set primary domain');
+    } finally {
+      setSettingPrimary(null);
+    }
+  }
+
   const platformSubdomain = domains.find(d => d.subdomain && !d.custom_domain);
   const customDomains = domains.filter(d => d.custom_domain);
 
@@ -447,19 +484,49 @@ export function DomainSettingsSection() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <p className="font-medium">{companySlug}.thefruitbazaar.com</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{companySlug}.thefruitbazaar.com</p>
+                {platformSubdomain?.is_primary && (
+                  <Badge variant="default" className="bg-primary/10 text-primary border-primary/20">
+                    <Star className="h-3 w-3 mr-1 fill-current" />
+                    Primary
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
-                This is your default access URL
+                {platformSubdomain?.is_primary 
+                  ? 'Users logging in from the base URL will be redirected here'
+                  : 'Your default access URL'
+                }
               </p>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowSubdomainRequestDialog(true)}
-              disabled={!!pendingSubdomainRequest}
-            >
-              Request Change
-            </Button>
+            <div className="flex items-center gap-2">
+              {platformSubdomain && !platformSubdomain.is_primary && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSetPrimaryDomain(platformSubdomain.id)}
+                  disabled={settingPrimary === platformSubdomain.id}
+                >
+                  {settingPrimary === platformSubdomain.id ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Star className="h-4 w-4 mr-1" />
+                      Set Primary
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowSubdomainRequestDialog(true)}
+                disabled={!!pendingSubdomainRequest}
+              >
+                Request Change
+              </Button>
+            </div>
           </div>
           
           {pendingSubdomainRequest && (
@@ -495,6 +562,12 @@ export function DomainSettingsSection() {
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{domain.custom_domain}</span>
+                        {domain.is_primary && (
+                          <Badge variant="default" className="bg-primary/10 text-primary border-primary/20">
+                            <Star className="h-3 w-3 mr-1 fill-current" />
+                            Primary
+                          </Badge>
+                        )}
                         {domain.is_verified ? (
                           <Badge variant="default" className="bg-green-500/10 text-green-600 border-green-500/20">
                             <CheckCircle className="h-3 w-3 mr-1" />
@@ -564,6 +637,23 @@ export function DomainSettingsSection() {
                           <RefreshCw className="h-4 w-4 animate-spin" />
                         ) : (
                           'Verify'
+                        )}
+                      </Button>
+                    )}
+                    {domain.is_verified && !domain.is_primary && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetPrimaryDomain(domain.id)}
+                        disabled={settingPrimary === domain.id}
+                      >
+                        {settingPrimary === domain.id ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Star className="h-4 w-4 mr-1" />
+                            Set Primary
+                          </>
                         )}
                       </Button>
                     )}
