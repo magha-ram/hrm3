@@ -28,7 +28,8 @@ export type ModuleId =
   | 'payroll'
   | 'compliance'
   | 'audit'
-  | 'integrations';
+  | 'integrations'
+  | 'expenses';
 
 export interface ModuleConfig {
   id: ModuleId;
