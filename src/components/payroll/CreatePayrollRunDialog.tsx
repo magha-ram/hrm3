@@ -1,0 +1,109 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
+import { useCreatePayrollRun } from '@/hooks/usePayroll';
+
+interface CreatePayrollRunDialogProps {
+  onClose: () => void;
+}
+
+export function CreatePayrollRunDialog({ onClose }: CreatePayrollRunDialogProps) {
+  const [formData, setFormData] = useState({
+    name: '',
+    period_start: '',
+    period_end: '',
+    pay_date: '',
+    currency: 'USD',
+    notes: '',
+  });
+
+  const createRun = useCreatePayrollRun();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createRun.mutateAsync(formData);
+    onClose();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Run Name</Label>
+        <Input
+          id="name"
+          placeholder="e.g., January 2025 Payroll"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="period_start">Period Start</Label>
+          <Input
+            id="period_start"
+            type="date"
+            value={formData.period_start}
+            onChange={(e) => setFormData({ ...formData, period_start: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="period_end">Period End</Label>
+          <Input
+            id="period_end"
+            type="date"
+            value={formData.period_end}
+            onChange={(e) => setFormData({ ...formData, period_end: e.target.value })}
+            required
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="pay_date">Pay Date</Label>
+          <Input
+            id="pay_date"
+            type="date"
+            value={formData.pay_date}
+            onChange={(e) => setFormData({ ...formData, pay_date: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="currency">Currency</Label>
+          <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="USD">USD</SelectItem>
+              <SelectItem value="EUR">EUR</SelectItem>
+              <SelectItem value="GBP">GBP</SelectItem>
+              <SelectItem value="PKR">PKR</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes (optional)</Label>
+        <Input
+          id="notes"
+          placeholder="Any additional notes..."
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="submit" disabled={createRun.isPending}>
+          {createRun.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Create Run
+        </Button>
+      </div>
+    </form>
+  );
+}

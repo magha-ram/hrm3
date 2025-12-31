@@ -2,15 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
-import { Tables } from '@/integrations/supabase/types';
+import { 
+  PayrollRun, 
+  PayrollEntry, 
+  PayrollRunWithEntries, 
+  PayrollEntryWithEmployee 
+} from '@/types/payroll';
 
-export type PayrollRun = Tables<'payroll_runs'>;
-export type PayrollEntry = Tables<'payroll_entries'>;
-
-export interface PayrollRunWithEntries extends PayrollRun {
-  entries?: PayrollEntry[];
-  entry_count?: number;
-}
+export type { PayrollRun, PayrollEntry, PayrollRunWithEntries, PayrollEntryWithEmployee };
 
 export function usePayrollRuns() {
   const { companyId } = useTenant();
@@ -60,7 +59,7 @@ export function usePayrollEntries(runId: string | null) {
 
   return useQuery({
     queryKey: ['payroll-entries', runId],
-    queryFn: async () => {
+    queryFn: async (): Promise<PayrollEntryWithEmployee[]> => {
       if (!runId || !companyId) return [];
 
       const { data, error } = await supabase
@@ -73,7 +72,7 @@ export function usePayrollEntries(runId: string | null) {
         .eq('company_id', companyId);
 
       if (error) throw error;
-      return data;
+      return data as PayrollEntryWithEmployee[];
     },
     enabled: !!runId && !!companyId,
   });

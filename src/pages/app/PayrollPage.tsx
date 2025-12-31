@@ -2,139 +2,26 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Plus, DollarSign, Lock, CheckCircle, Clock, AlertCircle,
-  FileText, Users, Calculator, Loader2, Eye, Play
+  Plus, DollarSign, Lock, Clock, FileText,
+  Users, Calculator, Loader2, Eye, Play
 } from 'lucide-react';
 import { RoleGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { PayslipDownloadButton } from '@/components/payroll/PayslipDownloadButton';
-import { usePayrollRuns, usePayrollEntries, useCreatePayrollRun, useLockPayrollRun, usePayrollStats, useAddPayrollEntry } from '@/hooks/usePayroll';
+import { PayrollStatusBadge } from '@/components/payroll/PayrollStatusBadge';
+import { CreatePayrollRunDialog } from '@/components/payroll/CreatePayrollRunDialog';
+import { usePayrollRuns, usePayrollEntries, useLockPayrollRun, usePayrollStats, useAddPayrollEntry } from '@/hooks/usePayroll';
 import { useEmployees } from '@/hooks/useEmployees';
 import { format } from 'date-fns';
+import { PayrollStatus } from '@/types/payroll';
 
-type PayrollStatus = 'draft' | 'processing' | 'completed' | 'failed';
-
-const statusConfig: Record<PayrollStatus, { label: string; color: string; icon: any }> = {
-  draft: { label: 'Draft', color: 'bg-muted text-muted-foreground', icon: FileText },
-  processing: { label: 'Processing', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', icon: Clock },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: CheckCircle },
-  failed: { label: 'Failed', color: 'bg-destructive/20 text-destructive', icon: AlertCircle },
-};
-
-function PayrollStatusBadge({ status }: { status: PayrollStatus }) {
-  const config = statusConfig[status];
-  const Icon = config.icon;
-  return (
-    <Badge className={`${config.color} gap-1`}>
-      <Icon className="h-3 w-3" />
-      {config.label}
-    </Badge>
-  );
-}
-
-function CreateRunDialog({ onClose }: { onClose: () => void }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    period_start: '',
-    period_end: '',
-    pay_date: '',
-    currency: 'USD',
-    notes: '',
-  });
-
-  const createRun = useCreatePayrollRun();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await createRun.mutateAsync(formData);
-    onClose();
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Run Name</Label>
-        <Input
-          id="name"
-          placeholder="e.g., January 2025 Payroll"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="period_start">Period Start</Label>
-          <Input
-            id="period_start"
-            type="date"
-            value={formData.period_start}
-            onChange={(e) => setFormData({ ...formData, period_start: e.target.value })}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="period_end">Period End</Label>
-          <Input
-            id="period_end"
-            type="date"
-            value={formData.period_end}
-            onChange={(e) => setFormData({ ...formData, period_end: e.target.value })}
-            required
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="pay_date">Pay Date</Label>
-          <Input
-            id="pay_date"
-            type="date"
-            value={formData.pay_date}
-            onChange={(e) => setFormData({ ...formData, pay_date: e.target.value })}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="currency">Currency</Label>
-          <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="USD">USD</SelectItem>
-              <SelectItem value="EUR">EUR</SelectItem>
-              <SelectItem value="GBP">GBP</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes (optional)</Label>
-        <Input
-          id="notes"
-          placeholder="Any additional notes..."
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-        />
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-        <Button type="submit" disabled={createRun.isPending}>
-          {createRun.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Create Run
-        </Button>
-      </div>
-    </form>
-  );
-}
+// Removed inline CreateRunDialog - now using extracted component
 
 function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => void }) {
   const { data: entries, isLoading } = usePayrollEntries(runId);
@@ -311,10 +198,10 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
                 <TableCell>
                   <div>
                     <p className="font-medium">
-                      {(entry as any).employee?.first_name} {(entry as any).employee?.last_name}
+                      {entry.employee?.first_name} {entry.employee?.last_name}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {(entry as any).employee?.employee_number}
+                      {entry.employee?.employee_number}
                     </p>
                   </div>
                 </TableCell>
@@ -330,7 +217,7 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
                 <TableCell className="text-right">
                   <PayslipDownloadButton 
                     entryId={entry.id} 
-                    employeeName={`${(entry as any).employee?.first_name} ${(entry as any).employee?.last_name}`}
+                    employeeName={`${entry.employee?.first_name || ''} ${entry.employee?.last_name || ''}`}
                   />
                 </TableCell>
               </TableRow>
@@ -407,7 +294,7 @@ export default function PayrollPage() {
                   Create a new payroll run for a specific pay period
                 </DialogDescription>
               </DialogHeader>
-              <CreateRunDialog onClose={() => setCreateDialogOpen(false)} />
+              <CreatePayrollRunDialog onClose={() => setCreateDialogOpen(false)} />
             </DialogContent>
           </Dialog>
         </RoleGate>
