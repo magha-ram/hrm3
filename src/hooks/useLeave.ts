@@ -3,11 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import type { LeaveRequestWithRelations, EmployeeBasic, LeaveTypeBasic } from '@/types/database';
 
 export type LeaveRequest = Tables<'leave_requests'>;
 export type LeaveRequestInsert = TablesInsert<'leave_requests'>;
 export type LeaveRequestUpdate = TablesUpdate<'leave_requests'>;
 export type LeaveType = Tables<'leave_types'>;
+
+export type { LeaveRequestWithRelations };
 
 export function useLeaveTypes() {
   const { companyId } = useTenant();
