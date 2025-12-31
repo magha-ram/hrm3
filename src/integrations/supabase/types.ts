@@ -183,6 +183,9 @@ export type Database = {
           is_active: boolean | null
           logo_url: string | null
           name: string
+          pf_employee_rate: number | null
+          pf_employer_rate: number | null
+          pf_enabled: boolean | null
           phone: string | null
           settings: Json | null
           size_range: string | null
@@ -202,6 +205,9 @@ export type Database = {
           is_active?: boolean | null
           logo_url?: string | null
           name: string
+          pf_employee_rate?: number | null
+          pf_employer_rate?: number | null
+          pf_enabled?: boolean | null
           phone?: string | null
           settings?: Json | null
           size_range?: string | null
@@ -221,6 +227,9 @@ export type Database = {
           is_active?: boolean | null
           logo_url?: string | null
           name?: string
+          pf_employee_rate?: number | null
+          pf_employer_rate?: number | null
+          pf_enabled?: boolean | null
           phone?: string | null
           settings?: Json | null
           size_range?: string | null
@@ -778,6 +787,129 @@ export type Database = {
           },
         ]
       }
+      employee_education: {
+        Row: {
+          company_id: string
+          created_at: string
+          degree: string
+          description: string | null
+          employee_id: string
+          end_date: string | null
+          field_of_study: string | null
+          grade: string | null
+          id: string
+          institution: string
+          is_current: boolean | null
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          degree: string
+          description?: string | null
+          employee_id: string
+          end_date?: string | null
+          field_of_study?: string | null
+          grade?: string | null
+          id?: string
+          institution: string
+          is_current?: boolean | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          degree?: string
+          description?: string | null
+          employee_id?: string
+          end_date?: string | null
+          field_of_study?: string | null
+          grade?: string | null
+          id?: string
+          institution?: string
+          is_current?: boolean | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_education_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_education_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_experience: {
+        Row: {
+          company_id: string
+          company_name: string
+          created_at: string
+          description: string | null
+          employee_id: string
+          end_date: string | null
+          id: string
+          is_current: boolean | null
+          job_title: string
+          location: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          company_name: string
+          created_at?: string
+          description?: string | null
+          employee_id: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          job_title: string
+          location?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          company_name?: string
+          created_at?: string
+          description?: string | null
+          employee_id?: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          job_title?: string
+          location?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_experience_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_experience_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address: Json | null
@@ -908,6 +1040,139 @@ export type Database = {
           {
             foreignKeyName: "employees_manager_id_fkey"
             columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_categories: {
+        Row: {
+          budget_limit: number | null
+          code: string
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          budget_limit?: number | null
+          code: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          budget_limit?: number | null
+          code?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          category_id: string
+          company_id: string
+          created_at: string
+          currency: string
+          description: string
+          employee_id: string
+          expense_date: string
+          id: string
+          metadata: Json | null
+          receipt_url: string | null
+          reimbursed_at: string | null
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          category_id: string
+          company_id: string
+          created_at?: string
+          currency?: string
+          description: string
+          employee_id: string
+          expense_date: string
+          id?: string
+          metadata?: Json | null
+          receipt_url?: string | null
+          reimbursed_at?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          category_id?: string
+          company_id?: string
+          created_at?: string
+          currency?: string
+          description?: string
+          employee_id?: string
+          expense_date?: string
+          id?: string
+          metadata?: Json | null
+          receipt_url?: string | null
+          reimbursed_at?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_employee_id_fkey"
+            columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
@@ -1275,9 +1540,13 @@ export type Database = {
           commissions: number | null
           company_id: string
           created_at: string
+          days_absent: number | null
+          days_late: number | null
+          days_present: number | null
           employee_id: string
           employer_contributions: Json | null
           gross_pay: number
+          half_days: number | null
           hours_worked: number | null
           id: string
           metadata: Json | null
@@ -1287,9 +1556,11 @@ export type Database = {
           overtime_hours: number | null
           overtime_pay: number | null
           payroll_run_id: string
+          pf_deduction: number | null
           tax_deductions: number | null
           total_deductions: number | null
           total_employer_cost: number | null
+          total_late_minutes: number | null
           updated_at: string
         }
         Insert: {
@@ -1300,9 +1571,13 @@ export type Database = {
           commissions?: number | null
           company_id: string
           created_at?: string
+          days_absent?: number | null
+          days_late?: number | null
+          days_present?: number | null
           employee_id: string
           employer_contributions?: Json | null
           gross_pay?: number
+          half_days?: number | null
           hours_worked?: number | null
           id?: string
           metadata?: Json | null
@@ -1312,9 +1587,11 @@ export type Database = {
           overtime_hours?: number | null
           overtime_pay?: number | null
           payroll_run_id: string
+          pf_deduction?: number | null
           tax_deductions?: number | null
           total_deductions?: number | null
           total_employer_cost?: number | null
+          total_late_minutes?: number | null
           updated_at?: string
         }
         Update: {
@@ -1325,9 +1602,13 @@ export type Database = {
           commissions?: number | null
           company_id?: string
           created_at?: string
+          days_absent?: number | null
+          days_late?: number | null
+          days_present?: number | null
           employee_id?: string
           employer_contributions?: Json | null
           gross_pay?: number
+          half_days?: number | null
           hours_worked?: number | null
           id?: string
           metadata?: Json | null
@@ -1337,9 +1618,11 @@ export type Database = {
           overtime_hours?: number | null
           overtime_pay?: number | null
           payroll_run_id?: string
+          pf_deduction?: number | null
           tax_deductions?: number | null
           total_deductions?: number | null
           total_employer_cost?: number | null
+          total_late_minutes?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1897,6 +2180,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          attendance_status: string | null
           break_minutes: number | null
           clock_in: string | null
           clock_out: string | null
@@ -1906,16 +2190,19 @@ export type Database = {
           employee_id: string
           id: string
           is_approved: boolean | null
+          late_minutes: number | null
           location: Json | null
           metadata: Json | null
           notes: string | null
           overtime_hours: number | null
           total_hours: number | null
+          under_time_minutes: number | null
           updated_at: string
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          attendance_status?: string | null
           break_minutes?: number | null
           clock_in?: string | null
           clock_out?: string | null
@@ -1925,16 +2212,19 @@ export type Database = {
           employee_id: string
           id?: string
           is_approved?: boolean | null
+          late_minutes?: number | null
           location?: Json | null
           metadata?: Json | null
           notes?: string | null
           overtime_hours?: number | null
           total_hours?: number | null
+          under_time_minutes?: number | null
           updated_at?: string
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          attendance_status?: string | null
           break_minutes?: number | null
           clock_in?: string | null
           clock_out?: string | null
@@ -1944,11 +2234,13 @@ export type Database = {
           employee_id?: string
           id?: string
           is_approved?: boolean | null
+          late_minutes?: number | null
           location?: Json | null
           metadata?: Json | null
           notes?: string | null
           overtime_hours?: number | null
           total_hours?: number | null
+          under_time_minutes?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2214,6 +2506,66 @@ export type Database = {
           url?: string
         }
         Relationships: []
+      }
+      work_schedules: {
+        Row: {
+          break_minutes: number
+          company_id: string
+          created_at: string
+          day_of_week: number
+          employee_id: string | null
+          expected_end: string
+          expected_hours: number
+          expected_start: string
+          id: string
+          is_active: boolean
+          is_working_day: boolean
+          updated_at: string
+        }
+        Insert: {
+          break_minutes?: number
+          company_id: string
+          created_at?: string
+          day_of_week: number
+          employee_id?: string | null
+          expected_end?: string
+          expected_hours?: number
+          expected_start?: string
+          id?: string
+          is_active?: boolean
+          is_working_day?: boolean
+          updated_at?: string
+        }
+        Update: {
+          break_minutes?: number
+          company_id?: string
+          created_at?: string
+          day_of_week?: number
+          employee_id?: string | null
+          expected_end?: string
+          expected_hours?: number
+          expected_start?: string
+          id?: string
+          is_active?: boolean
+          is_working_day?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_schedules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
