@@ -2294,6 +2294,13 @@ export type Database = {
         Args: { company_slug: string }
         Returns: string
       }
+      get_company_primary_domain: {
+        Args: { _company_id: string }
+        Returns: {
+          domain_type: string
+          domain_url: string
+        }[]
+      }
       get_current_employee: { Args: { _company_id: string }; Returns: string }
       get_employee_login_info: {
         Args: { p_company_id: string; p_employee_number: string }
