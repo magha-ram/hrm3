@@ -501,6 +501,42 @@ export function DomainSettingsSection() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setIsCheckingHealth(true);
+                  setSelectedDomain(platformSubdomain || null);
+                  setShowHealthDialog(true);
+                  setHealthResult(null);
+                  try {
+                    const { data, error } = await supabase.functions.invoke('check-domain-health', {
+                      body: { 
+                        domain: `${companySlug}.thefruitbazaar.com`,
+                        hostingProvider: 'vercel'
+                      }
+                    });
+                    if (error) throw error;
+                    setHealthResult(data);
+                  } catch (error) {
+                    console.error('Error checking subdomain health:', error);
+                    toast.error('Failed to check subdomain health');
+                    setShowHealthDialog(false);
+                  } finally {
+                    setIsCheckingHealth(false);
+                  }
+                }}
+                disabled={isCheckingHealth}
+              >
+                {isCheckingHealth ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Activity className="h-4 w-4 mr-1" />
+                    Health Check
+                  </>
+                )}
+              </Button>
               {platformSubdomain && !platformSubdomain.is_primary && (
                 <Button
                   variant="outline"
