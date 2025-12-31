@@ -5,17 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface DnsProvider {
-  name: string;
-  url: string;
-}
-
-interface DnsResult {
-  provider: string;
-  success: boolean;
-  ip: string | null;
-}
-
 interface WildcardHealthResult {
   baseDomain: string;
   wildcardConfigured: boolean;
@@ -30,103 +19,34 @@ interface WildcardHealthResult {
   instructions: string[];
   vercelInstructions: string[];
   lovableInstructions: string[];
-  // New global DNS fields
-  checkSource: string;
-  googleDnsIp: string | null;
-  cloudflareDnsIp: string | null;
-  propagationStatus: 'complete' | 'partial' | 'pending';
-  dnsResults: DnsResult[];
 }
 
-const DNS_PROVIDERS: DnsProvider[] = [
-  { name: 'Google', url: 'https://dns.google/resolve' },
-  { name: 'Cloudflare', url: 'https://cloudflare-dns.com/dns-query' },
-];
-
-// Resolve domain using DNS-over-HTTPS (global, consistent results)
-async function resolveDomainGlobal(hostname: string, provider: DnsProvider): Promise<DnsResult> {
+async function checkDnsResolution(hostname: string): Promise<{ resolvable: boolean; ipAddress: string | null }> {
   try {
-    const url = `${provider.url}?name=${hostname}&type=A`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/dns-json',
-      },
+    // Use Google's DNS-over-HTTPS API
+    const response = await fetch(`https://dns.google/resolve?name=${hostname}&type=A`, {
+      headers: { 'Accept': 'application/dns-json' },
     });
-
+    
     if (!response.ok) {
-      console.log(`[${provider.name}] HTTP error for ${hostname}: ${response.status}`);
-      return { provider: provider.name, success: false, ip: null };
+      return { resolvable: false, ipAddress: null };
     }
-
+    
     const data = await response.json();
     
     if (data.Answer && data.Answer.length > 0) {
-      const aRecord = data.Answer.find((record: { type: number; data: string }) => record.type === 1);
-      if (aRecord) {
-        console.log(`[${provider.name}] Resolved ${hostname} to ${aRecord.data}`);
-        return { provider: provider.name, success: true, ip: aRecord.data };
-      }
+      const aRecord = data.Answer.find((r: any) => r.type === 1);
+      return { 
+        resolvable: true, 
+        ipAddress: aRecord?.data || null 
+      };
     }
     
-    console.log(`[${provider.name}] No A record found for ${hostname}`);
-    return { provider: provider.name, success: false, ip: null };
+    return { resolvable: false, ipAddress: null };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.log(`[${provider.name}] DNS resolution failed for ${hostname}:`, errorMessage);
-    return { provider: provider.name, success: false, ip: null };
+    console.error(`DNS check failed for ${hostname}:`, error);
+    return { resolvable: false, ipAddress: null };
   }
-}
-
-// Check DNS resolution using all providers
-async function checkDnsResolutionAllProviders(hostname: string): Promise<{ 
-  resolvable: boolean; 
-  ipAddress: string | null;
-  results: DnsResult[];
-}> {
-  const results = await Promise.all(
-    DNS_PROVIDERS.map(provider => resolveDomainGlobal(hostname, provider))
-  );
-  
-  // Get the best IP (prefer Google, then Cloudflare)
-  const google = results.find(r => r.provider === 'Google' && r.success);
-  const cloudflare = results.find(r => r.provider === 'Cloudflare' && r.success);
-  
-  const ip = google?.ip || cloudflare?.ip || null;
-  
-  return { 
-    resolvable: ip !== null, 
-    ipAddress: ip,
-    results
-  };
-}
-
-// Determine propagation status
-function getPropagationStatus(results: DnsResult[], expectedIp?: string): 'complete' | 'partial' | 'pending' {
-  const successfulResults = results.filter(r => r.success && r.ip);
-  
-  if (successfulResults.length === 0) {
-    return 'pending';
-  }
-  
-  if (expectedIp) {
-    const correctResults = successfulResults.filter(r => r.ip === expectedIp);
-    if (correctResults.length === results.length) {
-      return 'complete';
-    } else if (correctResults.length > 0) {
-      return 'partial';
-    } else {
-      return 'pending';
-    }
-  }
-  
-  // No expected IP - just check if all providers agree
-  if (successfulResults.length === results.length) {
-    const ips = new Set(successfulResults.map(r => r.ip));
-    return ips.size === 1 ? 'complete' : 'partial';
-  }
-  
-  return 'partial';
 }
 
 serve(async (req) => {
@@ -146,18 +66,10 @@ serve(async (req) => {
     }
 
     console.log(`[check-wildcard-health] Checking wildcard DNS for: ${baseDomain}`);
-    console.log('Using global DNS-over-HTTPS (Google & Cloudflare)');
 
-    // Check root domain using both providers
-    const rootCheck = await checkDnsResolutionAllProviders(baseDomain);
-    const googleResult = rootCheck.results.find(r => r.provider === 'Google');
-    const cloudflareResult = rootCheck.results.find(r => r.provider === 'Cloudflare');
-    
-    console.log(`[check-wildcard-health] Root domain check:`, {
-      google: googleResult?.ip,
-      cloudflare: cloudflareResult?.ip,
-      best: rootCheck.ipAddress
-    });
+    // Check root domain
+    const rootCheck = await checkDnsResolution(baseDomain);
+    console.log(`[check-wildcard-health] Root domain check:`, rootCheck);
 
     // Generate random test subdomains to check wildcard
     const testSubdomains = [
@@ -169,11 +81,8 @@ serve(async (req) => {
     const subdomainResults = await Promise.all(
       testSubdomains.map(async (sub) => {
         const hostname = `${sub}.${baseDomain}`;
-        const result = await checkDnsResolutionAllProviders(hostname);
-        console.log(`[check-wildcard-health] Subdomain ${hostname}:`, {
-          resolvable: result.resolvable,
-          ip: result.ipAddress
-        });
+        const result = await checkDnsResolution(hostname);
+        console.log(`[check-wildcard-health] Subdomain ${hostname}:`, result);
         return {
           subdomain: sub,
           resolvable: result.resolvable,
@@ -183,20 +92,14 @@ serve(async (req) => {
     );
 
     // Determine if wildcard is configured
+    // Wildcard is configured if random subdomains resolve to the same IP as root
     const allSubdomainsResolve = subdomainResults.every(r => r.resolvable);
     const allSameIp = subdomainResults.every(r => r.ipAddress === rootCheck.ipAddress);
     const wildcardConfigured = allSubdomainsResolve && allSameIp && rootCheck.resolvable;
 
-    // Determine propagation status
-    const propagationStatus = getPropagationStatus(rootCheck.results);
-
     // Build response message
     let message: string;
-    if (propagationStatus === 'pending') {
-      message = `DNS propagation pending - changes may take 24-72 hours`;
-    } else if (propagationStatus === 'partial') {
-      message = `DNS propagation in progress - some regions updated`;
-    } else if (wildcardConfigured) {
+    if (wildcardConfigured) {
       message = `Wildcard DNS is properly configured for *.${baseDomain}`;
     } else if (rootCheck.resolvable && !allSubdomainsResolve) {
       message = `Root domain resolves but wildcard is not configured`;
@@ -244,21 +147,9 @@ serve(async (req) => {
       instructions,
       vercelInstructions,
       lovableInstructions,
-      checkSource: 'Global (Google & Cloudflare DNS)',
-      googleDnsIp: googleResult?.ip || null,
-      cloudflareDnsIp: cloudflareResult?.ip || null,
-      propagationStatus,
-      dnsResults: rootCheck.results,
     };
 
-    console.log(`[check-wildcard-health] Result:`, { 
-      baseDomain, 
-      wildcardConfigured, 
-      rootResolvable: rootCheck.resolvable,
-      propagationStatus,
-      googleDnsIp: googleResult?.ip,
-      cloudflareDnsIp: cloudflareResult?.ip
-    });
+    console.log(`[check-wildcard-health] Result:`, { baseDomain, wildcardConfigured, rootResolvable: rootCheck.resolvable });
 
     return new Response(
       JSON.stringify(result),
