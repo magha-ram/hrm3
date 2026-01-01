@@ -1,15 +1,22 @@
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Clock, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Employee } from '@/hooks/useEmployees';
 import { EducationSection } from './EducationSection';
 import { ExperienceSection } from './ExperienceSection';
 import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
 import { useEmployeeLeaveBalances } from '@/hooks/useLeaveBalances';
+import { useCurrentEmployeeShift, useEmployeeShiftAssignments } from '@/hooks/useShifts';
 import { EmergencyContactSection, type EmergencyContact } from './EmergencyContactSection';
 import { BankDetailsSection, type BankDetails } from './BankDetailsSection';
+import { ShiftAssignmentDialog } from './ShiftAssignmentDialog';
+import { DAY_LABELS, type DayOfWeek } from '@/types/shifts';
 
 interface EmployeeDetailProps {
   employee: Employee & {
@@ -21,6 +28,9 @@ interface EmployeeDetailProps {
 
 export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProps) {
   const { data: leaveBalances, isLoading: loadingBalances } = useEmployeeLeaveBalances(employee.id);
+  const { data: currentShift } = useCurrentEmployeeShift(employee.id);
+  const { data: shiftHistory } = useEmployeeShiftAssignments(employee.id);
+  const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
   
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-800',
@@ -57,6 +67,7 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
       <Tabs defaultValue="details" className="w-full">
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="shift">Shift</TabsTrigger>
           <TabsTrigger value="leave">Leave</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
           <TabsTrigger value="experience">Experience</TabsTrigger>
@@ -139,6 +150,87 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
               disabled
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="shift" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Current Shift
+              </CardTitle>
+              {canEdit && (
+                <Button variant="outline" size="sm" onClick={() => setShiftDialogOpen(true)}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Change Shift
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {currentShift ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{currentShift.shift.name}</span>
+                    {currentShift.is_temporary && (
+                      <Badge variant="outline">Temporary</Badge>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {format(new Date(`2000-01-01T${currentShift.shift.start_time}`), 'h:mm a')} - {format(new Date(`2000-01-01T${currentShift.shift.end_time}`), 'h:mm a')}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Break: {currentShift.shift.break_duration_minutes} min | Grace: {currentShift.shift.grace_period_minutes} min
+                  </div>
+                  <div className="flex gap-1 flex-wrap mt-2">
+                    {(currentShift.shift.applicable_days as DayOfWeek[]).map((day) => (
+                      <Badge key={day} variant="secondary" className="text-xs">
+                        {DAY_LABELS[day]}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Effective since {format(new Date(currentShift.effective_from), 'MMM d, yyyy')}
+                    {currentShift.effective_to && ` until ${format(new Date(currentShift.effective_to), 'MMM d, yyyy')}`}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">No shift assigned</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {shiftHistory && shiftHistory.length > 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-medium">Shift History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {shiftHistory.slice(1).map((assignment) => (
+                    <div key={assignment.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div>
+                        <p className="font-medium text-sm">{assignment.shift.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(assignment.effective_from), 'MMM d, yyyy')}
+                          {assignment.effective_to && ` - ${format(new Date(assignment.effective_to), 'MMM d, yyyy')}`}
+                        </p>
+                      </div>
+                      {assignment.is_temporary && (
+                        <Badge variant="outline" className="text-xs">Temporary</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <ShiftAssignmentDialog
+            open={shiftDialogOpen}
+            onOpenChange={setShiftDialogOpen}
+            employeeId={employee.id}
+            employeeName={`${employee.first_name} ${employee.last_name}`}
+          />
         </TabsContent>
 
         <TabsContent value="leave" className="mt-4">
