@@ -951,6 +951,60 @@ export type Database = {
           },
         ]
       }
+      document_access_logs: {
+        Row: {
+          access_granted: boolean
+          access_type: string
+          accessed_by: string
+          company_id: string
+          created_at: string
+          denial_reason: string | null
+          document_id: string
+          id: string
+          ip_address_masked: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          access_granted?: boolean
+          access_type: string
+          accessed_by: string
+          company_id: string
+          created_at?: string
+          denial_reason?: string | null
+          document_id: string
+          id?: string
+          ip_address_masked?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          access_granted?: boolean
+          access_type?: string
+          accessed_by?: string
+          company_id?: string
+          created_at?: string
+          denial_reason?: string | null
+          document_id?: string
+          id?: string
+          ip_address_masked?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_access_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_access_logs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "employee_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_types: {
         Row: {
           code: string
@@ -1080,8 +1134,11 @@ export type Database = {
       }
       employee_documents: {
         Row: {
+          access_count: number | null
           company_id: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           document_type_id: string
           employee_id: string
@@ -1090,18 +1147,30 @@ export type Database = {
           file_size: number | null
           file_url: string
           id: string
+          is_latest_version: boolean | null
           is_verified: boolean | null
           issue_date: string | null
+          last_accessed_at: string | null
+          last_accessed_by: string | null
           metadata: Json | null
           mime_type: string | null
+          parent_document_id: string | null
+          rejection_reason: string | null
           title: string
           updated_at: string
+          verification_status:
+            | Database["public"]["Enums"]["document_verification_status"]
+            | null
           verified_at: string | null
           verified_by: string | null
+          version_number: number | null
         }
         Insert: {
+          access_count?: number | null
           company_id: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           document_type_id: string
           employee_id: string
@@ -1110,18 +1179,30 @@ export type Database = {
           file_size?: number | null
           file_url: string
           id?: string
+          is_latest_version?: boolean | null
           is_verified?: boolean | null
           issue_date?: string | null
+          last_accessed_at?: string | null
+          last_accessed_by?: string | null
           metadata?: Json | null
           mime_type?: string | null
+          parent_document_id?: string | null
+          rejection_reason?: string | null
           title: string
           updated_at?: string
+          verification_status?:
+            | Database["public"]["Enums"]["document_verification_status"]
+            | null
           verified_at?: string | null
           verified_by?: string | null
+          version_number?: number | null
         }
         Update: {
+          access_count?: number | null
           company_id?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           document_type_id?: string
           employee_id?: string
@@ -1130,14 +1211,23 @@ export type Database = {
           file_size?: number | null
           file_url?: string
           id?: string
+          is_latest_version?: boolean | null
           is_verified?: boolean | null
           issue_date?: string | null
+          last_accessed_at?: string | null
+          last_accessed_by?: string | null
           metadata?: Json | null
           mime_type?: string | null
+          parent_document_id?: string | null
+          rejection_reason?: string | null
           title?: string
           updated_at?: string
+          verification_status?:
+            | Database["public"]["Enums"]["document_verification_status"]
+            | null
           verified_at?: string | null
           verified_by?: string | null
+          version_number?: number | null
         }
         Relationships: [
           {
@@ -1145,6 +1235,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_documents_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
@@ -1159,6 +1256,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_documents_parent_document_id_fkey"
+            columns: ["parent_document_id"]
+            isOneToOne: false
+            referencedRelation: "employee_documents"
             referencedColumns: ["id"]
           },
           {
@@ -3612,9 +3716,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      company_document_stats: {
+        Row: {
+          company_id: string | null
+          employees_with_documents: number | null
+          expired_documents: number | null
+          pending_documents: number | null
+          total_documents: number | null
+          total_storage_bytes: number | null
+          verified_documents: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      can_access_document: {
+        Args: { _action: string; _document_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_manage_users: { Args: { _company_id: string }; Returns: boolean }
       can_perform_action: {
         Args: { _action?: string; _company_id: string; _module: string }
@@ -3650,6 +3777,10 @@ export type Database = {
       }
       can_view_reports: { Args: { _company_id: string }; Returns: boolean }
       can_write_action: { Args: { _company_id: string }; Returns: boolean }
+      check_document_limits: {
+        Args: { _company_id: string; _employee_id: string }
+        Returns: Json
+      }
       check_subdomain_availability: {
         Args: { subdomain_to_check: string }
         Returns: boolean
@@ -3893,6 +4024,15 @@ export type Database = {
         }
         Returns: string
       }
+      log_document_access: {
+        Args: {
+          _access_type: string
+          _document_id: string
+          _ip_address?: string
+          _user_agent?: string
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: {
           _company_id: string
@@ -3928,6 +4068,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      soft_delete_document: {
+        Args: { _document_id: string; _employee_id: string }
+        Returns: boolean
+      }
       transition_expired_trials: { Args: never; Returns: number }
       truncate_user_agent: { Args: { ua: string }; Returns: string }
       validate_company_creation_link: {
@@ -3946,6 +4090,15 @@ export type Database = {
       }
       validate_tenant_access: {
         Args: { _company_id: string }
+        Returns: boolean
+      }
+      verify_document: {
+        Args: {
+          _document_id: string
+          _rejection_reason?: string
+          _status: Database["public"]["Enums"]["document_verification_status"]
+          _verifier_employee_id: string
+        }
         Returns: boolean
       }
     }
@@ -3973,6 +4126,11 @@ export type Database = {
         | "hired"
         | "rejected"
         | "withdrawn"
+      document_verification_status:
+        | "pending"
+        | "verified"
+        | "rejected"
+        | "expired"
       employment_status: "active" | "on_leave" | "terminated" | "suspended"
       employment_type:
         | "full_time"
@@ -4213,6 +4371,12 @@ export const Constants = {
         "hired",
         "rejected",
         "withdrawn",
+      ],
+      document_verification_status: [
+        "pending",
+        "verified",
+        "rejected",
+        "expired",
       ],
       employment_status: ["active", "on_leave", "terminated", "suspended"],
       employment_type: [
