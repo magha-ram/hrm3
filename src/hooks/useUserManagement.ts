@@ -192,19 +192,32 @@ export function useUserManagement() {
     mutationFn: async (params: RemoveUserParams) => {
       if (!companyId) throw new Error('No company selected');
 
-      const { error } = await supabase
-        .from('company_users')
-        .update({ is_active: true, updated_at: new Date().toISOString() })
-        .eq('id', params.companyUserId)
-        .eq('company_id', companyId);
+      const { data, error } = await supabase.functions.invoke('reactivate-user', {
+        body: {
+          company_user_id: params.companyUserId,
+          user_id: params.userId,
+          company_id: companyId,
+        },
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Reactivate user error:', error);
+        throw new Error(error.message || 'Failed to reactivate user');
+      }
 
-      return { success: true };
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to reactivate user');
+      }
+
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['company-users', companyId] });
-      toast.success('User reactivated');
+      if (data.email_sent) {
+        toast.success('User reactivated. New login credentials sent via email.');
+      } else {
+        toast.success('User reactivated. Email notification failed - please share credentials manually.');
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to reactivate user');
