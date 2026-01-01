@@ -164,16 +164,15 @@ export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId
         parentDocumentId,
       });
 
-      // Step 2: Upload file using signed URL
-      const uploadResponse = await fetch(uploadInfo.uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
+      // Step 2: Upload file using Supabase Storage signed URL
+      const { error: uploadError } = await supabase.storage
+        .from('employee-documents')
+        .uploadToSignedUrl(uploadInfo.storagePath, uploadInfo.uploadToken, file, {
+          contentType: file.type,
+        });
 
-      if (!uploadResponse.ok) {
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
         throw new Error('Failed to upload file to storage');
       }
 
