@@ -11,7 +11,7 @@ const DISMISS_TIMESTAMP_KEY = 'trial-banner-dismissed-at';
 const URGENT_RESHOW_HOURS = 1;
 
 export function TrialBanner() {
-  const { isTrialing, isPastDue, trialDaysRemaining, isAdmin, planName } = useTenant();
+  const { isTrialing, isTrialExpired, isPastDue, trialDaysRemaining, trialTotalDays, isAdmin, planName } = useTenant();
   const [isDismissed, setIsDismissed] = useState(false);
 
   // Check if banner should be shown based on session storage
@@ -84,15 +84,16 @@ export function TrialBanner() {
     );
   }
 
-  // Don't show trial banner if not trialing, no days remaining, or dismissed
-  if (!isTrialing || trialDaysRemaining === null || isDismissed) return null;
+  // Don't show trial banner if not trialing, trial expired, no days remaining, or dismissed
+  // Trial expired has its own banner (TrialExpiredBanner)
+  if (!isTrialing || isTrialExpired || trialDaysRemaining === null || isDismissed) return null;
 
   // Determine urgency level
   const isUrgent = trialDaysRemaining <= 3;
   const isWarning = trialDaysRemaining <= 7 && trialDaysRemaining > 3;
   
-  // Calculate progress (14 day trial assumed)
-  const totalTrialDays = 14;
+  // Calculate progress using actual trial total days (no more hardcoded 14)
+  const totalTrialDays = trialTotalDays || 14;
   const daysUsed = totalTrialDays - trialDaysRemaining;
   const progressPercent = Math.min((daysUsed / totalTrialDays) * 100, 100);
 

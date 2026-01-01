@@ -4,6 +4,7 @@ import { AppSidebar } from './AppSidebar';
 import { AppHeader } from './AppHeader';
 import { FrozenBanner } from './FrozenBanner';
 import { TrialBanner } from './TrialBanner';
+import { TrialExpiredBanner } from './TrialExpiredBanner';
 import { ImpersonationBanner } from '@/components/platform/ImpersonationBanner';
 import { SubdomainHealthBanner } from '@/components/domain/SubdomainHealthBanner';
 import { PermissionProvider } from '@/contexts/PermissionContext';
@@ -31,6 +32,7 @@ export function AppLayout() {
             <SubdomainHealthBanner />
             <AppHeader />
             <FrozenBanner />
+            <TrialExpiredBanner />
             <TrialBanner />
             <main className="flex-1 overflow-auto">
               <Outlet />

@@ -777,6 +777,7 @@ export type Database = {
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           trial_ends_at: string | null
+          trial_total_days: number | null
           updated_at: string
         }
         Insert: {
@@ -793,6 +794,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           trial_ends_at?: string | null
+          trial_total_days?: number | null
           updated_at?: string
         }
         Update: {
@@ -809,6 +811,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           trial_ends_at?: string | null
+          trial_total_days?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2624,6 +2627,9 @@ export type Database = {
           price_monthly: number
           price_yearly: number
           sort_order: number | null
+          trial_default_days: number | null
+          trial_enabled: boolean | null
+          trial_restrictions: Json | null
           updated_at: string
         }
         Insert: {
@@ -2640,6 +2646,9 @@ export type Database = {
           price_monthly?: number
           price_yearly?: number
           sort_order?: number | null
+          trial_default_days?: number | null
+          trial_enabled?: boolean | null
+          trial_restrictions?: Json | null
           updated_at?: string
         }
         Update: {
@@ -2656,6 +2665,9 @@ export type Database = {
           price_monthly?: number
           price_yearly?: number
           sort_order?: number | null
+          trial_default_days?: number | null
+          trial_enabled?: boolean | null
+          trial_restrictions?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -3601,6 +3613,10 @@ export type Database = {
     }
     Functions: {
       can_manage_users: { Args: { _company_id: string }; Returns: boolean }
+      can_perform_action: {
+        Args: { _action?: string; _company_id: string; _module: string }
+        Returns: boolean
+      }
       can_use_documents: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -3630,6 +3646,7 @@ export type Database = {
         Returns: boolean
       }
       can_view_reports: { Args: { _company_id: string }; Returns: boolean }
+      can_write_action: { Args: { _company_id: string }; Returns: boolean }
       check_subdomain_availability: {
         Args: { subdomain_to_check: string }
         Returns: boolean
@@ -3682,6 +3699,10 @@ export type Database = {
         }[]
       }
       get_current_employee: { Args: { _company_id: string }; Returns: string }
+      get_effective_subscription_status: {
+        Args: { _company_id: string }
+        Returns: string
+      }
       get_employee_login_info: {
         Args: { p_company_id: string; p_employee_number: string }
         Returns: {
@@ -3702,6 +3723,17 @@ export type Database = {
           module: Database["public"]["Enums"]["permission_module"]
           name: string
           permission_id: string
+        }[]
+      }
+      get_trial_info: {
+        Args: { _company_id: string }
+        Returns: {
+          effective_status: string
+          is_trial_expired: boolean
+          is_trialing: boolean
+          trial_days_remaining: number
+          trial_ends_at: string
+          trial_total_days: number
         }[]
       }
       get_user_companies: {
@@ -3735,6 +3767,7 @@ export type Database = {
         Args: { _company_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      guard_write_operation: { Args: { _company_id: string }; Returns: boolean }
       has_company_role: {
         Args: {
           _company_id: string
@@ -3812,6 +3845,7 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_platform_owner: { Args: { _user_id: string }; Returns: boolean }
+      is_trial_expired: { Args: { _company_id: string }; Returns: boolean }
       log_application_event: {
         Args: {
           _company_id?: string
@@ -3891,6 +3925,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      transition_expired_trials: { Args: never; Returns: number }
       truncate_user_agent: { Args: { ua: string }; Returns: string }
       validate_company_creation_link: {
         Args: { _token: string }
@@ -4021,6 +4056,7 @@ export type Database = {
         | "past_due"
         | "canceled"
         | "trialing"
+        | "trial_expired"
         | "paused"
     }
     CompositeTypes: {
@@ -4269,6 +4305,7 @@ export const Constants = {
         "past_due",
         "canceled",
         "trialing",
+        "trial_expired",
         "paused",
       ],
     },

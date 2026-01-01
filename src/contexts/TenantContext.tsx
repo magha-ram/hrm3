@@ -29,9 +29,15 @@ interface TenantContextValue {
   // Company state
   isFrozen: boolean;
   isTrialing: boolean;
+  isTrialExpired: boolean;
   isPastDue: boolean;
   subscriptionStatus: SubscriptionStatus | null;
+  effectiveStatus: SubscriptionStatus | null;
   trialDaysRemaining: number | null;
+  trialTotalDays: number | null;
+  
+  // Access control
+  canWrite: boolean;
   
   // Plan info
   planName: string | null;
@@ -103,6 +109,13 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return diffDays > 0 ? diffDays : 0;
   }, [company?.subscription?.trial_ends_at]);
 
+  // Get trial total days from subscription (with fallback to 14 for backwards compat)
+  const trialTotalDays = useMemo((): number | null => {
+    if (!company?.subscription?.trial_ends_at) return null;
+    // Use trial_total_days from subscription if available, else default to 14
+    return (company?.subscription as unknown as { trial_total_days?: number })?.trial_total_days || 14;
+  }, [company?.subscription]);
+
   // When impersonating, grant admin-like view access
   const effectiveRole = isImpersonating && isPlatformAdmin ? 'company_admin' as AppRole : currentRole;
 
@@ -110,6 +123,26 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const subscriptionStatus = company?.subscription?.status || null;
     const isPastDue = subscriptionStatus === 'past_due';
     const isFrozen = company ? !company.is_active : false;
+    
+    // Real-time trial expiry check - if status is trialing but trial_ends_at is in the past
+    const isTrialExpired = 
+      subscriptionStatus === 'trialing' &&
+      company?.subscription?.trial_ends_at &&
+      new Date(company.subscription.trial_ends_at) < new Date();
+    
+    // Effective status considers real-time trial expiry
+    const effectiveStatus: SubscriptionStatus | null = isTrialExpired 
+      ? 'trial_expired' 
+      : subscriptionStatus;
+    
+    // Can write: company active AND subscription allows writes
+    const canWrite = 
+      !isFrozen && 
+      !isTrialExpired &&
+      subscriptionStatus !== 'past_due' &&
+      subscriptionStatus !== 'paused' &&
+      subscriptionStatus !== 'canceled' &&
+      subscriptionStatus !== 'trial_expired';
 
     return {
       // Company info
@@ -133,10 +166,16 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       // Company state
       isFrozen,
-      isTrialing: subscriptionStatus === 'trialing',
+      isTrialing: subscriptionStatus === 'trialing' && !isTrialExpired,
+      isTrialExpired,
       isPastDue,
       subscriptionStatus,
-      trialDaysRemaining,
+      effectiveStatus,
+      trialDaysRemaining: isTrialExpired ? 0 : trialDaysRemaining,
+      trialTotalDays,
+      
+      // Access control
+      canWrite,
       
       // Plan info
       planName: company?.subscription?.plan_name || null,
@@ -157,6 +196,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     user?.current_employee_id,
     planModules,
     trialDaysRemaining,
+    trialTotalDays,
     authLoading,
     companyLoading,
     isImpersonating,
