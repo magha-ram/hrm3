@@ -32,6 +32,9 @@ export function useUserManagement() {
   const { companyId, role: currentUserRole } = useTenant();
   const queryClient = useQueryClient();
 
+  // Computed permission for managing users
+  const canManageUsers = currentUserRole === 'super_admin' || currentUserRole === 'company_admin';
+
   // Legacy invite user - kept for backwards compatibility
   const inviteUser = useMutation({
     mutationFn: async (params: InviteUserParams) => {
@@ -192,6 +195,11 @@ export function useUserManagement() {
     mutationFn: async (params: RemoveUserParams) => {
       if (!companyId) throw new Error('No company selected');
 
+      // Check permission before making request
+      if (!canManageUsers) {
+        throw new Error('Only admins can reactivate users');
+      }
+
       const { data, error } = await supabase.functions.invoke('reactivate-user', {
         body: {
           company_user_id: params.companyUserId,
@@ -202,11 +210,15 @@ export function useUserManagement() {
 
       if (error) {
         console.error('Reactivate user error:', error);
+        // Parse error message from edge function
+        if (error.message?.includes('non-2xx')) {
+          throw new Error('Only admins can reactivate users. Please contact your administrator.');
+        }
         throw new Error(error.message || 'Failed to reactivate user');
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to reactivate user');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to reactivate user');
       }
 
       return data;
@@ -231,6 +243,6 @@ export function useUserManagement() {
     updateUserRole,
     removeUser,
     reactivateUser,
-    canManageUsers: currentUserRole === 'super_admin' || currentUserRole === 'company_admin',
+    canManageUsers,
   };
 }
