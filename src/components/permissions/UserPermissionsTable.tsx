@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { ModulePermissionCell } from './ModulePermissionCell';
 import { 
   useUserPermissions, 
@@ -76,8 +77,11 @@ interface UserPermissionState {
   pendingChanges: PendingChange[];
 }
 
+const PAGE_SIZE = 10;
+
 export function UserPermissionsTable() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange[]>>({});
   
@@ -122,6 +126,18 @@ export function UserPermissionsTable() {
       );
     });
   }, [users, searchQuery, employeeByUserId]);
+
+  // Reset to page 1 when search changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  // Paginate filtered users
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredUsers, currentPage]);
 
   const handleTogglePermission = useCallback((
     userId: string,
@@ -223,78 +239,83 @@ export function UserPermissionsTable() {
         <Input
           placeholder="Search employees..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="pl-9"
         />
       </div>
 
-      {/* Table with contained scroll */}
-      <div className="border rounded-lg min-w-0 w-full">
-        <ScrollArea className="w-full" type="always">
-          <div className="min-w-max">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="min-w-[180px] sticky left-0 bg-background z-10">Name</TableHead>
-                  <TableHead className="min-w-[100px]">Employee ID</TableHead>
-                  <TableHead className="min-w-[200px]">Email</TableHead>
-                  <TableHead className="min-w-[120px]">Role</TableHead>
-                  {DISPLAY_MODULES.map(module => (
-                    <TableHead key={module} className="min-w-[90px] text-center">
-                      <span className="text-xs">{MODULE_LABELS[module]}</span>
-                    </TableHead>
-                  ))}
-                  <TableHead className="min-w-[100px] sticky right-0 bg-background z-10">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                      {DISPLAY_MODULES.map((_, j) => (
-                        <TableCell key={j}><Skeleton className="h-5 w-12" /></TableCell>
-                      ))}
-                      <TableCell><Skeleton className="h-8 w-16" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : filteredUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5 + DISPLAY_MODULES.length} className="h-24 text-center text-muted-foreground">
-                      {searchQuery ? 'No users found matching your search' : 'No users found'}
-                    </TableCell>
+      {/* Table with contained scroll - fixed height container */}
+      <div className="border rounded-lg min-w-0 w-full overflow-hidden">
+        <div className="max-h-[500px] overflow-auto">
+          <Table>
+            <TableHeader className="sticky top-0 bg-background z-20">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="min-w-[180px] sticky left-0 bg-background z-30">Name</TableHead>
+                <TableHead className="min-w-[100px]">Employee ID</TableHead>
+                <TableHead className="min-w-[200px]">Email</TableHead>
+                <TableHead className="min-w-[120px]">Role</TableHead>
+                {DISPLAY_MODULES.map(module => (
+                  <TableHead key={module} className="min-w-[90px] text-center">
+                    <span className="text-xs">{MODULE_LABELS[module]}</span>
+                  </TableHead>
+                ))}
+                <TableHead className="min-w-[100px] sticky right-0 bg-background z-30">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    {DISPLAY_MODULES.map((_, j) => (
+                      <TableCell key={j}><Skeleton className="h-5 w-12" /></TableCell>
+                    ))}
+                    <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                   </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <UserPermissionRow
-                      key={user.user_id}
-                      userId={user.user_id}
-                      userName={`${user.profile?.first_name || ''} ${user.profile?.last_name || ''}`.trim() || 'Unknown'}
-                      employeeNumber={employeeByUserId.get(user.user_id)?.employee_number}
-                      email={user.profile?.email || employeeByUserId.get(user.user_id)?.email}
-                      role={user.role}
-                      pendingChanges={pendingChanges[user.user_id] || []}
-                      onTogglePermission={(module, action, value) => 
-                        handleTogglePermission(user.user_id, module, action, value)
-                      }
-                      onToggleAllModule={(module, enable) =>
-                        handleToggleAllModulePermissions(user.user_id, module, enable)
-                      }
-                      onSave={() => handleSaveUser(user.user_id)}
-                      onLoadDefaults={() => handleLoadDefaults(user.user_id)}
-                      isSaving={savingUserId === user.user_id}
-                      hasPendingChanges={(pendingChanges[user.user_id]?.length || 0) > 0}
-                    />
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+                ))
+              ) : paginatedUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5 + DISPLAY_MODULES.length} className="h-24 text-center text-muted-foreground">
+                    {searchQuery ? 'No users found matching your search' : 'No users found'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedUsers.map((user) => (
+                  <UserPermissionRow
+                    key={user.user_id}
+                    userId={user.user_id}
+                    userName={`${user.profile?.first_name || ''} ${user.profile?.last_name || ''}`.trim() || 'Unknown'}
+                    employeeNumber={employeeByUserId.get(user.user_id)?.employee_number}
+                    email={user.profile?.email || employeeByUserId.get(user.user_id)?.email}
+                    role={user.role}
+                    pendingChanges={pendingChanges[user.user_id] || []}
+                    onTogglePermission={(module, action, value) => 
+                      handleTogglePermission(user.user_id, module, action, value)
+                    }
+                    onToggleAllModule={(module, enable) =>
+                      handleToggleAllModulePermissions(user.user_id, module, enable)
+                    }
+                    onSave={() => handleSaveUser(user.user_id)}
+                    onLoadDefaults={() => handleLoadDefaults(user.user_id)}
+                    isSaving={savingUserId === user.user_id}
+                    hasPendingChanges={(pendingChanges[user.user_id]?.length || 0) > 0}
+                  />
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        {/* Pagination */}
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredUsers.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );
