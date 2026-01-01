@@ -158,7 +158,7 @@ export default function PlatformApplicationLogsPage() {
   const totalPages = Math.ceil((logs?.total || 0) / pageSize);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Application Logs</h1>
         <p className="text-muted-foreground">System-level logs for edge functions and platform services</p>
@@ -166,7 +166,7 @@ export default function PlatformApplicationLogsPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Today</CardTitle>
@@ -254,68 +254,71 @@ export default function PlatformApplicationLogsPage() {
             </div>
           ) : logs?.logs && logs.logs.length > 0 ? (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Timestamp</TableHead>
-                    <TableHead>Level</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.logs.map((log) => {
-                    const config = levelConfig[log.level] || levelConfig.info;
-                    const Icon = config.icon;
-
-                    return (
-                      <TableRow key={log.id}>
-                        <TableCell className="whitespace-nowrap">
-                          <div className="text-sm">{format(new Date(log.created_at), 'HH:mm:ss')}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {format(new Date(log.created_at), 'MMM d')}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            <Badge className={config.color}>{config.label}</Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {log.service}
-                        </TableCell>
-                        <TableCell className="max-w-[400px] truncate">
-                          {log.message}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {log.duration_ms ? `${log.duration_ms}ms` : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Log Details</DialogTitle>
-                              </DialogHeader>
-                              <LogDetailDialog log={log} />
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
+              <div className="overflow-x-auto -mx-4 md:mx-0">
+                <div className="min-w-[700px] md:min-w-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Timestamp</TableHead>
+                        <TableHead>Level</TableHead>
+                        <TableHead>Service</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead></TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {logs.logs.map((log) => {
+                        const config = levelConfig[log.level] || levelConfig.info;
+                        const Icon = config.icon;
 
-              {/* Pagination */}
-              <div className="flex items-center justify-between mt-4">
+                        return (
+                          <TableRow key={log.id}>
+                            <TableCell className="whitespace-nowrap">
+                              <div className="text-sm">{format(new Date(log.created_at), 'HH:mm:ss')}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {format(new Date(log.created_at), 'MMM d')}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4" />
+                                <Badge className={config.color}>{config.label}</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {log.service}
+                            </TableCell>
+                            <TableCell className="max-w-[400px] truncate">
+                              {log.message}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {log.duration_ms ? `${log.duration_ms}ms` : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                  <DialogHeader>
+                                    <DialogTitle>Log Details</DialogTitle>
+                                  </DialogHeader>
+                                  <LogDetailDialog log={log} />
+                                </DialogContent>
+                              </Dialog>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
                 <p className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </p>
@@ -327,7 +330,7 @@ export default function PlatformApplicationLogsPage() {
                     disabled={page === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Previous
+                    <span className="hidden sm:inline ml-1">Previous</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -335,7 +338,7 @@ export default function PlatformApplicationLogsPage() {
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
                   >
-                    Next
+                    <span className="hidden sm:inline mr-1">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

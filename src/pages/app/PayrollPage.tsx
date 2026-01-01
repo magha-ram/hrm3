@@ -281,36 +281,36 @@ export default function PayrollPage() {
 
   return (
     <ModuleGuard moduleId="payroll">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Payroll</h1>
-          <p className="text-muted-foreground">Process and manage payroll runs</p>
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Payroll</h1>
+            <p className="text-muted-foreground">Process and manage payroll runs</p>
+          </div>
+          <RoleGate role="company_admin">
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Payroll Run
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Payroll Run</DialogTitle>
+                  <DialogDescription>
+                    Create a new payroll run for a specific pay period
+                  </DialogDescription>
+                </DialogHeader>
+                <CreatePayrollRunDialog onClose={() => setCreateDialogOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </RoleGate>
         </div>
-        <RoleGate role="company_admin">
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Payroll Run
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Payroll Run</DialogTitle>
-                <DialogDescription>
-                  Create a new payroll run for a specific pay period
-                </DialogDescription>
-              </DialogHeader>
-              <CreatePayrollRunDialog onClose={() => setCreateDialogOpen(false)} />
-            </DialogContent>
-          </Dialog>
-        </RoleGate>
-      </div>
 
       {/* Stats Cards */}
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
+        {stats && (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Total Runs</CardTitle>

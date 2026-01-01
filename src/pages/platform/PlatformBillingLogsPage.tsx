@@ -93,7 +93,7 @@ export default function PlatformBillingLogsPage() {
   const totalPages = Math.ceil((logs?.total || 0) / pageSize);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Billing Logs</h1>
         <p className="text-muted-foreground">Platform-wide billing and subscription lifecycle events</p>
@@ -101,7 +101,7 @@ export default function PlatformBillingLogsPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">This Month</CardTitle>
@@ -145,7 +145,7 @@ export default function PlatformBillingLogsPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -187,55 +187,58 @@ export default function PlatformBillingLogsPage() {
             </div>
           ) : logs?.logs && logs.logs.length > 0 ? (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Timestamp</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Event</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.logs.map((log) => {
-                    const config = eventTypeConfig[log.event_type] || { label: log.event_type, color: 'bg-muted', icon: CreditCard };
-                    const Icon = config.icon;
-
-                    return (
-                      <TableRow key={log.id}>
-                        <TableCell className="whitespace-nowrap">
-                          <div className="text-sm">{format(new Date(log.created_at), 'MMM d, HH:mm')}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <span>{(log.companies as any)?.name || '-'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4 text-muted-foreground" />
-                            <Badge className={config.color}>{config.label}</Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {(log.plans as any)?.name || '-'}
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          {log.amount ? `${log.currency || 'USD'} ${log.amount}` : '-'}
-                        </TableCell>
+              <div className="overflow-x-auto -mx-4 md:mx-0">
+                <div className="min-w-[700px] md:min-w-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Timestamp</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Event</TableHead>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Amount</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {logs.logs.map((log) => {
+                        const config = eventTypeConfig[log.event_type] || { label: log.event_type, color: 'bg-muted', icon: CreditCard };
+                        const Icon = config.icon;
 
-              {/* Pagination */}
-              <div className="flex items-center justify-between mt-4">
+                        return (
+                          <TableRow key={log.id}>
+                            <TableCell className="whitespace-nowrap">
+                              <div className="text-sm">{format(new Date(log.created_at), 'MMM d, HH:mm')}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                <span>{(log.companies as any)?.name || '-'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4 text-muted-foreground" />
+                                <Badge className={config.color}>{config.label}</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {(log.plans as any)?.name || '-'}
+                            </TableCell>
+                            <TableCell className="font-mono">
+                              {log.amount ? `${log.currency || 'USD'} ${log.amount}` : '-'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
                 <p className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </p>
@@ -247,7 +250,7 @@ export default function PlatformBillingLogsPage() {
                     disabled={page === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Previous
+                    <span className="hidden sm:inline ml-1">Previous</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -255,7 +258,7 @@ export default function PlatformBillingLogsPage() {
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
                   >
-                    Next
+                    <span className="hidden sm:inline mr-1">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
