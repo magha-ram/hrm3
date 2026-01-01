@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { LoadMoreButton } from '@/components/ui/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -145,6 +146,7 @@ export default function TimePage() {
   const [activeTab, setActiveTab] = useState('my');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [breakElapsed, setBreakElapsed] = useState('00:00');
+  const [entriesDisplayCount, setEntriesDisplayCount] = useState(20);
 
   const clockStatus = getClockStatus(todayEntry, activeBreak);
   const statusConfig = getStatusConfig(clockStatus);
@@ -396,71 +398,78 @@ export default function TimePage() {
                     <p>No time entries recorded yet.</p>
                   </div>
                 ) : (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Clock In</TableHead>
-                          <TableHead>Clock Out</TableHead>
-                          <TableHead>Break</TableHead>
-                          <TableHead>Hours</TableHead>
-                          <TableHead>Overtime</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {myEntries.slice(0, 20).map((entry) => (
-                          <TableRow key={entry.id}>
-                            <TableCell className="font-medium">
-                              {format(new Date(entry.date), 'EEE, MMM d')}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col gap-1">
-                                <span>{entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}</span>
-                                {entry.clock_in_location && (
-                                  <LocationBadge location={entry.clock_in_location as unknown as GeoLocation} />
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col gap-1">
-                                <span>{entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}</span>
-                                {entry.clock_out_location && (
-                                  <LocationBadge location={entry.clock_out_location as unknown as GeoLocation} />
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {entry.break_minutes ? `${entry.break_minutes}m` : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {entry.total_hours ? formatHours(entry.total_hours) : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {entry.overtime_hours && entry.overtime_hours > 0 ? (
-                                <Badge variant="outline" className="text-orange-600 border-orange-500/50">
-                                  +{formatHours(entry.overtime_hours)}
-                                </Badge>
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {entry.is_approved ? (
-                                <Badge variant="default" className="bg-green-500/10 text-green-600">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  Approved
-                                </Badge>
-                              ) : entry.total_hours ? (
-                                <Badge variant="secondary">Pending</Badge>
-                              ) : (
-                                <Badge variant="outline">In Progress</Badge>
-                              )}
-                            </TableCell>
+                  <>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Clock In</TableHead>
+                            <TableHead>Clock Out</TableHead>
+                            <TableHead>Break</TableHead>
+                            <TableHead>Hours</TableHead>
+                            <TableHead>Overtime</TableHead>
+                            <TableHead>Status</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {myEntries.slice(0, entriesDisplayCount).map((entry) => (
+                            <TableRow key={entry.id}>
+                              <TableCell className="font-medium">
+                                {format(new Date(entry.date), 'EEE, MMM d')}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <span>{entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}</span>
+                                  {entry.clock_in_location && (
+                                    <LocationBadge location={entry.clock_in_location as unknown as GeoLocation} />
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <span>{entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}</span>
+                                  {entry.clock_out_location && (
+                                    <LocationBadge location={entry.clock_out_location as unknown as GeoLocation} />
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {entry.break_minutes ? `${entry.break_minutes}m` : '-'}
+                              </TableCell>
+                              <TableCell>
+                                {entry.total_hours ? formatHours(entry.total_hours) : '-'}
+                              </TableCell>
+                              <TableCell>
+                                {entry.overtime_hours && entry.overtime_hours > 0 ? (
+                                  <Badge variant="outline" className="text-orange-600 border-orange-500/50">
+                                    +{formatHours(entry.overtime_hours)}
+                                  </Badge>
+                                ) : '-'}
+                              </TableCell>
+                              <TableCell>
+                                {entry.is_approved ? (
+                                  <Badge variant="default" className="bg-green-500/10 text-green-600">
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    Approved
+                                  </Badge>
+                                ) : entry.total_hours ? (
+                                  <Badge variant="secondary">Pending</Badge>
+                                ) : (
+                                  <Badge variant="outline">In Progress</Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <LoadMoreButton
+                      currentCount={Math.min(entriesDisplayCount, myEntries.length)}
+                      totalCount={myEntries.length}
+                      onLoadMore={() => setEntriesDisplayCount(prev => prev + 20)}
+                    />
+                  </>
                 )}
               </CardContent>
             </Card>

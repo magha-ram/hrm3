@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Plus, Calendar, Loader2, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WriteGate, RoleGate, PermGate } from '@/components/PermissionGate';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { usePermission } from '@/contexts/PermissionContext';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useMyLeaveRequests, usePendingLeaveRequests, useApproveLeaveRequest, useRejectLeaveRequest, useCancelLeaveRequest } from '@/hooks/useLeave';
@@ -36,6 +37,14 @@ export default function LeavePage() {
   const cancelRequest = useCancelLeaveRequest();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [myLeavePage, setMyLeavePage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  const paginatedMyRequests = useMemo(() => {
+    if (!myRequests) return [];
+    const start = (myLeavePage - 1) * PAGE_SIZE;
+    return myRequests.slice(start, start + PAGE_SIZE);
+  }, [myRequests, myLeavePage]);
 
   return (
     <ModuleGuard moduleId="leave">
@@ -117,7 +126,7 @@ export default function LeavePage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {myRequests.map((req) => (
+                      {paginatedMyRequests.map((req) => (
                         <TableRow key={req.id}>
                           <TableCell>
                             <Badge style={{ backgroundColor: (req as any).leave_type?.color }} variant="secondary">
@@ -160,6 +169,12 @@ export default function LeavePage() {
                       </Table>
                     </TooltipProvider>
                   </div>
+                  <TablePagination
+                    currentPage={myLeavePage}
+                    totalItems={myRequests?.length || 0}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setMyLeavePage}
+                  />
                 </div>
               )}
             </CardContent>

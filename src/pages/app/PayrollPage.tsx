@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -276,8 +277,16 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
 export default function PayrollPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [runsPage, setRunsPage] = useState(1);
+  const RUNS_PAGE_SIZE = 10;
   const { data: runs, isLoading } = usePayrollRuns();
   const { data: stats } = usePayrollStats();
+
+  const paginatedRuns = useMemo(() => {
+    if (!runs) return [];
+    const start = (runsPage - 1) * RUNS_PAGE_SIZE;
+    return runs.slice(start, start + RUNS_PAGE_SIZE);
+  }, [runs, runsPage]);
 
   return (
     <ModuleGuard moduleId="payroll">
@@ -380,54 +389,62 @@ export default function PayrollPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : runs && runs.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Pay Date</TableHead>
-                      <TableHead>Employees</TableHead>
-                      <TableHead>Total Net</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {runs.map((run) => (
-                      <TableRow key={run.id}>
-                        <TableCell className="font-medium">{run.name}</TableCell>
-                        <TableCell>
-                          {format(new Date(run.period_start), 'MMM d')} - {format(new Date(run.period_end), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell>{format(new Date(run.pay_date), 'MMM d, yyyy')}</TableCell>
-                        <TableCell>{run.employee_count || 0}</TableCell>
-                        <TableCell>
-                          {run.total_net ? `$${Number(run.total_net).toLocaleString()}` : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <PayrollStatusBadge status={run.status as PayrollStatus} />
-                        </TableCell>
-                        <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm" onClick={() => setSelectedRunId(run.id)}>
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-                              <DialogHeader>
-                                <DialogTitle>Payroll Run Details</DialogTitle>
-                              </DialogHeader>
-                              {selectedRunId === run.id && (
-                                <PayrollRunDetail runId={run.id} onClose={() => setSelectedRunId(null)} />
-                              )}
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Pay Date</TableHead>
+                        <TableHead>Employees</TableHead>
+                        <TableHead>Total Net</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedRuns.map((run) => (
+                        <TableRow key={run.id}>
+                          <TableCell className="font-medium">{run.name}</TableCell>
+                          <TableCell>
+                            {format(new Date(run.period_start), 'MMM d')} - {format(new Date(run.period_end), 'MMM d, yyyy')}
+                          </TableCell>
+                          <TableCell>{format(new Date(run.pay_date), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>{run.employee_count || 0}</TableCell>
+                          <TableCell>
+                            {run.total_net ? `$${Number(run.total_net).toLocaleString()}` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <PayrollStatusBadge status={run.status as PayrollStatus} />
+                          </TableCell>
+                          <TableCell>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm" onClick={() => setSelectedRunId(run.id)}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                                <DialogHeader>
+                                  <DialogTitle>Payroll Run Details</DialogTitle>
+                                </DialogHeader>
+                                {selectedRunId === run.id && (
+                                  <PayrollRunDetail runId={run.id} onClose={() => setSelectedRunId(null)} />
+                                )}
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <TablePagination
+                    currentPage={runsPage}
+                    totalItems={runs?.length || 0}
+                    pageSize={RUNS_PAGE_SIZE}
+                    onPageChange={setRunsPage}
+                  />
+                </>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />

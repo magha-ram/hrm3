@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { 
   FileText, 
@@ -29,6 +29,7 @@ import { usePermission } from '@/contexts/PermissionContext';
 import { toast } from 'sonner';
 import { DocumentVersionHistory } from './DocumentVersionHistory';
 import { DocumentOCRViewer } from './DocumentOCRViewer';
+import { TablePagination } from '@/components/ui/table-pagination';
 import type { Json } from '@/integrations/supabase/types';
 
 interface DocumentWithRelations {
@@ -88,6 +89,10 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+  
   // Version history dialog state
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [versionHistoryDoc, setVersionHistoryDoc] = useState<{ id: string; title: string } | null>(null);
@@ -98,6 +103,11 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
 
   const canVerify = can('documents', 'verify');
   const canDelete = can('documents', 'delete');
+
+  const paginatedDocuments = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return documents.slice(start, start + PAGE_SIZE);
+  }, [documents, currentPage]);
 
   const base64ToBlob = (base64: string, mimeType: string) => {
     const binary = atob(base64);
@@ -275,7 +285,7 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
             </TableRow>
           </TableHeader>
           <TableBody>
-            {documents.map((doc) => {
+            {paginatedDocuments.map((doc) => {
               const expiryStatus = getExpiryStatus(doc.expiry_date);
               const status = doc.verification_status || (doc.is_verified ? 'verified' : 'pending');
               
@@ -426,8 +436,12 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
           </TableBody>
         </Table>
       </div>
-
-      {/* Delete Confirmation Dialog */}
+      <TablePagination
+        currentPage={currentPage}
+        totalItems={documents.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setCurrentPage}
+      />
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

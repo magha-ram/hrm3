@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -49,9 +50,16 @@ export default function UsersSettingsPage() {
   const [removeUser, setRemoveUser] = useState<CompanyUser | null>(null);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectedInactiveUsers, setSelectedInactiveUsers] = useState<Set<string>>(new Set());
+  const [usersPage, setUsersPage] = useState(1);
+  const USERS_PAGE_SIZE = 10;
 
   const activeUsers = users?.filter(u => u.is_active) || [];
   const inactiveUsers = users?.filter(u => !u.is_active) || [];
+
+  const paginatedActiveUsers = useMemo(() => {
+    const start = (usersPage - 1) * USERS_PAGE_SIZE;
+    return activeUsers.slice(start, start + USERS_PAGE_SIZE);
+  }, [activeUsers, usersPage]);
 
   const handleReactivate = async (companyUser: CompanyUser) => {
     await reactivateUser.mutateAsync({
@@ -183,7 +191,7 @@ export default function UsersSettingsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {activeUsers.map((companyUser) => {
+                {paginatedActiveUsers.map((companyUser) => {
                   const isCurrentUser = companyUser.user_id === user?.user_id;
                   const isSuperAdmin = companyUser.role === 'super_admin';
                   
