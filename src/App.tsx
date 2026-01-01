@@ -49,6 +49,7 @@ const MyPayslipsPage = lazy(() => import("./pages/app/MyPayslipsPage"));
 const MyInfoPage = lazy(() => import("./pages/app/MyInfoPage"));
 const MyTeamPage = lazy(() => import("./pages/app/MyTeamPage"));
 const MySecurityPage = lazy(() => import("./pages/app/MySecurityPage"));
+const ShiftManagementPage = lazy(() => import("./pages/app/ShiftManagementPage"));
 
 // Settings sub-pages
 const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
@@ -166,6 +167,7 @@ const App = () => (
                     <Route path="security-events" element={<SecurityEventsPage />} />
                     <Route path="compliance" element={<CompliancePage />} />
                     <Route path="integrations" element={<IntegrationsPage />} />
+                    <Route path="shifts" element={<ShiftManagementPage />} />
                     <Route path="settings" element={<SettingsPage />}>
                       <Route index element={<Navigate to="/app/settings/company" replace />} />
                       <Route path="company" element={<CompanySettingsPage />} />

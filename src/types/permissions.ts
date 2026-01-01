@@ -15,7 +15,9 @@ export type PermissionModule =
   | 'audit'
   | 'integrations'
   | 'settings'
-  | 'users';
+  | 'users'
+  | 'shifts'
+  | 'attendance';
 
 export type PermissionAction = 
   | 'read'
@@ -26,7 +28,8 @@ export type PermissionAction =
   | 'process'
   | 'verify'
   | 'export'
-  | 'manage';
+  | 'manage'
+  | 'lock';
 
 export interface Permission {
   id: string;
@@ -70,6 +73,8 @@ export const MODULE_LABELS: Record<PermissionModule, string> = {
   integrations: 'Integrations',
   settings: 'Settings',
   users: 'Users',
+  shifts: 'Shift Management',
+  attendance: 'Attendance',
 };
 
 // Action display names for UI
@@ -83,6 +88,7 @@ export const ACTION_LABELS: Record<PermissionAction, string> = {
   verify: 'Verify',
   export: 'Export',
   manage: 'Manage',
+  lock: 'Lock',
 };
 
 // Action icons for UI (using lucide icon names)
@@ -96,4 +102,5 @@ export const ACTION_ICONS: Record<PermissionAction, string> = {
   verify: 'ShieldCheck',
   export: 'Download',
   manage: 'Settings',
+  lock: 'Lock',
 };
