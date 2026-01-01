@@ -68,11 +68,13 @@ export function UserPermissionsEditor() {
     return map;
   }, [employees]);
 
-  // Filter users based on search query
+  // Filter users based on search query - only show when searching
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return users.filter(u => u.role !== 'super_admin');
+    
+    // Don't show users until search query is entered
+    if (!query) return [];
     
     return users.filter(u => {
       if (u.role === 'super_admin') return false;
@@ -187,17 +189,18 @@ export function UserPermissionsEditor() {
           </p>
         </div>
 
-        {/* User table */}
-        <div className="border rounded-lg">
-          <ScrollArea className="h-[280px]">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[200px]">Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="w-[120px]">Employee ID</TableHead>
-                  <TableHead className="w-[100px]">Role</TableHead>
-                </TableRow>
+        {/* User table - only show when searching */}
+        {searchQuery.trim() && (
+          <div className="border rounded-lg">
+            <ScrollArea className="h-[280px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-[200px]">Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="w-[120px]">Employee ID</TableHead>
+                    <TableHead className="w-[100px]">Role</TableHead>
+                  </TableRow>
               </TableHeader>
               <TableBody>
                 {usersLoading ? (
@@ -251,13 +254,14 @@ export function UserPermissionsEditor() {
             </Table>
           </ScrollArea>
         </div>
+        )}
 
         {/* Permissions Panel */}
         {!selectedUserId ? (
           <div className="flex items-center justify-center py-8 border rounded-lg bg-muted/20">
             <div className="text-center text-muted-foreground">
-              <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Select a user from the table to manage permissions</p>
+              <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Search for a user above and click to select</p>
             </div>
           </div>
         ) : selectedUser?.role === 'super_admin' ? (
