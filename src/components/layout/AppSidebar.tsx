@@ -6,7 +6,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES, SETTINGS_NAV } from '@/config/modules';
 import { hasMinimumRole } from '@/types/auth';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Mail, Receipt, User, Users, Shield } from 'lucide-react';
+import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Receipt, User, Users, Shield, Activity } from 'lucide-react';
 import { usePendingApprovalsCount } from '@/hooks/useMyTeam';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
@@ -320,17 +320,17 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Email Logs - Admin only */}
+              {/* Logs - Admin/HR only */}
               {isCompanyAdmin && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive('/app/email-logs')} tooltip="Email Logs">
+                  <SidebarMenuButton asChild isActive={isActive('/app/logs')} tooltip="Logs">
                     <NavLink 
-                      to="/app/email-logs" 
+                      to="/app/logs" 
                       className="flex items-center gap-2"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
                     >
-                      <Mail className="h-4 w-4" />
-                      {!collapsed && <span>Email Logs</span>}
+                      <Activity className="h-4 w-4" />
+                      {!collapsed && <span>Logs</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

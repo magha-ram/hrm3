@@ -40,8 +40,7 @@ const CandidateDetailPage = lazy(() => import("./pages/app/CandidateDetailPage")
 const PerformancePage = lazy(() => import("./pages/app/PerformancePage"));
 const DocumentsPage = lazy(() => import("./pages/app/DocumentsPage"));
 const SettingsPage = lazy(() => import("./pages/app/SettingsPage"));
-const AuditLogPage = lazy(() => import("./pages/app/AuditLogPage"));
-const SecurityEventsPage = lazy(() => import("./pages/app/SecurityEventsPage"));
+const LogsPage = lazy(() => import("./pages/app/LogsPage"));
 const CompliancePage = lazy(() => import("./pages/app/CompliancePage"));
 const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
 const ProfilePage = lazy(() => import("./pages/app/ProfilePage"));
@@ -64,7 +63,7 @@ const AppearanceSettingsPage = lazy(() => import("./pages/app/settings/Appearanc
 const LocalizationSettingsPage = lazy(() => import("./pages/app/settings/LocalizationSettingsPage"));
 // Utility pages
 const HelpPage = lazy(() => import("./pages/app/HelpPage"));
-const EmailLogsPage = lazy(() => import("./pages/app/EmailLogsPage"));
+
 // Platform admin pages
 const PlatformDashboardPage = lazy(() => import("./pages/platform/PlatformDashboardPage"));
 const PlatformAdminsPage = lazy(() => import("./pages/platform/PlatformAdminsPage"));
@@ -73,13 +72,9 @@ const PlatformCompanyDetailPage = lazy(() => import("./pages/platform/PlatformCo
 const PlatformPlansPage = lazy(() => import("./pages/platform/PlatformPlansPage"));
 const PlatformAnalyticsPage = lazy(() => import("./pages/platform/PlatformAnalyticsPage"));
 const PlatformSettingsPage = lazy(() => import("./pages/platform/PlatformSettingsPage"));
-const PlatformAuditLogsPage = lazy(() => import("./pages/platform/PlatformAuditLogsPage"));
-const PlatformImpersonationLogsPage = lazy(() => import("./pages/platform/PlatformImpersonationLogsPage"));
+const PlatformLogsPage = lazy(() => import("./pages/platform/PlatformLogsPage"));
 const PlatformWebhooksPage = lazy(() => import("./pages/platform/PlatformWebhooksPage"));
 const PlatformUsersPage = lazy(() => import("./pages/platform/PlatformUsersPage"));
-const PlatformEmailLogsPage = lazy(() => import("./pages/platform/PlatformEmailLogsPage"));
-const PlatformBillingLogsPage = lazy(() => import("./pages/platform/PlatformBillingLogsPage"));
-const PlatformApplicationLogsPage = lazy(() => import("./pages/platform/PlatformApplicationLogsPage"));
 const PlatformCompanyPermissionsPage = lazy(() => import("./pages/platform/PlatformCompanyPermissionsPage"));
 
 const queryClient = new QueryClient({
