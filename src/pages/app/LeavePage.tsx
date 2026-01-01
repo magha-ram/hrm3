@@ -9,7 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WriteGate, RoleGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useMyLeaveRequests, usePendingLeaveRequests, useApproveLeaveRequest, useRejectLeaveRequest, useCancelLeaveRequest } from '@/hooks/useLeave';
+import { useMyLeaveBalances, useAllEmployeeLeaveBalances } from '@/hooks/useLeaveBalances';
 import { LeaveRequestForm } from '@/components/leave/LeaveRequestForm';
+import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
+import { LeaveBalanceTable } from '@/components/leave/LeaveBalanceTable';
 import { format } from 'date-fns';
 
 const statusColors: Record<string, string> = {
@@ -22,6 +25,8 @@ const statusColors: Record<string, string> = {
 export default function LeavePage() {
   const { data: myRequests, isLoading: loadingMy } = useMyLeaveRequests();
   const { data: pendingRequests, isLoading: loadingPending } = usePendingLeaveRequests();
+  const { data: myBalances, isLoading: loadingBalances } = useMyLeaveBalances();
+  const { data: allBalances, isLoading: loadingAllBalances } = useAllEmployeeLeaveBalances();
   const approveRequest = useApproveLeaveRequest();
   const rejectRequest = useRejectLeaveRequest();
   const cancelRequest = useCancelLeaveRequest();
@@ -65,9 +70,15 @@ export default function LeavePage() {
               )}
             </TabsTrigger>
           </RoleGate>
+          <RoleGate role="hr_manager">
+            <TabsTrigger value="balances">All Balances</TabsTrigger>
+          </RoleGate>
         </TabsList>
 
-        <TabsContent value="my-leave">
+        <TabsContent value="my-leave" className="space-y-4">
+          {/* Leave Balance Card */}
+          <LeaveBalanceCard balances={myBalances} isLoading={loadingBalances} />
+
           <Card>
             <CardHeader>
               <CardTitle>My Leave Requests</CardTitle>
@@ -168,6 +179,12 @@ export default function LeavePage() {
                 )}
               </CardContent>
             </Card>
+          </RoleGate>
+        </TabsContent>
+
+        <TabsContent value="balances">
+          <RoleGate role="hr_manager">
+            <LeaveBalanceTable data={allBalances} isLoading={loadingAllBalances} />
           </RoleGate>
         </TabsContent>
       </Tabs>

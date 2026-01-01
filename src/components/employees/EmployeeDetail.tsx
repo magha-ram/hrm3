@@ -6,6 +6,10 @@ import { format } from 'date-fns';
 import type { Employee } from '@/hooks/useEmployees';
 import { EducationSection } from './EducationSection';
 import { ExperienceSection } from './ExperienceSection';
+import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
+import { useEmployeeLeaveBalances } from '@/hooks/useLeaveBalances';
+import { EmergencyContactSection, type EmergencyContact } from './EmergencyContactSection';
+import { BankDetailsSection, type BankDetails } from './BankDetailsSection';
 
 interface EmployeeDetailProps {
   employee: Employee & {
@@ -16,6 +20,8 @@ interface EmployeeDetailProps {
 }
 
 export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProps) {
+  const { data: leaveBalances, isLoading: loadingBalances } = useEmployeeLeaveBalances(employee.id);
+  
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-800',
     on_leave: 'bg-yellow-100 text-yellow-800',
@@ -51,6 +57,7 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
       <Tabs defaultValue="details" className="w-full">
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="leave">Leave</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
           <TabsTrigger value="experience">Experience</TabsTrigger>
         </TabsList>
@@ -111,6 +118,35 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
               </div>
             </>
           )}
+
+          {/* Emergency Contact - Read Only */}
+          {employee.emergency_contact && Object.keys(employee.emergency_contact).length > 0 && (
+            <>
+              <Separator />
+              <EmergencyContactSection
+                value={employee.emergency_contact as EmergencyContact}
+                onChange={() => {}}
+                disabled
+              />
+            </>
+          )}
+
+          {/* Bank Details - Read Only */}
+          {employee.bank_details && Object.keys(employee.bank_details).length > 0 && (
+            <BankDetailsSection
+              value={employee.bank_details as BankDetails}
+              onChange={() => {}}
+              disabled
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="leave" className="mt-4">
+          <LeaveBalanceCard 
+            balances={leaveBalances} 
+            isLoading={loadingBalances}
+            title={`${employee.first_name}'s Leave Balances`}
+          />
         </TabsContent>
 
         <TabsContent value="education" className="mt-4">
