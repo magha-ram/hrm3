@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
+import { Json } from '@/integrations/supabase/types';
 
 export interface CompanySetting {
   id: string;
@@ -110,7 +111,7 @@ export function useUpdateCompanySetting() {
       if (existing) {
         const { data, error } = await supabase
           .from('company_settings')
-          .update({ value, description })
+          .update({ value: value as Json, description })
           .eq('id', existing.id)
           .select()
           .single();
@@ -119,12 +120,12 @@ export function useUpdateCompanySetting() {
       } else {
         const { data, error } = await supabase
           .from('company_settings')
-          .insert({
+          .insert([{
             company_id: companyId,
             key,
-            value,
+            value: value as Json,
             description,
-          })
+          }])
           .select()
           .single();
         if (error) throw error;

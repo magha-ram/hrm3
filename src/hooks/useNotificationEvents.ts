@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { Json } from '@/integrations/supabase/types';
 
 export interface NotificationEvent {
   id: string;
@@ -110,16 +110,16 @@ export function useCreateNotificationEvent() {
     }) => {
       const { data, error } = await supabase
         .from('notification_events')
-        .insert({
+        .insert([{
           company_id: companyId || null,
           user_id: user_id || userId || null,
           employee_id: employee_id || null,
           event_type,
-          event_data,
+          event_data: event_data as Json,
           notification_channels,
           scheduled_at: scheduled_at || new Date().toISOString(),
           status: 'pending',
-        })
+        }])
         .select()
         .single();
       
