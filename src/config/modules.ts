@@ -185,6 +185,12 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     minRole: 'company_admin',
   },
   {
+    name: 'Permissions',
+    path: '/app/settings/permissions',
+    icon: Shield,
+    minRole: 'company_admin',
+  },
+  {
     name: 'Email',
     path: '/app/settings/email',
     icon: Mail,
