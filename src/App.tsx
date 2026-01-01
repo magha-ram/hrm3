@@ -37,6 +37,8 @@ const AuditLogPage = lazy(() => import("./pages/app/AuditLogPage"));
 const CompliancePage = lazy(() => import("./pages/app/CompliancePage"));
 const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
 const ProfilePage = lazy(() => import("./pages/app/ProfilePage"));
+const MyPayslipsPage = lazy(() => import("./pages/app/MyPayslipsPage"));
+const MyInfoPage = lazy(() => import("./pages/app/MyInfoPage"));
 
 // Settings sub-pages
 const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
@@ -150,6 +152,8 @@ const App = () => (
                     <Route path="email-logs" element={<EmailLogsPage />} />
                     <Route path="help" element={<HelpPage />} />
                     <Route path="profile" element={<ProfilePage />} />
+                    <Route path="payslips" element={<MyPayslipsPage />} />
+                    <Route path="my-info" element={<MyInfoPage />} />
                   </Route>
 
                   {/* Catch-all */}

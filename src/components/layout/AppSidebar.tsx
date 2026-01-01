@@ -6,7 +6,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES, UTILITY_NAV, SETTINGS_NAV } from '@/config/modules';
 import { hasMinimumRole } from '@/types/auth';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Mail } from 'lucide-react';
+import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Mail, Receipt, User } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -260,6 +260,39 @@ export function AppSidebar() {
         )}
 
         {/* Utility Links */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Personal</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive('/app/my-info')} tooltip="My Info">
+                  <NavLink 
+                    to="/app/my-info" 
+                    className="flex items-center gap-2"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <User className="h-4 w-4" />
+                    {!collapsed && <span>My Info</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive('/app/payslips')} tooltip="My Payslips">
+                  <NavLink 
+                    to="/app/payslips" 
+                    className="flex items-center gap-2"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <Receipt className="h-4 w-4" />
+                    {!collapsed && <span>My Payslips</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Admin Links */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
