@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { SecurityEventsViewer } from '@/components/security/SecurityEventsViewer';
 import { TrustedDevicesManager } from '@/components/security/TrustedDevicesManager';
+import { MFAEnforcementSettings } from '@/components/security/MFAEnforcementSettings';
 
 const SESSION_TIMEOUT_OPTIONS = [
   { value: '15', label: '15 minutes' },
@@ -145,6 +146,9 @@ export default function SecuritySettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* MFA Enforcement */}
+      <MFAEnforcementSettings />
 
       {/* Other Security Settings */}
       <Card>

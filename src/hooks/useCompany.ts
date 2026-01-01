@@ -16,6 +16,7 @@ interface CompanyData {
   industry: string | null;
   size_range: string | null;
   address: Record<string, string> | null;
+  fiscal_year_start: number | null;
 }
 
 interface SubscriptionData {
@@ -49,7 +50,7 @@ export function useCompany(companyId: string | null) {
 
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .select('id, name, slug, logo_url, is_active, timezone, settings, email, phone, industry, size_range, address')
+        .select('id, name, slug, logo_url, is_active, timezone, settings, email, phone, industry, size_range, address, fiscal_year_start')
         .eq('id', companyId)
         .maybeSingle();
 

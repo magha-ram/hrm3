@@ -15,6 +15,7 @@ import { MultiCompanyRequestDialog } from '@/components/MultiCompanyRequestDialo
 import { DomainSettingsSection } from '@/components/settings/DomainSettingsSection';
 import { CompanyLogoUpload } from '@/components/settings/CompanyLogoUpload';
 import { CompanyAddressSection } from '@/components/settings/CompanyAddressSection';
+import { FiscalYearSettings } from '@/components/settings/FiscalYearSettings';
 import { type EmployeeIdSettings, formatPreviewNumber, generateEmployeeNumber } from '@/hooks/useEmployeeNumber';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -572,6 +573,9 @@ export default function CompanySettingsPage() {
           </AlertDialog>
         </CardContent>
       </Card>
+
+      {/* Fiscal Year Settings */}
+      <FiscalYearSettings />
 
       {/* Multi-Company Access */}
       <Card>
