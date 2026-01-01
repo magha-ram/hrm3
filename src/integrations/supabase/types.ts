@@ -3358,6 +3358,10 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_interview_panelist: {
+        Args: { _interview_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_manager_of_employee: {
         Args: { _employee_id: string; _user_id: string }
         Returns: boolean

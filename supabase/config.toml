@@ -80,3 +80,6 @@ verify_jwt = true
 
 [functions.reactivate-user]
 verify_jwt = false
+
+[functions.send-recruitment-notification]
+verify_jwt = true

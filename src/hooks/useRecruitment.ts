@@ -166,24 +166,30 @@ export function useCandidates(jobId?: string, status?: CandidateStatus) {
 }
 
 export function useCandidate(id: string | null) {
+  const { companyId } = useTenant();
+  
   return useQuery({
-    queryKey: ['candidates', id],
+    queryKey: ['candidates', id, companyId],
     queryFn: async () => {
-      if (!id) return null;
+      if (!id || !companyId) return null;
 
       const { data, error } = await supabase
         .from('candidates')
         .select(`
           *,
-          job:jobs(id, title, slug, department:departments(name))
+          job:jobs(id, title, slug, department:departments(id, name))
         `)
         .eq('id', id)
+        .eq('company_id', companyId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching candidate:', error);
+        return null;
+      }
       return data;
     },
-    enabled: !!id,
+    enabled: !!id && !!companyId,
   });
 }
 
