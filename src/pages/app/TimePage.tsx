@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee } from 'lucide-react';
+import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { WriteGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -22,9 +21,13 @@ import {
   useMyTimeEntries,
   useTeamTimeEntries,
   useApproveTimeEntry,
-  useUpdateBreakMinutes,
+  useActiveBreak,
+  useStartBreak,
+  useEndBreak,
+  useTotalBreakDuration,
   getClockStatus,
-  ClockStatus
+  ClockStatus,
+  GeoLocation
 } from '@/hooks/useTimeTracking';
 import { AttendanceReportCard } from '@/components/attendance/AttendanceReportCard';
 import { WorkScheduleConfiguration } from '@/components/settings/WorkScheduleConfiguration';
@@ -32,6 +35,13 @@ import { WorkScheduleConfiguration } from '@/components/settings/WorkScheduleCon
 function formatHours(hours: number): string {
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
+  return `${h}h ${m}m`;
+}
+
+function formatMinutes(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
   return `${h}h ${m}m`;
 }
 
@@ -47,13 +57,51 @@ function formatElapsedTime(startTime: string): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function LocationBadge({ location }: { location: GeoLocation | null }) {
+  if (!location) return null;
+  
+  const mapsUrl = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <a 
+            href={mapsUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+          >
+            <MapPin className="h-3 w-3" />
+            View
+          </a>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Lat: {location.latitude.toFixed(4)}</p>
+          <p>Lng: {location.longitude.toFixed(4)}</p>
+          {location.accuracy && <p>Accuracy: ±{Math.round(location.accuracy)}m</p>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function getStatusConfig(status: ClockStatus) {
   switch (status) {
     case 'clocked_in':
       return {
         label: 'Currently Working',
         color: 'bg-green-500/20 text-green-600',
-        icon: 'working',
+        borderColor: 'border-green-500/50 bg-green-500/5',
+        buttonLabel: 'Clock Out',
+        buttonVariant: 'destructive' as const,
+        buttonIcon: Square,
+      };
+    case 'on_break':
+      return {
+        label: 'On Break',
+        color: 'bg-amber-500/20 text-amber-600',
+        borderColor: 'border-amber-500/50 bg-amber-500/5',
         buttonLabel: 'Clock Out',
         buttonVariant: 'destructive' as const,
         buttonIcon: Square,
@@ -62,7 +110,7 @@ function getStatusConfig(status: ClockStatus) {
       return {
         label: 'Completed for Today',
         color: 'bg-blue-500/20 text-blue-600',
-        icon: 'done',
+        borderColor: 'border-blue-500/50 bg-blue-500/5',
         buttonLabel: 'Day Complete',
         buttonVariant: 'secondary' as const,
         buttonIcon: CheckCircle2,
@@ -71,7 +119,7 @@ function getStatusConfig(status: ClockStatus) {
       return {
         label: 'Not Started',
         color: 'bg-muted text-muted-foreground',
-        icon: 'idle',
+        borderColor: '',
         buttonLabel: 'Clock In',
         buttonVariant: 'default' as const,
         buttonIcon: Play,
@@ -83,33 +131,30 @@ export default function TimePage() {
   const { employeeId } = useTenant();
   const { isHROrAbove, isManager } = useUserRole();
   const { data: todayEntry, isLoading: todayLoading } = useTodayEntry();
-  const { todayHours, weekHours, monthHours } = useTimeSummary();
+  const { data: activeBreak } = useActiveBreak();
+  const { todayHours, weekHours, monthHours, weekOvertime } = useTimeSummary();
+  const { totalMinutes: breakMinutes, breakCount } = useTotalBreakDuration();
   const { data: myEntries = [], isLoading: entriesLoading } = useMyTimeEntries();
   const { data: teamEntries = [], isLoading: teamLoading } = useTeamTimeEntries();
   const clockIn = useClockIn();
   const clockOut = useClockOut();
+  const startBreak = useStartBreak();
+  const endBreak = useEndBreak();
   const approveEntry = useApproveTimeEntry();
-  const updateBreak = useUpdateBreakMinutes();
   
   const [activeTab, setActiveTab] = useState('my');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
-  const [breakMinutes, setBreakMinutes] = useState<string>('');
+  const [breakElapsed, setBreakElapsed] = useState('00:00');
 
-  const clockStatus = getClockStatus(todayEntry);
+  const clockStatus = getClockStatus(todayEntry, activeBreak);
   const statusConfig = getStatusConfig(clockStatus);
   const hasEmployeeRecord = !!employeeId;
   const isActionDisabled = clockIn.isPending || clockOut.isPending || todayLoading || !hasEmployeeRecord;
+  const isBreakDisabled = startBreak.isPending || endBreak.isPending || !hasEmployeeRecord;
 
-  // Sync break minutes from entry
+  // Live timer effect for work time
   useEffect(() => {
-    if (todayEntry?.break_minutes !== undefined) {
-      setBreakMinutes(todayEntry.break_minutes.toString());
-    }
-  }, [todayEntry?.break_minutes]);
-
-  // Live timer effect
-  useEffect(() => {
-    if (clockStatus !== 'clocked_in' || !todayEntry?.clock_in) {
+    if ((clockStatus !== 'clocked_in' && clockStatus !== 'on_break') || !todayEntry?.clock_in) {
       setElapsedTime('00:00:00');
       return;
     }
@@ -123,23 +168,41 @@ export default function TimePage() {
     return () => clearInterval(interval);
   }, [clockStatus, todayEntry?.clock_in]);
 
-  const handleClockAction = () => {
-    if (clockStatus === 'clocked_out') {
-      // Day is complete, do nothing (or show message)
+  // Live timer for active break
+  useEffect(() => {
+    if (!activeBreak?.break_start) {
+      setBreakElapsed('00:00');
       return;
     }
+
+    const updateBreakTime = () => {
+      const start = new Date(activeBreak.break_start).getTime();
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const m = Math.floor(elapsed / 60);
+      const s = elapsed % 60;
+      setBreakElapsed(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+    };
+
+    updateBreakTime();
+    const interval = setInterval(updateBreakTime, 1000);
+    return () => clearInterval(interval);
+  }, [activeBreak?.break_start]);
+
+  const handleClockAction = () => {
+    if (clockStatus === 'clocked_out') return;
     
-    if (clockStatus === 'clocked_in') {
+    if (clockStatus === 'clocked_in' || clockStatus === 'on_break') {
       clockOut.mutate();
     } else {
       clockIn.mutate();
     }
   };
 
-  const handleBreakUpdate = () => {
-    const mins = parseInt(breakMinutes, 10);
-    if (!isNaN(mins) && mins >= 0) {
-      updateBreak.mutate(mins);
+  const handleBreakAction = () => {
+    if (clockStatus === 'on_break') {
+      endBreak.mutate();
+    } else {
+      startBreak.mutate();
     }
   };
 
@@ -157,6 +220,26 @@ export default function TimePage() {
             <WriteGate>
               <TimeCorrectionDialog />
             </WriteGate>
+            
+            {/* Break Button - Only show when clocked in */}
+            {(clockStatus === 'clocked_in' || clockStatus === 'on_break') && (
+              <WriteGate>
+                <Button
+                  onClick={handleBreakAction}
+                  disabled={isBreakDisabled}
+                  variant={clockStatus === 'on_break' ? 'default' : 'outline'}
+                  size="lg"
+                >
+                  {(startBreak.isPending || endBreak.isPending) ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Coffee className="h-4 w-4 mr-2" />
+                  )}
+                  {clockStatus === 'on_break' ? 'End Break' : 'Start Break'}
+                </Button>
+              </WriteGate>
+            )}
+
             <WriteGate>
               <Button 
                 onClick={handleClockAction}
@@ -181,18 +264,18 @@ export default function TimePage() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>No Employee Record Found</AlertTitle>
             <AlertDescription>
-              Your user account is not linked to an employee record. Please contact your HR administrator to create an employee record and link it to your account.
+              Your user account is not linked to an employee record. Please contact your HR administrator.
             </AlertDescription>
           </Alert>
         )}
 
         {/* Current Status Card */}
-        <Card className={clockStatus === 'clocked_in' ? 'border-green-500/50 bg-green-500/5' : clockStatus === 'clocked_out' ? 'border-blue-500/50 bg-blue-500/5' : ''}>
+        <Card className={statusConfig.borderColor}>
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-full ${statusConfig.color}`}>
-                  <Clock className="h-5 w-5" />
+                  {clockStatus === 'on_break' ? <Coffee className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
                 </div>
                 <div>
                   <p className="font-medium">{statusConfig.label}</p>
@@ -209,7 +292,12 @@ export default function TimePage() {
                 </div>
               </div>
               <div className="text-right">
-                {clockStatus === 'clocked_in' ? (
+                {clockStatus === 'on_break' ? (
+                  <>
+                    <p className="text-2xl font-bold font-mono text-amber-600">{breakElapsed}</p>
+                    <p className="text-xs text-muted-foreground">Break time</p>
+                  </>
+                ) : (clockStatus === 'clocked_in') ? (
                   <>
                     <p className="text-2xl font-bold font-mono text-green-600">{elapsedTime}</p>
                     <p className="text-xs text-muted-foreground">Time elapsed</p>
@@ -228,34 +316,16 @@ export default function TimePage() {
               </div>
             </div>
 
-            {/* Break Input - Show when clocked in or clocked out */}
-            {(clockStatus === 'clocked_in' || clockStatus === 'clocked_out') && (
-              <div className="mt-4 pt-4 border-t flex items-center gap-4">
-                <Coffee className="h-4 w-4 text-muted-foreground" />
+            {/* Break Summary - Show when there are breaks */}
+            {breakCount > 0 && (
+              <div className="mt-4 pt-4 border-t flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="break-minutes" className="text-sm text-muted-foreground whitespace-nowrap">
-                    Break time:
-                  </Label>
-                  <Input
-                    id="break-minutes"
-                    type="number"
-                    min="0"
-                    max="480"
-                    value={breakMinutes}
-                    onChange={(e) => setBreakMinutes(e.target.value)}
-                    className="w-20 h-8"
-                    placeholder="0"
-                  />
-                  <span className="text-sm text-muted-foreground">min</span>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={handleBreakUpdate}
-                    disabled={updateBreak.isPending}
-                    className="h-8"
-                  >
-                    {updateBreak.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Update'}
-                  </Button>
+                  <Coffee className="h-4 w-4" />
+                  <span>{breakCount} break{breakCount > 1 ? 's' : ''}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Timer className="h-4 w-4" />
+                  <span>Total: {formatMinutes(breakMinutes)}</span>
                 </div>
               </div>
             )}
@@ -263,7 +333,7 @@ export default function TimePage() {
         </Card>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Today</CardDescription>
@@ -280,6 +350,14 @@ export default function TimePage() {
             <CardHeader className="pb-2">
               <CardDescription>This Month</CardDescription>
               <CardTitle className="text-2xl">{formatHours(monthHours)}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className={weekOvertime > 0 ? 'border-orange-500/50' : ''}>
+            <CardHeader className="pb-2">
+              <CardDescription>Week Overtime</CardDescription>
+              <CardTitle className={`text-2xl ${weekOvertime > 0 ? 'text-orange-600' : ''}`}>
+                {formatHours(weekOvertime)}
+              </CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -327,6 +405,7 @@ export default function TimePage() {
                           <TableHead>Clock Out</TableHead>
                           <TableHead>Break</TableHead>
                           <TableHead>Hours</TableHead>
+                          <TableHead>Overtime</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -337,16 +416,33 @@ export default function TimePage() {
                               {format(new Date(entry.date), 'EEE, MMM d')}
                             </TableCell>
                             <TableCell>
-                              {entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}
+                              <div className="flex flex-col gap-1">
+                                <span>{entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}</span>
+                                {entry.clock_in_location && (
+                                  <LocationBadge location={entry.clock_in_location as unknown as GeoLocation} />
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
-                              {entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}
+                              <div className="flex flex-col gap-1">
+                                <span>{entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}</span>
+                                {entry.clock_out_location && (
+                                  <LocationBadge location={entry.clock_out_location as unknown as GeoLocation} />
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               {entry.break_minutes ? `${entry.break_minutes}m` : '-'}
                             </TableCell>
                             <TableCell>
                               {entry.total_hours ? formatHours(entry.total_hours) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {entry.overtime_hours && entry.overtime_hours > 0 ? (
+                                <Badge variant="outline" className="text-orange-600 border-orange-500/50">
+                                  +{formatHours(entry.overtime_hours)}
+                                </Badge>
+                              ) : '-'}
                             </TableCell>
                             <TableCell>
                               {entry.is_approved ? (
@@ -392,7 +488,9 @@ export default function TimePage() {
                           <TableRow>
                             <TableHead>Employee</TableHead>
                             <TableHead>Date</TableHead>
+                            <TableHead>Clock In</TableHead>
                             <TableHead>Hours</TableHead>
+                            <TableHead>Overtime</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="w-[100px]"></TableHead>
                           </TableRow>
@@ -407,7 +505,22 @@ export default function TimePage() {
                                 {format(new Date(entry.date), 'MMM d, yyyy')}
                               </TableCell>
                               <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <span>{entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}</span>
+                                  {entry.clock_in_location && (
+                                    <LocationBadge location={entry.clock_in_location as unknown as GeoLocation} />
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
                                 {entry.total_hours ? formatHours(entry.total_hours) : '-'}
+                              </TableCell>
+                              <TableCell>
+                                {entry.overtime_hours && entry.overtime_hours > 0 ? (
+                                  <Badge variant="outline" className="text-orange-600 border-orange-500/50">
+                                    +{formatHours(entry.overtime_hours)}
+                                  </Badge>
+                                ) : '-'}
                               </TableCell>
                               <TableCell>
                                 {entry.is_approved ? (

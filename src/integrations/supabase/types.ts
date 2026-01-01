@@ -2183,7 +2183,9 @@ export type Database = {
           attendance_status: string | null
           break_minutes: number | null
           clock_in: string | null
+          clock_in_location: Json | null
           clock_out: string | null
+          clock_out_location: Json | null
           company_id: string
           created_at: string
           date: string
@@ -2205,7 +2207,9 @@ export type Database = {
           attendance_status?: string | null
           break_minutes?: number | null
           clock_in?: string | null
+          clock_in_location?: Json | null
           clock_out?: string | null
+          clock_out_location?: Json | null
           company_id: string
           created_at?: string
           date: string
@@ -2227,7 +2231,9 @@ export type Database = {
           attendance_status?: string | null
           break_minutes?: number | null
           clock_in?: string | null
+          clock_in_location?: Json | null
           clock_out?: string | null
+          clock_out_location?: Json | null
           company_id?: string
           created_at?: string
           date?: string
@@ -2263,6 +2269,70 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entry_breaks: {
+        Row: {
+          break_end: string | null
+          break_start: string
+          break_type: string | null
+          company_id: string
+          created_at: string
+          duration_minutes: number | null
+          employee_id: string
+          id: string
+          notes: string | null
+          time_entry_id: string
+          updated_at: string
+        }
+        Insert: {
+          break_end?: string | null
+          break_start: string
+          break_type?: string | null
+          company_id: string
+          created_at?: string
+          duration_minutes?: number | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          time_entry_id: string
+          updated_at?: string
+        }
+        Update: {
+          break_end?: string | null
+          break_start?: string
+          break_type?: string | null
+          company_id?: string
+          created_at?: string
+          duration_minutes?: number | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          time_entry_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entry_breaks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_breaks_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_breaks_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
             referencedColumns: ["id"]
           },
         ]
