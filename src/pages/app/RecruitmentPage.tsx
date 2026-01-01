@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Plus, Briefcase, Users, ExternalLink, MoreHorizontal, MapPin, ClipboardList, Calendar, FileText, Eye, Settings } from 'lucide-react';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,11 +37,26 @@ export default function RecruitmentPage() {
   const [jobDialogOpen, setJobDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<any>(null);
   
+  // Pagination state
+  const [jobsPage, setJobsPage] = useState(1);
+  const [candidatesPage, setCandidatesPage] = useState(1);
+  const PAGE_SIZE = 10;
+  
   // Workflow dialogs
   const [screeningDialogOpen, setScreeningDialogOpen] = useState(false);
   const [interviewDialogOpen, setInterviewDialogOpen] = useState(false);
   const [offerDialogOpen, setOfferDialogOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+
+  const paginatedJobs = useMemo(() => {
+    const start = (jobsPage - 1) * PAGE_SIZE;
+    return jobs.slice(start, start + PAGE_SIZE);
+  }, [jobs, jobsPage]);
+
+  const paginatedCandidates = useMemo(() => {
+    const start = (candidatesPage - 1) * PAGE_SIZE;
+    return candidates.slice(start, start + PAGE_SIZE);
+  }, [candidates, candidatesPage]);
 
   const openJobs = jobs.filter(j => j.status === 'open');
   const draftJobs = jobs.filter(j => j.status === 'draft');
@@ -215,8 +231,9 @@ export default function RecruitmentPage() {
                     <p>No job postings yet. Create your first job posting to start hiring.</p>
                   </div>
                 ) : (
-                  <div className="rounded-md border">
-                    <Table>
+                  <>
+                    <div className="rounded-md border">
+                      <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Position</TableHead>
@@ -229,7 +246,7 @@ export default function RecruitmentPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {jobs.map((job) => {
+                        {paginatedJobs.map((job) => {
                           const jobCandidates = candidates.filter(c => c.job_id === job.id);
                           return (
                             <TableRow key={job.id}>
@@ -289,6 +306,12 @@ export default function RecruitmentPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  <TablePagination
+                    currentPage={jobsPage}
+                    totalItems={jobs.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setJobsPage}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -321,7 +344,7 @@ export default function RecruitmentPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {candidates.map((candidate) => (
+                        {paginatedCandidates.map((candidate) => (
                           <TableRow 
                             key={candidate.id} 
                             className="cursor-pointer hover:bg-muted/50"
