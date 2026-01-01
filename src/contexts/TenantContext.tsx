@@ -35,7 +35,7 @@ interface TenantContextValue {
   
   // Plan info
   planName: string | null;
-  planModules: ModuleId[] | 'all';
+  planModules: ModuleId[] | 'all' | null;
   hasModule: (module: ModuleId) => boolean;
   
   // Impersonation
@@ -78,15 +78,20 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return user.companies.find(c => c.company_id === currentCompanyId) || null;
   }, [user?.companies, currentCompanyId, isImpersonating, impersonatedCompany]);
 
-  const planModules = useMemo((): ModuleId[] | 'all' => {
+  const planModules = useMemo((): ModuleId[] | 'all' | null => {
     const modules = company?.subscription?.features?.modules;
     if (modules === 'all') return 'all';
-    if (Array.isArray(modules)) return modules as ModuleId[];
-    return [];
+    if (Array.isArray(modules) && modules.length > 0) return modules as ModuleId[];
+    // Return null if no plan modules defined - this means no restrictions
+    return null;
   }, [company?.subscription?.features?.modules]);
 
   const hasModule = (module: ModuleId): boolean => {
+    // 'all' means all modules included
     if (planModules === 'all') return true;
+    // null means no plan restrictions configured - allow all
+    if (planModules === null) return true;
+    // Otherwise check if module is in the plan's module list
     return planModules.includes(module);
   };
 
