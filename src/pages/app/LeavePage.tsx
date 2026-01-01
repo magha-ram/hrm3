@@ -105,7 +105,7 @@ export default function LeavePage() {
                         <TableHead>Dates</TableHead>
                         <TableHead>Days</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Notes</TableHead>
+                        <TableHead>Response</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -120,14 +120,19 @@ export default function LeavePage() {
                           <TableCell>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d, yyyy')}</TableCell>
                           <TableCell>{req.total_days}</TableCell>
                           <TableCell><Badge className={statusColors[req.status]}>{req.status}</Badge></TableCell>
-                          <TableCell>
-                            {req.review_notes ? (
+                          <TableCell className="max-w-[200px]">
+                            {req.status === 'rejected' && req.review_notes ? (
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-destructive">Rejection reason:</p>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{req.review_notes}</p>
+                              </div>
+                            ) : req.status === 'approved' && req.review_notes ? (
                               <Tooltip>
-                                <TooltipTrigger>
-                                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                <TooltipTrigger className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <MessageSquare className="h-3 w-3" />
+                                  Manager note
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
-                                  <p className="text-sm font-medium mb-1">Manager's notes:</p>
                                   <p className="text-sm">{req.review_notes}</p>
                                 </TooltipContent>
                               </Tooltip>

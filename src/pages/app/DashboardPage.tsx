@@ -15,15 +15,18 @@ import {
 } from '@/components/analytics/HRAnalyticsCards';
 import { useUserRole } from '@/hooks/useUserRole';
 import { ManagerDashboardStats } from '@/components/dashboard/ManagerDashboardStats';
+import { EmployeeDashboardStats } from '@/components/dashboard/EmployeeDashboardStats';
 
 export default function DashboardPage() {
   const { companyName, role, isTrialing, trialDaysRemaining, isFrozen, planName, isImpersonating } = useTenant();
   const { accessibleModules, canAccessModule } = useModuleAccess();
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
-  const { isHROrAbove, isManager: isManagerRole } = useUserRole();
+  const { isHROrAbove, isManager: isManagerRole, isEmployee } = useUserRole();
 
   // Show manager-focused stats for managers (but not HR+ who see full stats)
   const showManagerStats = isManagerRole && !isHROrAbove;
+  // Show employee stats for employees who are not managers
+  const showEmployeeStats = !isHROrAbove && !isManagerRole;
 
   const statItems = [
     { 
@@ -103,8 +106,13 @@ export default function DashboardPage() {
         <ManagerDashboardStats />
       )}
 
-      {/* Company Stats Grid - shown for HR+ or non-managers */}
-      {(!showManagerStats) && (
+      {/* Employee Personal Stats - shown for employees who are not managers or HR */}
+      {showEmployeeStats && (
+        <EmployeeDashboardStats />
+      )}
+
+      {/* Company Stats Grid - shown for HR+ only */}
+      {isHROrAbove && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {statItems.map((stat) => (
             <Card key={stat.label}>
