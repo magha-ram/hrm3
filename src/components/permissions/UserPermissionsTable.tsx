@@ -228,9 +228,9 @@ export function UserPermissionsTable() {
         />
       </div>
 
-      {/* Table */}
-      <div className="border rounded-lg">
-        <ScrollArea className="w-full">
+      {/* Table with contained scroll */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto max-w-full">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -291,8 +291,7 @@ export function UserPermissionsTable() {
               )}
             </TableBody>
           </Table>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );
