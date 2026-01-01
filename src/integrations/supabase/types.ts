@@ -14,9 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      application_logs: {
+        Row: {
+          company_id: string | null
+          context: Json | null
+          created_at: string
+          duration_ms: number | null
+          error_code: string | null
+          error_stack: string | null
+          id: string
+          level: string
+          message: string
+          request_id: string | null
+          service: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          context?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_stack?: string | null
+          id?: string
+          level?: string
+          message: string
+          request_id?: string | null
+          service: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          context?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_stack?: string | null
+          id?: string
+          level?: string
+          message?: string
+          request_id?: string | null
+          service?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: Database["public"]["Enums"]["audit_action"]
+          actor_role: string | null
           company_id: string | null
           created_at: string
           id: string
@@ -25,12 +79,15 @@ export type Database = {
           new_values: Json | null
           old_values: Json | null
           record_id: string | null
+          severity: string | null
           table_name: string
+          target_type: string | null
           user_agent: string | null
           user_id: string | null
         }
         Insert: {
           action: Database["public"]["Enums"]["audit_action"]
+          actor_role?: string | null
           company_id?: string | null
           created_at?: string
           id?: string
@@ -39,12 +96,15 @@ export type Database = {
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
+          severity?: string | null
           table_name: string
+          target_type?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
         Update: {
           action?: Database["public"]["Enums"]["audit_action"]
+          actor_role?: string | null
           company_id?: string | null
           created_at?: string
           id?: string
@@ -53,7 +113,9 @@ export type Database = {
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
+          severity?: string | null
           table_name?: string
+          target_type?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -63,6 +125,77 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_logs: {
+        Row: {
+          amount: number | null
+          company_id: string
+          created_at: string
+          currency: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          plan_id: string | null
+          previous_plan_id: string | null
+          subscription_id: string | null
+          triggered_by: string | null
+        }
+        Insert: {
+          amount?: number | null
+          company_id: string
+          created_at?: string
+          currency?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          plan_id?: string | null
+          previous_plan_id?: string | null
+          subscription_id?: string | null
+          triggered_by?: string | null
+        }
+        Update: {
+          amount?: number | null
+          company_id?: string
+          created_at?: string
+          currency?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          plan_id?: string | null
+          previous_plan_id?: string | null
+          subscription_id?: string | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_logs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_logs_previous_plan_id_fkey"
+            columns: ["previous_plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_logs_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "company_subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -2635,6 +2768,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["security_event_type"]
           id: string
           ip_address: unknown
+          ip_address_masked: string | null
           is_resolved: boolean | null
           location: Json | null
           metadata: Json | null
@@ -2643,6 +2777,7 @@ export type Database = {
           resolved_by: string | null
           severity: string | null
           user_agent: string | null
+          user_agent_truncated: string | null
           user_id: string | null
         }
         Insert: {
@@ -2652,6 +2787,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["security_event_type"]
           id?: string
           ip_address?: unknown
+          ip_address_masked?: string | null
           is_resolved?: boolean | null
           location?: Json | null
           metadata?: Json | null
@@ -2660,6 +2796,7 @@ export type Database = {
           resolved_by?: string | null
           severity?: string | null
           user_agent?: string | null
+          user_agent_truncated?: string | null
           user_id?: string | null
         }
         Update: {
@@ -2669,6 +2806,7 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["security_event_type"]
           id?: string
           ip_address?: unknown
+          ip_address_masked?: string | null
           is_resolved?: boolean | null
           location?: Json | null
           metadata?: Json | null
@@ -2677,6 +2815,7 @@ export type Database = {
           resolved_by?: string | null
           severity?: string | null
           user_agent?: string | null
+          user_agent_truncated?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -2746,11 +2885,14 @@ export type Database = {
         Row: {
           access_level: string | null
           access_log: Json | null
+          access_reason: string | null
+          accessed_resources: Json | null
           company_id: string
           created_at: string
           expires_at: string
           granted_by: string
           id: string
+          last_accessed_at: string | null
           metadata: Json | null
           reason: string
           revoked_at: string | null
@@ -2762,11 +2904,14 @@ export type Database = {
         Insert: {
           access_level?: string | null
           access_log?: Json | null
+          access_reason?: string | null
+          accessed_resources?: Json | null
           company_id: string
           created_at?: string
           expires_at: string
           granted_by: string
           id?: string
+          last_accessed_at?: string | null
           metadata?: Json | null
           reason: string
           revoked_at?: string | null
@@ -2778,11 +2923,14 @@ export type Database = {
         Update: {
           access_level?: string | null
           access_log?: Json | null
+          access_reason?: string | null
+          accessed_resources?: Json | null
           company_id?: string
           created_at?: string
           expires_at?: string
           granted_by?: string
           id?: string
+          last_accessed_at?: string | null
           metadata?: Json | null
           reason?: string
           revoked_at?: string | null
@@ -3526,6 +3674,64 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_platform_owner: { Args: { _user_id: string }; Returns: boolean }
+      log_application_event: {
+        Args: {
+          _company_id?: string
+          _context?: Json
+          _duration_ms?: number
+          _error_code?: string
+          _error_stack?: string
+          _level: string
+          _message: string
+          _request_id?: string
+          _service: string
+          _user_id?: string
+        }
+        Returns: string
+      }
+      log_audit_event: {
+        Args: {
+          _action: Database["public"]["Enums"]["audit_action"]
+          _actor_role?: string
+          _company_id: string
+          _metadata?: Json
+          _new_values?: Json
+          _old_values?: Json
+          _record_id?: string
+          _table_name: string
+          _target_type?: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      log_billing_event: {
+        Args: {
+          _amount?: number
+          _company_id: string
+          _currency?: string
+          _event_type: string
+          _metadata?: Json
+          _plan_id?: string
+          _previous_plan_id?: string
+          _subscription_id?: string
+          _triggered_by?: string
+        }
+        Returns: string
+      }
+      log_security_event: {
+        Args: {
+          _company_id: string
+          _description?: string
+          _event_type: Database["public"]["Enums"]["security_event_type"]
+          _ip_address?: string
+          _metadata?: Json
+          _severity?: string
+          _user_agent?: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      mask_ip_address: { Args: { ip_addr: string }; Returns: string }
       set_primary_company: { Args: { _company_id: string }; Returns: boolean }
       set_role_permission: {
         Args: {
@@ -3547,6 +3753,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      truncate_user_agent: { Args: { ua: string }; Returns: string }
       validate_tenant_access: {
         Args: { _company_id: string }
         Returns: boolean
@@ -3599,6 +3806,7 @@ export type Database = {
       interview_type: "phone" | "video" | "onsite" | "panel" | "technical"
       job_status: "draft" | "open" | "closed" | "on_hold"
       leave_status: "pending" | "approved" | "rejected" | "canceled"
+      log_severity: "low" | "medium" | "high" | "critical"
       offer_status:
         | "draft"
         | "pending_approval"
@@ -3841,6 +4049,7 @@ export const Constants = {
       interview_type: ["phone", "video", "onsite", "panel", "technical"],
       job_status: ["draft", "open", "closed", "on_hold"],
       leave_status: ["pending", "approved", "rejected", "canceled"],
+      log_severity: ["low", "medium", "high", "critical"],
       offer_status: [
         "draft",
         "pending_approval",
