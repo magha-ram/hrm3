@@ -236,6 +236,49 @@ export function useUserManagement() {
     },
   });
 
+  const bulkReactivateUsers = useMutation({
+    mutationFn: async (users: RemoveUserParams[]) => {
+      if (!companyId) throw new Error('No company selected');
+
+      // Check permission before making request
+      if (!canManageUsers) {
+        throw new Error('Only admins can reactivate users');
+      }
+
+      const results = await Promise.allSettled(
+        users.map(async (params) => {
+          const { data, error } = await supabase.functions.invoke('reactivate-user', {
+            body: {
+              company_user_id: params.companyUserId,
+              user_id: params.userId,
+              company_id: companyId,
+            },
+          });
+
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || 'Failed to reactivate user');
+          return data;
+        })
+      );
+
+      const successful = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+
+      return { successful, failed, total: users.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['company-users', companyId] });
+      if (data.failed === 0) {
+        toast.success(`${data.successful} user(s) reactivated successfully. Credentials sent via email.`);
+      } else {
+        toast.warning(`${data.successful} user(s) reactivated, ${data.failed} failed.`);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to reactivate users');
+    },
+  });
+
   return {
     inviteUser,
     createEmployeeUser,
@@ -243,6 +286,7 @@ export function useUserManagement() {
     updateUserRole,
     removeUser,
     reactivateUser,
+    bulkReactivateUsers,
     canManageUsers,
   };
 }

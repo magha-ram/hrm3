@@ -415,8 +415,11 @@ const templates: Record<EmailTemplateType, (data: any) => RenderedTemplate> = {
       <div class="content">
         <p>Hi ${data.userName},</p>
         <p>Great news! Your account at <strong>${data.companyName}</strong> has been reactivated.</p>
-        <p>For security purposes, your password has been reset. Please use the temporary password below to log in:</p>
+        <p>For security purposes, your password has been reset. Please use the credentials below to log in:</p>
         <div class="highlight" style="border-left-color: #10b981;">
+          <p><strong>Company Code:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">${data.companyCode}</code></p>
+          <p><strong>User ID:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">${data.userId}</code></p>
+          <p><strong>Email:</strong> ${data.userEmail}</p>
           <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">${data.temporaryPassword}</code></p>
         </div>
         <p><strong>Important:</strong> You will be required to change your password on first login.</p>
@@ -429,7 +432,7 @@ const templates: Record<EmailTemplateType, (data: any) => RenderedTemplate> = {
         <p>This is an automated message from ${data.companyName}.</p>
       </div>
     `, `Account Reactivated - ${data.companyName}`),
-    text: `Account Reactivated!\n\nHi ${data.userName},\n\nYour account at ${data.companyName} has been reactivated.\n\nTemporary Password: ${data.temporaryPassword}\n\nIMPORTANT: You will be required to change your password on first login.\n\nLogin at: ${data.loginUrl}\n\nSecurity Notice: Do not share your password with anyone.`
+    text: `Account Reactivated!\n\nHi ${data.userName},\n\nYour account at ${data.companyName} has been reactivated.\n\nCompany Code: ${data.companyCode}\nUser ID: ${data.userId}\nEmail: ${data.userEmail}\nTemporary Password: ${data.temporaryPassword}\n\nIMPORTANT: You will be required to change your password on first login.\n\nLogin at: ${data.loginUrl}\n\nSecurity Notice: Do not share your password with anyone.`
   }),
 };
 

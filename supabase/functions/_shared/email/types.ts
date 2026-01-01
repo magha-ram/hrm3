@@ -194,6 +194,9 @@ export interface EmailTemplateData {
   user_reactivated: {
     userName: string;
     companyName: string;
+    companyCode: string;
+    userId: string;
+    userEmail: string;
     temporaryPassword: string;
     loginUrl: string;
     loginType: 'email' | 'employee_id';
