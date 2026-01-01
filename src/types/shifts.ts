@@ -56,7 +56,10 @@ export interface ShiftAssignmentWithEmployee extends EmployeeShiftAssignment {
   shift: Shift;
 }
 
-export type ShiftAssignmentInsert = Omit<EmployeeShiftAssignment, 'id' | 'created_at' | 'updated_at' | 'assigned_by'>;
+export type ShiftAssignmentInsert = Omit<EmployeeShiftAssignment, 'id' | 'created_at' | 'updated_at' | 'assigned_by'> & {
+  effective_to?: string | null;
+  reason?: string | null;
+};
 export type ShiftAssignmentUpdate = Partial<ShiftAssignmentInsert>;
 
 export interface AttendanceSummary {

@@ -254,7 +254,14 @@ export function useAssignShift() {
   const { companyId } = useTenant();
   
   return useMutation({
-    mutationFn: async (assignment: Omit<ShiftAssignmentInsert, 'company_id'>) => {
+    mutationFn: async (assignment: {
+      employee_id: string;
+      shift_id: string;
+      effective_from: string;
+      effective_to?: string | null;
+      is_temporary: boolean;
+      reason?: string | null;
+    }) => {
       if (!companyId) throw new Error('No company selected');
       
       const { data, error } = await supabase

@@ -2,18 +2,20 @@ import { useForm } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Scan } from 'lucide-react';
+import { Loader2, Scan, Clock } from 'lucide-react';
 import { useCreateEmployee, useUpdateEmployee, type Employee } from '@/hooks/useEmployees';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useNextEmployeeNumber } from '@/hooks/useEmployeeNumber';
+import { useActiveShifts, useAssignShift, useDefaultShift, useEnsureDefaultShift } from '@/hooks/useShifts';
 import { DocumentScanDialog } from './DocumentScanDialog';
 import { EmergencyContactSection, type EmergencyContact } from './EmergencyContactSection';
 import { BankDetailsSection, type BankDetails } from './BankDetailsSection';
 import type { ExtractedData } from '@/hooks/useOCR';
+import { format } from 'date-fns';
 
 const employeeSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
@@ -23,6 +25,7 @@ const employeeSchema = z.object({
   hire_date: z.string().min(1, 'Hire date is required'),
   job_title: z.string().optional(),
   department_id: z.string().optional(),
+  shift_id: z.string().optional(),
   employment_type: z.enum(['full_time', 'part_time', 'contract', 'intern', 'temporary']),
   employment_status: z.enum(['active', 'on_leave', 'terminated', 'suspended']),
   phone: z.string().optional(),
@@ -45,6 +48,10 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const { data: departments } = useDepartments();
+  const { data: shifts } = useActiveShifts();
+  const { data: defaultShift } = useDefaultShift();
+  const ensureDefaultShift = useEnsureDefaultShift();
+  const assignShift = useAssignShift();
   const { data: nextEmployeeNumber, isLoading: isLoadingNumber } = useNextEmployeeNumber();
   const [scanDialogOpen, setScanDialogOpen] = useState(false);
   const [emergencyContact, setEmergencyContact] = useState<EmergencyContact>(
@@ -55,7 +62,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
   );
   
   const isEditing = !!employee;
-  const isLoading = createEmployee.isPending || updateEmployee.isPending;
+  const isLoading = createEmployee.isPending || updateEmployee.isPending || assignShift.isPending;
 
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
@@ -67,6 +74,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
       hire_date: employee?.hire_date || new Date().toISOString().split('T')[0],
       job_title: employee?.job_title || '',
       department_id: employee?.department_id || '',
+      shift_id: '',
       employment_type: employee?.employment_type || 'full_time',
       employment_status: employee?.employment_status || 'active',
       phone: employee?.phone || '',
@@ -77,6 +85,20 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
       gender: employee?.gender || '',
     },
   });
+
+  // Pre-select default shift for new employees
+  useEffect(() => {
+    if (!isEditing && defaultShift && !form.getValues('shift_id')) {
+      form.setValue('shift_id', defaultShift.id);
+    }
+  }, [isEditing, defaultShift, form]);
+
+  // Ensure default shift exists
+  useEffect(() => {
+    if (!isEditing && shifts && shifts.length === 0) {
+      ensureDefaultShift.mutate();
+    }
+  }, [isEditing, shifts]);
 
   // Auto-populate employee number for new employees
   useEffect(() => {
@@ -97,32 +119,45 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
 
   const onSubmit = async (values: EmployeeFormValues) => {
     try {
+      // Extract shift_id separately - it's not stored on employee
+      const { shift_id, ...employeeValues } = values;
+      
       if (isEditing && employee) {
         await updateEmployee.mutateAsync({ 
           id: employee.id, 
-          ...values,
-          department_id: values.department_id || null,
-          personal_email: values.personal_email || null,
+          ...employeeValues,
+          department_id: employeeValues.department_id || null,
+          personal_email: employeeValues.personal_email || null,
           emergency_contact: emergencyContact as Record<string, string>,
           bank_details: bankDetails as Record<string, string>,
         });
       } else {
-        await createEmployee.mutateAsync({
-          first_name: values.first_name,
-          last_name: values.last_name,
-          email: values.email,
-          employee_number: values.employee_number,
-          hire_date: values.hire_date,
-          job_title: values.job_title || null,
-          department_id: values.department_id || null,
-          employment_type: values.employment_type,
-          employment_status: values.employment_status,
-          phone: values.phone || null,
-          personal_email: values.personal_email || null,
-          work_location: values.work_location || null,
+        const newEmployee = await createEmployee.mutateAsync({
+          first_name: employeeValues.first_name,
+          last_name: employeeValues.last_name,
+          email: employeeValues.email,
+          employee_number: employeeValues.employee_number,
+          hire_date: employeeValues.hire_date,
+          job_title: employeeValues.job_title || null,
+          department_id: employeeValues.department_id || null,
+          employment_type: employeeValues.employment_type,
+          employment_status: employeeValues.employment_status,
+          phone: employeeValues.phone || null,
+          personal_email: employeeValues.personal_email || null,
+          work_location: employeeValues.work_location || null,
           emergency_contact: emergencyContact as Record<string, string>,
           bank_details: bankDetails as Record<string, string>,
         });
+        
+        // Assign shift to new employee
+        if (shift_id && newEmployee?.id) {
+          await assignShift.mutateAsync({
+            employee_id: newEmployee.id,
+            shift_id: shift_id,
+            effective_from: employeeValues.hire_date,
+            is_temporary: false,
+          });
+        }
       }
       onSuccess();
     } catch (error) {
@@ -294,6 +329,41 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
               )}
             />
           </div>
+
+          {/* Shift Assignment - Only for new employees */}
+          {!isEditing && (
+            <FormField
+              control={form.control}
+              name="shift_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Default Shift
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select shift" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {shifts?.map((shift) => (
+                        <SelectItem key={shift.id} value={shift.id}>
+                          {shift.name} ({format(new Date(`2000-01-01T${shift.start_time}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shift.end_time}`), 'h:mm a')})
+                          {shift.is_default && ' (Default)'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    The employee will be assigned to this shift starting from their hire date.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <FormField
