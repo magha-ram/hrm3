@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermission } from '@/contexts/PermissionContext';
 import { toast } from 'sonner';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 
@@ -45,6 +46,7 @@ export function useMyDocuments() {
           document_type:document_types(id, name, code)
         `)
         .eq('employee_id', employeeId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -70,6 +72,7 @@ export function useEmployeeDocuments(employeeId: string | null) {
           verified_by_employee:employees!employee_documents_verified_by_fkey(id, first_name, last_name)
         `)
         .eq('employee_id', employeeId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -81,6 +84,7 @@ export function useEmployeeDocuments(employeeId: string | null) {
 
 export function useAllDocuments() {
   const { companyId } = useTenant();
+  const { can } = usePermission();
 
   return useQuery({
     queryKey: ['documents', 'all', companyId],
@@ -92,15 +96,17 @@ export function useAllDocuments() {
         .select(`
           *,
           employee:employees!employee_documents_employee_id_fkey(id, first_name, last_name, email),
-          document_type:document_types(id, name, code)
+          document_type:document_types(id, name, code),
+          verified_by_employee:employees!employee_documents_verified_by_fkey(id, first_name, last_name)
         `)
         .eq('company_id', companyId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data;
     },
-    enabled: !!companyId,
+    enabled: !!companyId && can('documents', 'read'),
   });
 }
 
@@ -145,6 +151,7 @@ export function useTeamDocuments() {
           document_type:document_types(id, name, code)
         `)
         .in('employee_id', employeeIds)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -154,6 +161,110 @@ export function useTeamDocuments() {
   });
 }
 
+// Hook for document limits check
+export function useDocumentLimits(employeeId: string | null) {
+  const { companyId } = useTenant();
+
+  return useQuery({
+    queryKey: ['document-limits', companyId, employeeId],
+    queryFn: async () => {
+      if (!companyId || !employeeId) return null;
+
+      const { data, error } = await supabase.rpc('check_document_limits', {
+        _company_id: companyId,
+        _employee_id: employeeId,
+      });
+
+      if (error) throw error;
+      return data as {
+        max_storage_mb: number;
+        max_per_employee: number;
+        current_storage_bytes: number;
+        current_count: number;
+        can_upload: boolean;
+      };
+    },
+    enabled: !!companyId && !!employeeId,
+  });
+}
+
+// Hook to initiate secure document upload via edge function
+export function useInitiateUpload() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async (params: {
+      employeeId: string;
+      documentTypeId: string;
+      fileName: string;
+      fileSize: number;
+      mimeType: string;
+      title: string;
+      description?: string;
+      issueDate?: string;
+      expiryDate?: string;
+      parentDocumentId?: string;
+    }) => {
+      if (!companyId) throw new Error('No company selected');
+
+      const { data, error } = await supabase.functions.invoke('document-upload', {
+        body: {
+          companyId,
+          employeeId: params.employeeId,
+          documentTypeId: params.documentTypeId,
+          fileName: params.fileName,
+          fileSize: params.fileSize,
+          mimeType: params.mimeType,
+          title: params.title,
+          description: params.description,
+          issueDate: params.issueDate,
+          expiryDate: params.expiryDate,
+          parentDocumentId: params.parentDocumentId,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      return data as {
+        uploadUrl: string;
+        uploadToken: string;
+        storagePath: string;
+        documentId: string;
+      };
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to initiate upload');
+    },
+  });
+}
+
+// Hook to confirm upload completion
+export function useConfirmUpload() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (documentId: string) => {
+      const { error } = await supabase
+        .from('employee_documents')
+        .update({ verification_status: 'pending' })
+        .eq('id', documentId);
+
+      if (error) throw error;
+      return documentId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      toast.success('Document uploaded successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to confirm upload');
+    },
+  });
+}
+
+// Legacy create document - keep for backward compatibility
 export function useCreateDocument() {
   const queryClient = useQueryClient();
   const { companyId } = useTenant();
@@ -164,7 +275,13 @@ export function useCreateDocument() {
 
       const { data, error } = await supabase
         .from('employee_documents')
-        .insert({ ...document, company_id: companyId })
+        .insert({ 
+          ...document, 
+          company_id: companyId,
+          verification_status: 'pending',
+          version_number: 1,
+          is_latest_version: true,
+        })
         .select()
         .single();
 
@@ -191,40 +308,55 @@ export function useCreateDocument() {
   });
 }
 
-export function useVerifyDocument() {
-  const queryClient = useQueryClient();
-  const { companyId, employeeId } = useTenant();
-
+// Hook for document access (view/download) via edge function
+export function useDocumentAccess() {
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { data, error } = await supabase
-        .from('employee_documents')
-        .update({
-          is_verified: true,
-          verified_by: employeeId,
-          verified_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await supabase.from('audit_logs').insert({
-        company_id: companyId,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        table_name: 'employee_documents',
-        action: 'update',
-        record_id: id,
-        new_values: { is_verified: true },
-        metadata: { action_type: 'verify_document' },
+    mutationFn: async ({ documentId, accessType }: { documentId: string; accessType: 'view' | 'download' }) => {
+      const { data, error } = await supabase.functions.invoke('document-access', {
+        body: { documentId, accessType },
       });
 
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      return data as { signedUrl: string; expiresIn: number };
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to access document');
+    },
+  });
+}
+
+// Hook for document verification using RPC
+export function useVerifyDocument() {
+  const queryClient = useQueryClient();
+  const { employeeId } = useTenant();
+
+  return useMutation({
+    mutationFn: async ({ 
+      id, 
+      status, 
+      rejectionReason 
+    }: { 
+      id: string; 
+      status: 'verified' | 'rejected'; 
+      rejectionReason?: string;
+    }) => {
+      if (!employeeId) throw new Error('No employee context');
+
+      const { data, error } = await supabase.rpc('verify_document', {
+        _document_id: id,
+        _status: status,
+        _verifier_employee_id: employeeId,
+        _rejection_reason: rejectionReason || null,
+      });
+
+      if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
-      toast.success('Document verified');
+      toast.success(variables.status === 'verified' ? 'Document verified' : 'Document rejected');
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to verify document');
@@ -232,33 +364,18 @@ export function useVerifyDocument() {
   });
 }
 
+// Hook for document deletion via edge function
 export function useDeleteDocument() {
   const queryClient = useQueryClient();
-  const { companyId } = useTenant();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data: oldData } = await supabase
-        .from('employee_documents')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      const { error } = await supabase
-        .from('employee_documents')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke('document-delete', {
+        body: { documentId: id },
+      });
 
       if (error) throw error;
-
-      await supabase.from('audit_logs').insert({
-        company_id: companyId,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        table_name: 'employee_documents',
-        action: 'delete',
-        record_id: id,
-        old_values: oldData,
-      });
+      if (data.error) throw new Error(data.error);
 
       return id;
     },
@@ -269,5 +386,31 @@ export function useDeleteDocument() {
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete document');
     },
+  });
+}
+
+// Hook to get document version history
+export function useDocumentVersions(parentDocumentId: string | null) {
+  const { companyId } = useTenant();
+
+  return useQuery({
+    queryKey: ['document-versions', parentDocumentId],
+    queryFn: async () => {
+      if (!companyId || !parentDocumentId) return [];
+
+      const { data, error } = await supabase
+        .from('employee_documents')
+        .select(`
+          *,
+          document_type:document_types(id, name, code)
+        `)
+        .or(`id.eq.${parentDocumentId},parent_document_id.eq.${parentDocumentId}`)
+        .is('deleted_at', null)
+        .order('version_number', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId && !!parentDocumentId,
   });
 }

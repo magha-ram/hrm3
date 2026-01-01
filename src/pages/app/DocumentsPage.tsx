@@ -1,26 +1,35 @@
 import { useState } from 'react';
-import { FileText, Upload, Settings, Search } from 'lucide-react';
+import { FileText, Upload, Settings, Search, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { PermGate, WriteGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { DocumentUploadDialog } from '@/components/documents/DocumentUploadDialog';
 import { DocumentList } from '@/components/documents/DocumentList';
 import { DocumentTypeManager } from '@/components/documents/DocumentTypeManager';
 import { DocumentExpiryAlerts } from '@/components/documents/DocumentExpiryAlerts';
-import { useAllDocuments, useMyDocuments } from '@/hooks/useDocuments';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useAllDocuments, useMyDocuments, useTeamDocuments } from '@/hooks/useDocuments';
+import { usePermission } from '@/contexts/PermissionContext';
 
 export default function DocumentsPage() {
-  const { isHROrAbove } = useUserRole();
+  const { can } = usePermission();
   const { data: allDocuments = [], isLoading: allLoading } = useAllDocuments();
   const { data: myDocuments = [], isLoading: myLoading } = useMyDocuments();
+  const { data: teamDocuments = [], isLoading: teamLoading } = useTeamDocuments();
   
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [parentDocumentId, setParentDocumentId] = useState<string | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState(isHROrAbove ? 'all' : 'my');
+
+  const canReadAll = can('documents', 'read');
+  const canVerify = can('documents', 'verify');
+  const canManageSettings = can('documents', 'manage');
+  
+  // Determine default tab based on permissions
+  const defaultTab = canReadAll ? 'all' : 'my';
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   const filteredAllDocs = allDocuments.filter((doc) =>
     doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -34,7 +43,28 @@ export default function DocumentsPage() {
     doc.document_type?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const pendingVerificationCount = allDocuments.filter(d => !d.is_verified).length;
+  const filteredTeamDocs = teamDocuments.filter((doc) =>
+    doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    doc.employee?.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    doc.employee?.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    doc.document_type?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const pendingVerificationCount = allDocuments.filter(
+    d => d.verification_status === 'pending' || (!d.verification_status && !d.is_verified)
+  ).length;
+
+  const handleUploadVersion = (documentId: string) => {
+    setParentDocumentId(documentId);
+    setUploadOpen(true);
+  };
+
+  const handleCloseUpload = (open: boolean) => {
+    setUploadOpen(open);
+    if (!open) {
+      setParentDocumentId(undefined);
+    }
+  };
 
   return (
     <ModuleGuard moduleId="documents">
@@ -45,16 +75,18 @@ export default function DocumentsPage() {
             <p className="text-muted-foreground">Manage employee documents and files</p>
           </div>
           <WriteGate>
-            <Button onClick={() => setUploadOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Document
-            </Button>
+            <PermGate module="documents" action="create">
+              <Button onClick={() => setUploadOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Document
+              </Button>
+            </PermGate>
           </WriteGate>
         </div>
 
-        {/* Stats Cards for HR */}
-        {isHROrAbove && (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        {/* Stats Cards - visible to those with read permission */}
+        {canReadAll && (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Total Documents</CardDescription>
@@ -65,7 +97,7 @@ export default function DocumentsPage() {
               <CardHeader className="pb-2">
                 <CardDescription>Verified</CardDescription>
                 <CardTitle className="text-3xl text-green-600">
-                  {allDocuments.filter(d => d.is_verified).length}
+                  {allDocuments.filter(d => d.verification_status === 'verified' || d.is_verified).length}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -77,15 +109,32 @@ export default function DocumentsPage() {
                 </CardTitle>
               </CardHeader>
             </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Rejected</CardDescription>
+                <CardTitle className="text-3xl text-destructive">
+                  {allDocuments.filter(d => d.verification_status === 'rejected').length}
+                </CardTitle>
+              </CardHeader>
+            </Card>
           </div>
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center justify-between">
             <TabsList>
-              {isHROrAbove && <TabsTrigger value="all">All Documents</TabsTrigger>}
+              {canReadAll && <TabsTrigger value="all">All Documents</TabsTrigger>}
               <TabsTrigger value="my">My Documents</TabsTrigger>
-              {isHROrAbove && (
+              {teamDocuments.length > 0 && (
+                <TabsTrigger value="team">Team Documents</TabsTrigger>
+              )}
+              {canVerify && (
+                <TabsTrigger value="expiry">
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  Expiry Alerts
+                </TabsTrigger>
+              )}
+              {canManageSettings && (
                 <TabsTrigger value="settings">
                   <Settings className="h-4 w-4 mr-1" />
                   Settings
@@ -93,7 +142,7 @@ export default function DocumentsPage() {
               )}
             </TabsList>
 
-            {activeTab !== 'settings' && (
+            {activeTab !== 'settings' && activeTab !== 'expiry' && (
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -106,7 +155,7 @@ export default function DocumentsPage() {
             )}
           </div>
 
-          {isHROrAbove && (
+          {canReadAll && (
             <TabsContent value="all" className="mt-6">
               <Card>
                 <CardHeader>
@@ -120,7 +169,7 @@ export default function DocumentsPage() {
                     documents={filteredAllDocs}
                     isLoading={allLoading}
                     showEmployee={true}
-                    canVerify={true}
+                    onUploadVersion={handleUploadVersion}
                   />
                 </CardContent>
               </Card>
@@ -140,13 +189,38 @@ export default function DocumentsPage() {
                   documents={filteredMyDocs}
                   isLoading={myLoading}
                   showEmployee={false}
-                  canVerify={false}
                 />
               </CardContent>
             </Card>
           </TabsContent>
 
-          {isHROrAbove && (
+          {teamDocuments.length > 0 && (
+            <TabsContent value="team" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Team Documents</CardTitle>
+                  <CardDescription>
+                    View documents from your direct reports
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <DocumentList
+                    documents={filteredTeamDocs}
+                    isLoading={teamLoading}
+                    showEmployee={true}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {canVerify && (
+            <TabsContent value="expiry" className="mt-6">
+              <DocumentExpiryAlerts />
+            </TabsContent>
+          )}
+
+          {canManageSettings && (
             <TabsContent value="settings" className="mt-6">
               <DocumentTypeManager />
             </TabsContent>
@@ -155,7 +229,8 @@ export default function DocumentsPage() {
 
         <DocumentUploadDialog
           open={uploadOpen}
-          onOpenChange={setUploadOpen}
+          onOpenChange={handleCloseUpload}
+          parentDocumentId={parentDocumentId}
         />
       </div>
     </ModuleGuard>
