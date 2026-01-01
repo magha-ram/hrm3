@@ -12,10 +12,12 @@ import { ModuleGuard } from '@/components/ModuleGuard';
 import { useDepartments, useDeleteDepartment, type Department } from '@/hooks/useDepartments';
 import { DepartmentForm } from '@/components/departments/DepartmentForm';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export default function DepartmentsPage() {
   const { data: departments, isLoading } = useDepartments();
   const deleteDepartment = useDeleteDepartment();
+  const { isHROrAbove } = useUserRole();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
@@ -47,7 +49,9 @@ export default function DepartmentsPage() {
         <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Departments</h1>
-          <p className="text-muted-foreground">Organize your company structure</p>
+          <p className="text-muted-foreground">
+            {isHROrAbove ? 'Organize your company structure' : 'View company departments'}
+          </p>
         </div>
         <WriteGate>
           <RoleGate role="hr_manager">

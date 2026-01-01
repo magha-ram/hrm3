@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,18 @@ function formatHours(hours: number): string {
   return `${h}h ${m}m`;
 }
 
+function formatElapsedTime(startTime: string): string {
+  const start = new Date(startTime).getTime();
+  const now = Date.now();
+  const elapsed = Math.floor((now - start) / 1000);
+  
+  const hours = Math.floor(elapsed / 3600);
+  const minutes = Math.floor((elapsed % 3600) / 60);
+  const seconds = elapsed % 60;
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
 export default function TimePage() {
   const { employeeId } = useTenant();
   const { isHROrAbove, isManager } = useUserRole();
@@ -42,9 +54,28 @@ export default function TimePage() {
   const approveEntry = useApproveTimeEntry();
   
   const [activeTab, setActiveTab] = useState('my');
+  const [elapsedTime, setElapsedTime] = useState('00:00:00');
 
   const isClockedIn = todayEntry?.clock_in && !todayEntry?.clock_out;
   const hasEmployeeRecord = !!employeeId;
+
+  // Live timer effect
+  useEffect(() => {
+    if (!isClockedIn || !todayEntry?.clock_in) {
+      setElapsedTime('00:00:00');
+      return;
+    }
+
+    // Update immediately
+    setElapsedTime(formatElapsedTime(todayEntry.clock_in));
+
+    // Update every second
+    const interval = setInterval(() => {
+      setElapsedTime(formatElapsedTime(todayEntry.clock_in!));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isClockedIn, todayEntry?.clock_in]);
 
   const handleClockAction = () => {
     if (isClockedIn) {
@@ -118,12 +149,19 @@ export default function TimePage() {
                     </p>
                   </div>
                 </div>
-                {todayEntry.total_hours && (
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">{formatHours(todayEntry.total_hours)}</p>
-                    <p className="text-xs text-muted-foreground">Today's total</p>
-                  </div>
-                )}
+                <div className="text-right">
+                  {isClockedIn ? (
+                    <>
+                      <p className="text-2xl font-bold font-mono text-green-600">{elapsedTime}</p>
+                      <p className="text-xs text-muted-foreground">Time elapsed</p>
+                    </>
+                  ) : todayEntry.total_hours ? (
+                    <>
+                      <p className="text-2xl font-bold">{formatHours(todayEntry.total_hours)}</p>
+                      <p className="text-xs text-muted-foreground">Today's total</p>
+                    </>
+                  ) : null}
+                </div>
               </div>
             </CardContent>
           </Card>
