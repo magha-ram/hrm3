@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Plus, Briefcase, Users, Eye, MoreHorizontal, MapPin, DollarSign, Clock } from 'lucide-react';
+import { Plus, Briefcase, Users, ExternalLink, MoreHorizontal, MapPin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,14 +45,25 @@ export default function RecruitmentPage() {
             <h1 className="text-2xl font-bold">Recruitment</h1>
             <p className="text-muted-foreground">Manage job postings and candidates</p>
           </div>
-          <WriteGate>
-            <RoleGate role="hr_manager">
-              <Button onClick={() => { setEditingJob(null); setJobDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Post Job
+          <div className="flex items-center gap-2">
+            {openJobs.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => window.open('/careers', '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Careers Page
               </Button>
-            </RoleGate>
-          </WriteGate>
+            )}
+            <WriteGate>
+              <RoleGate role="hr_manager">
+                <Button onClick={() => { setEditingJob(null); setJobDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Post Job
+                </Button>
+              </RoleGate>
+            </WriteGate>
+          </div>
         </div>
 
         {/* Stats */}

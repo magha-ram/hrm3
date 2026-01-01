@@ -10,6 +10,10 @@ import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { lazy, Suspense } from "react";
 
+// Public pages (lazy loaded)
+const CareersPage = lazy(() => import("./pages/CareersPage"));
+const JobDetailPage = lazy(() => import("./pages/JobDetailPage"));
+
 // Core pages (not lazy - needed immediately)
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -108,6 +112,8 @@ const App = () => (
                   <Route path="/" element={<RootRedirect />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/setup" element={<Setup />} />
+                  <Route path="/careers" element={<CareersPage />} />
+                  <Route path="/careers/:slug" element={<JobDetailPage />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/unauthorized" element={<Unauthorized />} />
 
