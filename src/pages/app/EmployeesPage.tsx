@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Loader2, Upload, Download, FileSpreadsheet, LayoutList, Network } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Loader2, Upload, Download, FileSpreadsheet, LayoutList, Network, LayoutGrid } from 'lucide-react';
 import { WriteGate, RoleGate, PermGate } from '@/components/PermissionGate';
 import { usePermission } from '@/contexts/PermissionContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -23,6 +23,7 @@ import { EmployeeFilters, type EmployeeFiltersState } from '@/components/employe
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ReadOnlyPageBanner } from '@/components/platform/ImpersonationRestricted';
 import { exportEmployeesToCSV, downloadEmployeeImportTemplate } from '@/lib/export-utils';
+import { EmployeeCard } from '@/components/employees/EmployeeCard';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -181,7 +182,11 @@ export default function EmployeesPage() {
             <TabsList>
               <TabsTrigger value="list" className="gap-2">
                 <LayoutList className="h-4 w-4" />
-                List View
+                List
+              </TabsTrigger>
+              <TabsTrigger value="grid" className="gap-2">
+                <LayoutGrid className="h-4 w-4" />
+                Grid
               </TabsTrigger>
               <TabsTrigger value="org" className="gap-2">
                 <Network className="h-4 w-4" />
@@ -190,7 +195,7 @@ export default function EmployeesPage() {
             </TabsList>
 
             {/* Filters - only show in list view */}
-            {activeTab === 'list' && (
+            {(activeTab === 'list' || activeTab === 'grid') && (
               <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                 <div className="relative flex-1 sm:w-80">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -211,7 +216,7 @@ export default function EmployeesPage() {
           </div>
 
           {/* Active filters display */}
-          {activeTab === 'list' && activeFilterCount > 0 && (
+          {(activeTab === 'list' || activeTab === 'grid') && activeFilterCount > 0 && (
             <div className="flex flex-wrap gap-2 mt-4">
               {filters.departmentId && (
                 <Badge variant="secondary" className="gap-1">
@@ -350,6 +355,42 @@ export default function EmployeesPage() {
                       ))}
                     </TableBody>
                   </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Grid View */}
+          <TabsContent value="grid" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Employee Directory</CardTitle>
+                <CardDescription>
+                  {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''}
+                  {activeFilterCount > 0 && ` (filtered from ${employees?.length || 0})`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredEmployees.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p>{search || activeFilterCount > 0 ? 'No employees match your search or filters.' : 'No employees found. Add your first employee to get started.'}</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredEmployees.map((employee) => (
+                      <EmployeeCard
+                        key={employee.id}
+                        employee={employee}
+                        onView={() => handleView(employee)}
+                        onEdit={can('employees', 'update') ? () => handleEdit(employee) : undefined}
+                        onDelete={can('employees', 'delete') ? () => setDeletingId(employee.id) : undefined}
+                      />
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>

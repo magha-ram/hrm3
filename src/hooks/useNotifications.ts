@@ -21,12 +21,12 @@ export function useNotifications() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['notifications', companyId, user?.id],
+    queryKey: ['notifications', companyId, user?.user_id],
     queryFn: async (): Promise<Notification[]> => {
       // Return empty array until notifications table is created
       return [];
     },
-    enabled: !!companyId && !!user?.id,
+    enabled: !!companyId && !!user?.user_id,
   });
 }
 
@@ -35,11 +35,11 @@ export function useUnreadNotificationCount() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['notifications-count', companyId, user?.id],
+    queryKey: ['notifications-count', companyId, user?.user_id],
     queryFn: async () => {
       return 0;
     },
-    enabled: !!companyId && !!user?.id,
+    enabled: !!companyId && !!user?.user_id,
     refetchInterval: 30000,
   });
 }
@@ -54,8 +54,8 @@ export function useMarkNotificationRead() {
       // No-op until table exists
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', companyId, user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-count', companyId, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', companyId, user?.user_id] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-count', companyId, user?.user_id] });
     },
   });
 }
@@ -70,8 +70,8 @@ export function useMarkAllNotificationsRead() {
       // No-op until table exists
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', companyId, user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-count', companyId, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', companyId, user?.user_id] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-count', companyId, user?.user_id] });
     },
   });
 }

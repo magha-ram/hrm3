@@ -104,19 +104,23 @@ export function GoalFormDialog({ open, onOpenChange, goal }: GoalFormDialogProps
 
   const onSubmit = async (values: GoalFormValues) => {
     try {
+      const goalData = {
+        employee_id: values.employee_id,
+        title: values.title,
+        description: values.description,
+        target_date: values.target_date,
+        priority: values.priority as string,
+        status: values.status as string,
+        progress: values.progress,
+      };
+      
       if (isEditing && goal) {
         await updateGoal.mutateAsync({ 
           id: goal.id, 
-          ...values,
-          priority: values.priority as string,
-          status: values.status as string,
+          ...goalData,
         });
       } else {
-        await createGoal.mutateAsync({
-          ...values,
-          priority: values.priority as string,
-          status: values.status as string,
-        });
+        await createGoal.mutateAsync(goalData);
       }
       onOpenChange(false);
       form.reset();

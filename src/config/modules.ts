@@ -215,6 +215,18 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     icon: Shield,
     minRole: 'company_admin',
   },
+  {
+    name: 'Appearance',
+    path: '/app/settings/appearance',
+    icon: Settings,
+    minRole: 'employee',
+  },
+  {
+    name: 'Localization',
+    path: '/app/settings/localization',
+    icon: Globe,
+    minRole: 'employee',
+  },
 ];
 
 export const UTILITY_NAV = [

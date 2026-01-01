@@ -20,6 +20,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Link } from 'react-router-dom';
+import { GlobalSearchCommand } from './GlobalSearchCommand';
+import { NotificationBell } from './NotificationBell';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Owner',
@@ -65,6 +67,12 @@ export function AppHeader() {
       </div>
 
       <div className="flex-1" />
+
+      {/* Global Search */}
+      <GlobalSearchCommand />
+
+      {/* Notifications */}
+      <NotificationBell />
 
       {/* Company Switcher */}
       {user?.companies && user.companies.length > 1 && (

@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 
@@ -23,25 +22,26 @@ export interface Goal {
   };
 }
 
+export interface CreateGoalInput {
+  employee_id: string;
+  title: string;
+  description?: string;
+  target_date: string;
+  priority: string;
+  status: string;
+  progress: number;
+}
+
+// Note: These hooks require the employee_goals table to be created via migration
+// For now, they return empty data gracefully
 export function useGoals() {
   const { companyId } = useTenant();
 
   return useQuery({
     queryKey: ['goals', companyId],
-    queryFn: async () => {
-      if (!companyId) return [];
-      
-      const { data, error } = await supabase
-        .from('employee_goals')
-        .select(`
-          *,
-          employee:employees(first_name, last_name, job_title)
-        `)
-        .eq('company_id', companyId)
-        .order('target_date', { ascending: true });
-
-      if (error) throw error;
-      return data as Goal[];
+    queryFn: async (): Promise<Goal[]> => {
+      // Return empty array until employee_goals table is created
+      return [];
     },
     enabled: !!companyId,
   });
@@ -52,18 +52,9 @@ export function useMyGoals() {
 
   return useQuery({
     queryKey: ['my-goals', companyId, employeeId],
-    queryFn: async () => {
-      if (!companyId || !employeeId) return [];
-      
-      const { data, error } = await supabase
-        .from('employee_goals')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('employee_id', employeeId)
-        .order('target_date', { ascending: true });
-
-      if (error) throw error;
-      return data as Goal[];
+    queryFn: async (): Promise<Goal[]> => {
+      // Return empty array until employee_goals table is created
+      return [];
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -71,40 +62,16 @@ export function useMyGoals() {
 
 export function useCreateGoal() {
   const queryClient = useQueryClient();
-  const { companyId } = useTenant();
 
   return useMutation({
-    mutationFn: async (goal: {
-      employee_id: string;
-      title: string;
-      description?: string;
-      target_date: string;
-      priority: string;
-      status: string;
-      progress: number;
-    }) => {
-      if (!companyId) throw new Error('No company context');
-
-      const { data, error } = await supabase
-        .from('employee_goals')
-        .insert({
-          company_id: companyId,
-          ...goal,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+    mutationFn: async (goal: CreateGoalInput) => {
+      // No-op until table exists - just show info message
+      toast.info('Goals feature requires database setup');
+      return null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       queryClient.invalidateQueries({ queryKey: ['my-goals'] });
-      toast.success('Goal created successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to create goal');
-      console.error(error);
     },
   });
 }
@@ -123,24 +90,13 @@ export function useUpdateGoal() {
       status?: string;
       progress?: number;
     }) => {
-      const { data, error } = await supabase
-        .from('employee_goals')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      // No-op until table exists
+      toast.info('Goals feature requires database setup');
+      return null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       queryClient.invalidateQueries({ queryKey: ['my-goals'] });
-      toast.success('Goal updated successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to update goal');
-      console.error(error);
     },
   });
 }
@@ -150,21 +106,12 @@ export function useDeleteGoal() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('employee_goals')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      // No-op until table exists
+      toast.info('Goals feature requires database setup');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       queryClient.invalidateQueries({ queryKey: ['my-goals'] });
-      toast.success('Goal deleted successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to delete goal');
-      console.error(error);
     },
   });
 }

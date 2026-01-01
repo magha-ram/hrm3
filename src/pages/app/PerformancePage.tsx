@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Plus, BarChart3, Star, CheckCircle2, Clock, FileEdit } from 'lucide-react';
+import { Plus, BarChart3, Star, CheckCircle2, Clock, FileEdit, Target } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,19 +16,24 @@ import {
   useAllReviews, 
   useReviewStats 
 } from '@/hooks/usePerformance';
+import { useGoals, useMyGoals } from '@/hooks/useGoals';
 import { ReviewFormDialog } from '@/components/performance/ReviewFormDialog';
 import { ReviewDetailDialog } from '@/components/performance/ReviewDetailDialog';
 import { ReviewStatusBadge } from '@/components/performance/ReviewStatusBadge';
+import { GoalFormDialog } from '@/components/performance/GoalFormDialog';
 
 export default function PerformancePage() {
   const { isHROrAbove, isManager } = useUserRole();
   const { data: myReviews = [], isLoading: myLoading } = useMyReviews();
   const { data: pendingReviews = [], isLoading: pendingLoading } = usePendingReviews();
   const { data: allReviews = [], isLoading: allLoading } = useAllReviews();
+  const { data: allGoals = [] } = useGoals();
+  const { data: myGoals = [] } = useMyGoals();
   const stats = useReviewStats();
 
   const [activeTab, setActiveTab] = useState('my-reviews');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [reviewDetailOpen, setReviewDetailOpen] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
@@ -52,14 +57,20 @@ export default function PerformancePage() {
             <h1 className="text-2xl font-bold">Performance Reviews</h1>
             <p className="text-muted-foreground">Track and manage performance reviews</p>
           </div>
-          <WriteGate>
-            <RoleGate role="hr_manager">
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Start Review Cycle
-              </Button>
-            </RoleGate>
-          </WriteGate>
+          <div className="flex items-center gap-2">
+            <WriteGate>
+              <RoleGate role="hr_manager">
+                <Button variant="outline" onClick={() => setGoalDialogOpen(true)}>
+                  <Target className="h-4 w-4 mr-2" />
+                  Add Goal
+                </Button>
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Start Review Cycle
+                </Button>
+              </RoleGate>
+            </WriteGate>
+          </div>
         </div>
 
         {/* Stats */}
@@ -131,6 +142,12 @@ export default function PerformancePage() {
               My Reviews
               {reviewsToAcknowledge.length > 0 && (
                 <Badge variant="secondary" className="ml-2">{reviewsToAcknowledge.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="goals">
+              Goals
+              {myGoals.length > 0 && (
+                <Badge variant="secondary" className="ml-2">{myGoals.length}</Badge>
               )}
             </TabsTrigger>
             {(isManager || isHROrAbove) && (
@@ -209,6 +226,75 @@ export default function PerformancePage() {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Goals Tab */}
+          <TabsContent value="goals" className="mt-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>My Goals</CardTitle>
+                    <CardDescription>Track your performance goals and objectives</CardDescription>
+                  </div>
+                  <WriteGate>
+                    <Button variant="outline" size="sm" onClick={() => setGoalDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Goal
+                    </Button>
+                  </WriteGate>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {myGoals.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No goals set yet.</p>
+                    <p className="text-sm">Goals feature requires database setup.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {myGoals.map((goal) => (
+                      <Card key={goal.id} className="hover:border-primary/50 transition-colors">
+                        <CardContent className="py-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-medium">{goal.title}</h4>
+                                <Badge variant={
+                                  goal.priority === 'high' ? 'destructive' :
+                                  goal.priority === 'medium' ? 'default' : 'secondary'
+                                }>
+                                  {goal.priority}
+                                </Badge>
+                                <Badge variant="outline">
+                                  {goal.status.replace('_', ' ')}
+                                </Badge>
+                              </div>
+                              {goal.description && (
+                                <p className="text-sm text-muted-foreground mb-3">{goal.description}</p>
+                              )}
+                              <div className="flex items-center gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between text-xs mb-1">
+                                    <span>Progress</span>
+                                    <span>{goal.progress}%</span>
+                                  </div>
+                                  <Progress value={goal.progress} className="h-2" />
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  Due: {format(new Date(goal.target_date), 'MMM d, yyyy')}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -360,6 +446,12 @@ export default function PerformancePage() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         mode="create"
+      />
+
+      {/* Goal Dialog */}
+      <GoalFormDialog
+        open={goalDialogOpen}
+        onOpenChange={setGoalDialogOpen}
       />
 
       {/* Edit/Complete Review Dialog */}
