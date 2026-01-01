@@ -87,7 +87,7 @@ function AuditLogsTab() {
     queryKey: ['platform-audit-logs', search, actionFilter, companyFilter, page],
     queryFn: async () => {
       let query = supabase.from('audit_logs').select(`*, companies:company_id (name)`, { count: 'exact' }).order('created_at', { ascending: false });
-      if (actionFilter !== 'all') query = query.eq('action', actionFilter);
+      if (actionFilter !== 'all') query = query.eq('action', actionFilter as any);
       if (companyFilter !== 'all') query = query.eq('company_id', companyFilter);
       if (search) query = query.or(`table_name.ilike.%${search}%,record_id.ilike.%${search}%`);
       query = query.range((page - 1) * pageSize, page * pageSize - 1);
