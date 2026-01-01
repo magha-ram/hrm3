@@ -8,7 +8,7 @@ import { Users, Shield, UserCog } from 'lucide-react';
 export function PermissionsSettingsPage() {
   return (
     <RoleGate role="company_admin">
-      <div className="space-y-6 max-w-full overflow-hidden">
+      <div className="p-6 space-y-6 min-w-0 w-full">
         <div>
           <h1 className="text-2xl font-bold">Permission Management</h1>
           <p className="text-muted-foreground">
@@ -16,7 +16,7 @@ export function PermissionsSettingsPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
+        <Tabs defaultValue="users" className="space-y-6 min-w-0">
           <TabsList>
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
@@ -32,7 +32,7 @@ export function PermissionsSettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="users" className="overflow-hidden">
+          <TabsContent value="users" className="min-w-0">
             <UserPermissionsTable />
           </TabsContent>
 
