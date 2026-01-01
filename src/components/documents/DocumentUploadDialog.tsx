@@ -1,17 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Upload, File, X, Loader2 } from 'lucide-react';
+import { Upload, File, X, Loader2, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
-import { useDocumentTypes, useCreateDocument } from '@/hooks/useDocuments';
+import { usePermission } from '@/contexts/PermissionContext';
+import { useDocumentTypes, useDocumentLimits, useInitiateUpload, useConfirmUpload } from '@/hooks/useDocuments';
 import { useEmployees } from '@/hooks/useEmployees';
 import { toast } from 'sonner';
 
@@ -40,17 +42,26 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   preselectedEmployeeId?: string;
+  parentDocumentId?: string; // For versioning/replacement
 }
 
-export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId }: Props) {
-  const { companyId } = useTenant();
+export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId, parentDocumentId }: Props) {
+  const { companyId, employeeId: currentEmployeeId } = useTenant();
+  const { can } = usePermission();
   const { data: documentTypes = [] } = useDocumentTypes();
   const { data: employees = [] } = useEmployees();
-  const createDocument = useCreateDocument();
+  const initiateUpload = useInitiateUpload();
+  const confirmUpload = useConfirmUpload();
   
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+
+  // Get document limits for selected employee
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(preselectedEmployeeId || '');
+  const { data: limits } = useDocumentLimits(selectedEmployeeId || null);
+
+  const canCreateForOthers = can('documents', 'create');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -63,6 +74,16 @@ export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId
       expiry_date: '',
     },
   });
+
+  // Update selected employee when form value changes
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'employee_id' && value.employee_id) {
+        setSelectedEmployeeId(value.employee_id);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -120,41 +141,44 @@ export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId
       return;
     }
 
+    // Check limits before upload
+    if (limits && !limits.can_upload) {
+      toast.error('Document upload limit reached for this employee');
+      return;
+    }
+
     setUploading(true);
 
     try {
-      // Upload file to storage: company_id/employee_id/filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${companyId}/${values.employee_id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('employee-documents')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Get the file URL
-      const { data: urlData } = supabase.storage
-        .from('employee-documents')
-        .getPublicUrl(filePath);
-
-      // Create document record
-      await createDocument.mutateAsync({
+      // Step 1: Initiate upload via edge function (validates permissions, limits, etc.)
+      const uploadInfo = await initiateUpload.mutateAsync({
+        employeeId: values.employee_id,
+        documentTypeId: values.document_type_id,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
         title: values.title,
-        description: values.description || null,
-        document_type_id: values.document_type_id,
-        employee_id: values.employee_id,
-        file_name: file.name,
-        file_url: filePath, // Store path, not public URL (bucket is private)
-        file_size: file.size,
-        mime_type: file.type,
-        issue_date: values.issue_date || null,
-        expiry_date: values.expiry_date || null,
+        description: values.description,
+        issueDate: values.issue_date,
+        expiryDate: values.expiry_date,
+        parentDocumentId,
       });
+
+      // Step 2: Upload file using signed URL
+      const uploadResponse = await fetch(uploadInfo.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file to storage');
+      }
+
+      // Step 3: Confirm upload completion
+      await confirmUpload.mutateAsync(uploadInfo.documentId);
 
       form.reset();
       setFile(null);
@@ -166,12 +190,31 @@ export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId
     }
   };
 
+  // Filter employees based on permission
+  const availableEmployees = canCreateForOthers 
+    ? employees 
+    : employees.filter(e => e.id === currentEmployeeId);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Upload Document</DialogTitle>
+          <DialogTitle>
+            {parentDocumentId ? 'Upload New Version' : 'Upload Document'}
+          </DialogTitle>
         </DialogHeader>
+
+        {/* Limits Warning */}
+        {limits && !limits.can_upload && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Document upload limit reached. 
+              {limits.max_per_employee > 0 && ` Max ${limits.max_per_employee} documents per employee.`}
+              {limits.max_storage_mb > 0 && ` Max ${limits.max_storage_mb}MB storage.`}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -274,7 +317,7 @@ export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId
                     <Select 
                       onValueChange={field.onChange} 
                       value={field.value}
-                      disabled={!!preselectedEmployeeId}
+                      disabled={!!preselectedEmployeeId || availableEmployees.length === 1}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -282,7 +325,7 @@ export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {employees.map((emp) => (
+                        {availableEmployees.map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {emp.first_name} {emp.last_name}
                           </SelectItem>
@@ -352,9 +395,12 @@ export function DocumentUploadDialog({ open, onOpenChange, preselectedEmployeeId
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={uploading || !file}>
+              <Button 
+                type="submit" 
+                disabled={uploading || !file || (limits && !limits.can_upload)}
+              >
                 {uploading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Upload Document
+                {parentDocumentId ? 'Upload New Version' : 'Upload Document'}
               </Button>
             </div>
           </form>

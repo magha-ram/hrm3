@@ -9,17 +9,22 @@ import {
   MoreHorizontal,
   Eye,
   Trash2,
-  ShieldCheck
+  ShieldCheck,
+  XCircle,
+  RefreshCw,
+  History
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
-import { useVerifyDocument, useDeleteDocument } from '@/hooks/useDocuments';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useVerifyDocument, useDeleteDocument, useDocumentAccess } from '@/hooks/useDocuments';
+import { usePermission } from '@/contexts/PermissionContext';
 import { toast } from 'sonner';
 
 interface DocumentWithRelations {
@@ -30,10 +35,15 @@ interface DocumentWithRelations {
   file_size: number | null;
   mime_type: string | null;
   is_verified: boolean | null;
+  verification_status: 'pending' | 'verified' | 'rejected' | 'expired' | null;
+  rejection_reason: string | null;
   issue_date: string | null;
   expiry_date: string | null;
   created_at: string;
   description: string | null;
+  version_number: number | null;
+  is_latest_version: boolean | null;
+  parent_document_id: string | null;
   employee?: {
     id: string;
     first_name: string;
@@ -45,61 +55,81 @@ interface DocumentWithRelations {
     name: string;
     code: string;
   } | null;
+  verified_by_employee?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  } | null;
 }
 
 interface Props {
   documents: DocumentWithRelations[];
   isLoading?: boolean;
   showEmployee?: boolean;
-  canVerify?: boolean;
+  onUploadVersion?: (documentId: string) => void;
 }
 
-export function DocumentList({ documents, isLoading, showEmployee = true, canVerify = false }: Props) {
-  const { isHROrAbove } = useUserRole();
+export function DocumentList({ documents, isLoading, showEmployee = true, onUploadVersion }: Props) {
+  const { can } = usePermission();
   const verifyDocument = useVerifyDocument();
   const deleteDocument = useDeleteDocument();
+  const documentAccess = useDocumentAccess();
   
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  const canVerify = can('documents', 'verify');
+  const canDelete = can('documents', 'delete');
 
   const handleDownload = async (doc: DocumentWithRelations) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('employee-documents')
-        .download(doc.file_url);
-
-      if (error) throw error;
+      const result = await documentAccess.mutateAsync({
+        documentId: doc.id,
+        accessType: 'download',
+      });
 
       // Create download link
-      const url = URL.createObjectURL(data);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = result.signedUrl;
       a.download = doc.file_name;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (error: any) {
-      toast.error('Failed to download document');
+      // Error already handled by hook
     }
   };
 
   const handleView = async (doc: DocumentWithRelations) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('employee-documents')
-        .createSignedUrl(doc.file_url, 60 * 5); // 5 minute signed URL
+      const result = await documentAccess.mutateAsync({
+        documentId: doc.id,
+        accessType: 'view',
+      });
 
-      if (error) throw error;
-
-      window.open(data.signedUrl, '_blank');
+      window.open(result.signedUrl, '_blank');
     } catch (error: any) {
-      toast.error('Failed to open document');
+      // Error already handled by hook
     }
   };
 
   const handleVerify = (id: string) => {
-    verifyDocument.mutate(id);
+    verifyDocument.mutate({ id, status: 'verified' });
+  };
+
+  const handleReject = () => {
+    if (selectedDocId && rejectionReason.trim()) {
+      verifyDocument.mutate({ 
+        id: selectedDocId, 
+        status: 'rejected', 
+        rejectionReason: rejectionReason.trim() 
+      });
+      setRejectDialogOpen(false);
+      setSelectedDocId(null);
+      setRejectionReason('');
+    }
   };
 
   const handleDelete = () => {
@@ -107,6 +137,41 @@ export function DocumentList({ documents, isLoading, showEmployee = true, canVer
       deleteDocument.mutate(selectedDocId);
       setDeleteDialogOpen(false);
       setSelectedDocId(null);
+    }
+  };
+
+  const getVerificationStatusBadge = (doc: DocumentWithRelations) => {
+    const status = doc.verification_status || (doc.is_verified ? 'verified' : 'pending');
+    
+    switch (status) {
+      case 'verified':
+        return (
+          <Badge variant="default" className="bg-green-500/10 text-green-600 hover:bg-green-500/20">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Verified
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" />
+            Rejected
+          </Badge>
+        );
+      case 'expired':
+        return (
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Expired
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending
+          </Badge>
+        );
     }
   };
 
@@ -168,6 +233,7 @@ export function DocumentList({ documents, isLoading, showEmployee = true, canVer
           <TableBody>
             {documents.map((doc) => {
               const expiryStatus = getExpiryStatus(doc.expiry_date);
+              const status = doc.verification_status || (doc.is_verified ? 'verified' : 'pending');
               
               return (
                 <TableRow key={doc.id}>
@@ -177,10 +243,22 @@ export function DocumentList({ documents, isLoading, showEmployee = true, canVer
                         <FileText className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{doc.title}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{doc.title}</p>
+                          {doc.version_number && doc.version_number > 1 && (
+                            <Badge variant="outline" className="text-xs">
+                              v{doc.version_number}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {doc.file_name} • {formatFileSize(doc.file_size)}
                         </p>
+                        {doc.rejection_reason && (
+                          <p className="text-xs text-destructive mt-1">
+                            Reason: {doc.rejection_reason}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -199,18 +277,8 @@ export function DocumentList({ documents, isLoading, showEmployee = true, canVer
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      {doc.is_verified ? (
-                        <Badge variant="default" className="bg-green-500/10 text-green-600 hover:bg-green-500/20">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Verified
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pending
-                        </Badge>
-                      )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {getVerificationStatusBadge(doc)}
                       {expiryStatus && (
                         <Badge variant={expiryStatus.variant}>
                           <expiryStatus.icon className="h-3 w-3 mr-1" />
@@ -238,16 +306,45 @@ export function DocumentList({ documents, isLoading, showEmployee = true, canVer
                           <Download className="h-4 w-4 mr-2" />
                           Download
                         </DropdownMenuItem>
-                        {canVerify && !doc.is_verified && (
+                        
+                        {/* Version history */}
+                        {(doc.parent_document_id || doc.version_number && doc.version_number > 1) && (
+                          <DropdownMenuItem>
+                            <History className="h-4 w-4 mr-2" />
+                            Version History
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {/* Upload new version */}
+                        {onUploadVersion && doc.is_latest_version && (
+                          <DropdownMenuItem onClick={() => onUploadVersion(doc.id)}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Upload New Version
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {/* Verification actions */}
+                        {canVerify && status === 'pending' && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleVerify(doc.id)}>
                               <ShieldCheck className="h-4 w-4 mr-2" />
-                              Verify Document
+                              Verify
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedDocId(doc.id);
+                                setRejectDialogOpen(true);
+                              }}
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Reject
                             </DropdownMenuItem>
                           </>
                         )}
-                        {isHROrAbove && (
+                        
+                        {/* Delete action */}
+                        {canDelete && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
@@ -272,6 +369,7 @@ export function DocumentList({ documents, isLoading, showEmployee = true, canVer
         </Table>
       </div>
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -291,6 +389,38 @@ export function DocumentList({ documents, isLoading, showEmployee = true, canVer
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Document</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="rejection-reason">Rejection Reason</Label>
+            <Textarea
+              id="rejection-reason"
+              placeholder="Please provide a reason for rejection..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="mt-2"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleReject}
+              disabled={!rejectionReason.trim()}
+            >
+              Reject Document
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
