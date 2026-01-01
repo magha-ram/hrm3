@@ -99,18 +99,24 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
   const canVerify = can('documents', 'verify');
   const canDelete = can('documents', 'delete');
 
+  const base64ToBlob = (base64: string, mimeType: string) => {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+  };
+
   const handleDownload = async (doc: DocumentWithRelations) => {
     try {
       const result = await documentAccess.mutateAsync({
         documentId: doc.id,
         accessType: 'download',
+        responseMode: 'base64',
       });
 
-      // Fetch as blob to guarantee a download across browsers
-      const res = await fetch(result.signedUrl);
-      if (!res.ok) throw new Error('Failed to download document');
+      if (!('fileBase64' in result)) throw new Error('Download not available');
 
-      const blob = await res.blob();
+      const blob = base64ToBlob(result.fileBase64, result.mimeType);
       const url = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
@@ -127,33 +133,28 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
   };
 
   const handleView = async (doc: DocumentWithRelations) => {
-    // Open synchronously to avoid popup blockers
-    const popup = window.open('about:blank', '_blank');
-
     try {
       const result = await documentAccess.mutateAsync({
         documentId: doc.id,
         accessType: 'view',
+        responseMode: 'base64',
       });
 
-      if (popup) {
-        popup.location.href = result.signedUrl;
-      } else {
-        // Popup blocked; fallback to a normal link click
-        const a = document.createElement('a');
-        a.href = result.signedUrl;
-        a.target = '_blank';
-        a.rel = 'noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+      if (!('fileBase64' in result)) throw new Error('Preview not available');
 
+      const blob = base64ToBlob(result.fileBase64, result.mimeType);
+      const url = URL.createObjectURL(blob);
+
+      const popup = window.open(url, '_blank');
+      if (!popup) {
         toast.message('Popup blocked', {
           description: 'Please allow popups for this site to view documents in a new tab.',
         });
       }
+
+      // Cleanup later to avoid breaking the opened tab
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error: any) {
-      if (popup) popup.close();
       // Error already handled by hook
     }
   };

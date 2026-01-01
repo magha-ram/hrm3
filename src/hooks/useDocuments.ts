@@ -311,15 +311,25 @@ export function useCreateDocument() {
 // Hook for document access (view/download) via edge function
 export function useDocumentAccess() {
   return useMutation({
-    mutationFn: async ({ documentId, accessType }: { documentId: string; accessType: 'view' | 'download' }) => {
+    mutationFn: async ({
+      documentId,
+      accessType,
+      responseMode,
+    }: {
+      documentId: string;
+      accessType: 'view' | 'download';
+      responseMode?: 'signedUrl' | 'base64';
+    }) => {
       const { data, error } = await supabase.functions.invoke('document-access', {
-        body: { documentId, accessType },
+        body: { documentId, accessType, responseMode },
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      return data as { signedUrl: string; expiresIn: number };
+      return data as
+        | { signedUrl: string; expiresIn: number }
+        | { fileBase64: string; mimeType: string; fileName: string };
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to access document');
