@@ -58,6 +58,7 @@ const InviteUsersPage = lazy(() => import("./pages/app/settings/InviteUsersPage"
 const SecuritySettingsPage = lazy(() => import("./pages/app/settings/SecuritySettingsPage"));
 const EmailSettingsPage = lazy(() => import("./pages/app/settings/EmailSettingsPage"));
 const PermissionsSettingsPage = lazy(() => import("./pages/app/settings/PermissionsSettingsPage"));
+const NotificationSettingsPage = lazy(() => import("./pages/app/settings/NotificationSettingsPage"));
 // Utility pages
 const HelpPage = lazy(() => import("./pages/app/HelpPage"));
 const EmailLogsPage = lazy(() => import("./pages/app/EmailLogsPage"));
@@ -172,6 +173,7 @@ const App = () => (
                       <Route path="security" element={<SecuritySettingsPage />} />
                       <Route path="email" element={<EmailSettingsPage />} />
                       <Route path="permissions" element={<PermissionsSettingsPage />} />
+                      <Route path="notifications" element={<NotificationSettingsPage />} />
                     </Route>
                     <Route path="email-logs" element={<EmailLogsPage />} />
                     <Route path="help" element={<HelpPage />} />
