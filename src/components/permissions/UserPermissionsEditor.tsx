@@ -7,6 +7,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { 
   useUserPermissions, 
   useSetUserPermission 
@@ -33,8 +41,6 @@ import {
   ChevronDown,
   ChevronRight,
   User,
-  Mail,
-  Hash
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -42,7 +48,7 @@ export function UserPermissionsEditor() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
-  const { isAdmin, companyId } = useTenant();
+  const { isAdmin } = useTenant();
   
   const { data: users, isLoading: usersLoading } = useCompanyUsers();
   const { data: employees } = useEmployees();
@@ -140,6 +146,7 @@ export function UserPermissionsEditor() {
 
   const selectedUser = users?.find(u => u.user_id === selectedUserId);
   const selectedEmployeeData = selectedUserId ? employeeByUserId.get(selectedUserId) : null;
+  const totalUsers = users?.filter(u => u.role !== 'super_admin').length || 0;
 
   if (!isAdmin) {
     return (
@@ -164,88 +171,93 @@ export function UserPermissionsEditor() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Search bar at top */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, email, or ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        {/* Search bar */}
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or employee ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Showing {filteredUsers.length} of {totalUsers} users
+          </p>
         </div>
 
-        {/* User selection - horizontal scroll */}
-        <div className="border rounded-lg p-3">
-          <ScrollArea className="w-full">
-            <div className="flex gap-2 pb-1">
-              {usersLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-48 shrink-0" />
-                ))
-              ) : filteredUsers.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground text-sm w-full">
-                  {searchQuery ? 'No users found' : 'No users available'}
-                </div>
-              ) : (
-                filteredUsers.map((user) => {
-                  const empData = employeeByUserId.get(user.user_id);
-                  const isSelected = selectedUserId === user.user_id;
-                  
-                  return (
-                    <button
-                      key={user.user_id}
-                      onClick={() => setSelectedUserId(user.user_id)}
-                      className={cn(
-                        "shrink-0 text-left p-3 rounded-lg border transition-colors min-w-[200px]",
-                        isSelected 
-                          ? "bg-primary text-primary-foreground border-primary" 
-                          : "hover:bg-muted border-border"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium truncate text-sm">
-                            {user.profile?.first_name} {user.profile?.last_name}
-                          </div>
-                          <div className={cn(
-                            "text-xs truncate flex items-center gap-1",
-                            isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
-                          )}>
-                            <Mail className="h-3 w-3 shrink-0" />
-                            {user.profile?.email || empData?.email}
-                          </div>
-                          {empData?.employee_number && (
-                            <div className={cn(
-                              "text-xs flex items-center gap-1 mt-0.5",
-                              isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
-                            )}>
-                              <Hash className="h-3 w-3 shrink-0" />
-                              {empData.employee_number}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <Badge 
-                        variant={isSelected ? "secondary" : "outline"} 
-                        className="text-xs mt-2"
+        {/* User table */}
+        <div className="border rounded-lg">
+          <ScrollArea className="h-[280px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[200px]">Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="w-[120px]">Employee ID</TableHead>
+                  <TableHead className="w-[100px]">Role</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {usersLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                      {searchQuery ? 'No users found matching your search' : 'No users available'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => {
+                    const empData = employeeByUserId.get(user.user_id);
+                    const isSelected = selectedUserId === user.user_id;
+                    
+                    return (
+                      <TableRow
+                        key={user.user_id}
+                        className={cn(
+                          "cursor-pointer transition-colors",
+                          isSelected && "bg-primary/10"
+                        )}
+                        onClick={() => setSelectedUserId(user.user_id)}
                       >
-                        {user.role?.replace('_', ' ')}
-                      </Badge>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+                        <TableCell className="font-medium">
+                          {user.profile?.first_name} {user.profile?.last_name}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {user.profile?.email || empData?.email || '—'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {empData?.employee_number || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {user.role?.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
           </ScrollArea>
         </div>
 
         {/* Permissions Panel */}
         {!selectedUserId ? (
-          <div className="flex items-center justify-center py-12 border rounded-lg">
+          <div className="flex items-center justify-center py-8 border rounded-lg bg-muted/20">
             <div className="text-center text-muted-foreground">
-              <User className="h-10 w-10 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Select a user above to manage permissions</p>
+              <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Select a user from the table to manage permissions</p>
             </div>
           </div>
         ) : selectedUser?.role === 'super_admin' ? (
@@ -270,7 +282,9 @@ export function UserPermissionsEditor() {
                     </span>
                   )}
                 </div>
-                <Badge variant="secondary">{selectedUser?.role?.replace('_', ' ')}</Badge>
+                <Badge variant="secondary" className="capitalize">
+                  {selectedUser?.role?.replace('_', ' ')}
+                </Badge>
               </div>
               
               {/* Legend */}
