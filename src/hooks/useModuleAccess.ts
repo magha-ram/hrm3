@@ -12,17 +12,24 @@ export interface ModuleAccess {
 
 export function useModuleAccess() {
   const { role, companyId } = useTenant();
-  const { data: company } = useCurrentCompany();
+  const { data: company, isLoading } = useCurrentCompany();
 
   const isFrozen = company ? !company.is_active : false;
-  const planModules = company?.subscription?.features?.modules || [];
+  const planModules = company?.subscription?.features?.modules;
 
   const hasModuleInPlan = (moduleId: ModuleId): boolean => {
+    // If plan modules is 'all', grant access to everything
     if (planModules === 'all') return true;
-    if (Array.isArray(planModules)) {
+    
+    // If plan modules is an array, check if module is included
+    if (Array.isArray(planModules) && planModules.length > 0) {
       return planModules.includes(moduleId);
     }
-    return false;
+    
+    // If no plan modules defined (undefined, null, or empty array), 
+    // default to allowing access (no plan restrictions)
+    // This prevents blank sidebars when subscription data is loading or not configured
+    return true;
   };
 
   const moduleAccess = useMemo<ModuleAccess[]>(() => {
@@ -32,7 +39,7 @@ export function useModuleAccess() {
         return { module, hasAccess: false, reason: 'frozen' as const };
       }
 
-      // Check role access
+      // Check role access first
       if (!hasMinimumRole(role, module.minRole)) {
         return { module, hasAccess: false, reason: 'no_role' as const };
       }
@@ -61,5 +68,6 @@ export function useModuleAccess() {
     canAccessModule,
     isFrozen,
     planModules,
+    isLoading,
   };
 }
