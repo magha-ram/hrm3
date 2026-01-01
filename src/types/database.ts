@@ -66,6 +66,28 @@ export interface TimeEntryWithEmployee extends TimeEntry {
   employee: EmployeeBasic | null;
 }
 
+export interface TimeEntryBreak {
+  id: string;
+  time_entry_id: string;
+  company_id: string;
+  employee_id: string;
+  break_start: string;
+  break_end: string | null;
+  duration_minutes: number | null;
+  break_type: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeoLocation {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  timestamp: string;
+  address?: string;
+}
+
 export interface JobWithDepartment extends Job {
   department: DepartmentBasic | null;
   hiring_manager?: EmployeeBasic | null;
