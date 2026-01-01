@@ -9,6 +9,7 @@ import { ModuleGuard } from '@/components/ModuleGuard';
 import { DocumentUploadDialog } from '@/components/documents/DocumentUploadDialog';
 import { DocumentList } from '@/components/documents/DocumentList';
 import { DocumentTypeManager } from '@/components/documents/DocumentTypeManager';
+import { DocumentExpiryAlerts } from '@/components/documents/DocumentExpiryAlerts';
 import { useAllDocuments, useMyDocuments } from '@/hooks/useDocuments';
 import { useUserRole } from '@/hooks/useUserRole';
 
