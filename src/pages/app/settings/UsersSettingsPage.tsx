@@ -10,9 +10,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useCompanyUsers, CompanyUser } from '@/hooks/useCompanyUsers';
 import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, UserPlus, MoreHorizontal, Shield, UserMinus, RotateCcw } from 'lucide-react';
+import { Users, UserPlus, MoreHorizontal, Shield, UserMinus, RotateCcw, Upload } from 'lucide-react';
 import { ChangeRoleDialog } from '@/components/users/ChangeRoleDialog';
 import { RemoveUserDialog } from '@/components/users/RemoveUserDialog';
+import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 
 function getRoleBadgeVariant(role: string) {
   switch (role) {
@@ -45,6 +46,7 @@ export default function UsersSettingsPage() {
 
   const [changeRoleUser, setChangeRoleUser] = useState<CompanyUser | null>(null);
   const [removeUser, setRemoveUser] = useState<CompanyUser | null>(null);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
 
   const activeUsers = users?.filter(u => u.is_active) || [];
   const inactiveUsers = users?.filter(u => !u.is_active) || [];
@@ -125,10 +127,16 @@ export default function UsersSettingsPage() {
             </CardDescription>
           </div>
           {canManageUsers && !isFrozen && (
-            <Button onClick={() => navigate('/app/settings/users/invite')}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Create User Accounts
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setBulkImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Import
+              </Button>
+              <Button onClick={() => navigate('/app/settings/users/invite')}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Create User Accounts
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -273,6 +281,10 @@ export default function UsersSettingsPage() {
         user={removeUser} 
         open={!!removeUser} 
         onOpenChange={(open) => !open && setRemoveUser(null)} 
+      />
+      <BulkUserImportDialog 
+        open={bulkImportOpen} 
+        onOpenChange={setBulkImportOpen} 
       />
     </>
   );

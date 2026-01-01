@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TrialExtensionRequestDialog } from '@/components/TrialExtensionRequestDialog';
+import { InvoiceHistory } from '@/components/billing/InvoiceHistory';
+import { PaymentMethodCard } from '@/components/billing/PaymentMethodCard';
 
 export default function BillingSettingsPage() {
   const { planName, isTrialing, trialDaysRemaining, isFrozen, isAdmin, companyId } = useTenant();
@@ -240,6 +242,12 @@ export default function BillingSettingsPage() {
         open={extensionDialogOpen} 
         onOpenChange={setExtensionDialogOpen} 
       />
+
+      {/* Payment Method */}
+      <PaymentMethodCard />
+
+      {/* Invoice History */}
+      <InvoiceHistory />
 
       {/* Billing Interval Toggle */}
       <Card>

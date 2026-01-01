@@ -37,6 +37,7 @@ export interface Company {
   industry?: string | null;
   size_range?: string | null;
   address?: Record<string, string> | null;
+  fiscal_year_start?: number | null;
 }
 
 export interface CompanyWithSubscription extends Company {
