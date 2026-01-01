@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,8 @@ interface AccessRequest {
   document_id?: string;
   accessType?: "view" | "download";
   access_type?: "view" | "download";
+  responseMode?: "signedUrl" | "base64";
+  response_mode?: "signedUrl" | "base64";
 }
 
 Deno.serve(async (req) => {
@@ -79,6 +82,7 @@ Deno.serve(async (req) => {
         employee_id, 
         file_url, 
         file_name,
+        mime_type,
         title,
         deleted_at,
         verification_status
@@ -187,20 +191,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate signed URL for access
-    const expiresIn = accessType === "download" ? 60 : 300; // 1 min for download, 5 min for view
-    
-    const { data: signedUrlData, error: signError } = await supabaseAdmin.storage
-      .from("employee-documents")
-      .createSignedUrl(document.file_url, expiresIn);
-
-    if (signError) {
-      console.error("[document-access] Failed to create signed URL:", signError);
-      return new Response(
-        JSON.stringify({ error: "Failed to generate access URL" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const responseMode = body.responseMode || body.response_mode || "signedUrl";
 
     // Log successful access
     await supabaseAdmin.from("document_access_logs").insert({
@@ -221,23 +212,72 @@ Deno.serve(async (req) => {
       _user_agent: userAgent,
     });
 
-    // Log to security events for sensitive operations
-    await supabaseAdmin.rpc("log_security_event", {
-      _company_id: companyId,
-      _user_id: user.id,
-      _event_type: "data_access",
-      _description: `Document ${accessType}: ${document.title}`,
-      _severity: "low",
-      _ip_address: ipAddress,
-      _user_agent: userAgent,
-      _metadata: {
-        document_id: documentId,
-        access_type: accessType,
-        document_title: document.title,
-      },
-    });
+    // Use only valid enum values for security_event_type
+    if (accessType === "download") {
+      await supabaseAdmin.rpc("log_security_event", {
+        _company_id: companyId,
+        _user_id: user.id,
+        _event_type: "data_export",
+        _description: `Document download: ${document.title}`,
+        _severity: "low",
+        _ip_address: ipAddress,
+        _user_agent: userAgent,
+        _metadata: {
+          document_id: documentId,
+          access_type: accessType,
+          document_title: document.title,
+        },
+      });
+    }
 
     console.log("[document-access] Access granted for document:", documentId);
+
+    // If the browser blocks direct Storage URLs, return base64 instead
+    if (responseMode === "base64") {
+      const { data: fileBlob, error: downloadError } = await supabaseAdmin.storage
+        .from("employee-documents")
+        .download(document.file_url);
+
+      if (downloadError || !fileBlob) {
+        console.error("[document-access] Failed to download file from storage:", downloadError);
+        return new Response(
+          JSON.stringify({ error: "Failed to download document" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const mimeType = document.mime_type || "application/octet-stream";
+      const bytes = new Uint8Array(await fileBlob.arrayBuffer());
+      const fileBase64 = encodeBase64(bytes);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          fileBase64,
+          file_base64: fileBase64,
+          mimeType,
+          mime_type: mimeType,
+          fileName: document.file_name,
+          file_name: document.file_name,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Default: return a signed URL
+    const expiresIn = accessType === "download" ? 60 : 300; // 1 min for download, 5 min for view
+
+    const { data: signedUrlData, error: signError } = await supabaseAdmin.storage
+      .from("employee-documents")
+      .createSignedUrl(document.file_url, expiresIn);
+
+    if (signError) {
+      console.error("[document-access] Failed to create signed URL:", signError);
+      return new Response(
+        JSON.stringify({ error: "Failed to generate access URL" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Return response with both camelCase (for frontend) and snake_case (for backwards compat)
     return new Response(
@@ -247,7 +287,7 @@ Deno.serve(async (req) => {
         signed_url: signedUrlData.signedUrl,
         fileName: document.file_name,
         file_name: document.file_name,
-        expiresIn: expiresIn,
+        expiresIn,
         expires_in: expiresIn,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
