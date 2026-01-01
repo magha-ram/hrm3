@@ -267,6 +267,61 @@ const templates: Record<EmailTemplateType, (data: any) => RenderedTemplate> = {
     text: `Security Alert\n\nHi ${data.userName},\n\nWe detected a suspicious login to your account:\n\nWhen: ${data.loginTime}\nBrowser: ${data.browser}\nLocation: ${data.location}\nIP Address: ${data.ipAddress}\nReason: ${data.reason}\n\nIf this wasn't you, please secure your account immediately: ${data.secureAccountUrl}`
   }),
 
+  trial_started: (data: EmailTemplateData['trial_started']) => ({
+    subject: `🚀 Your ${data.companyName} trial has started!`,
+    html: wrapTemplate(`
+      <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        <h1>🚀 Welcome to Your Trial!</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p>Your <strong>${data.trialDays}-day trial</strong> of <strong>${data.companyName}</strong> on the <strong>${data.planName}</strong> plan has started.</p>
+        <div class="highlight" style="border-left-color: #10b981;">
+          <p><strong>Trial ends:</strong> ${data.trialEndDate}</p>
+          <p><strong>Full access to:</strong> All features included in your plan</p>
+        </div>
+        <p>Get started by exploring your dashboard and setting up your team:</p>
+        <p style="text-align: center;">
+          <a href="${data.dashboardUrl}" class="button" style="background: #10b981;">Go to Dashboard</a>
+        </p>
+        <p>We're here to help! If you have any questions, don't hesitate to reach out.</p>
+      </div>
+      <div class="footer">
+        <p>Enjoy exploring all the features during your trial!</p>
+      </div>
+    `, 'Trial Started'),
+    text: `Welcome to your ${data.trialDays}-day trial of ${data.companyName}!\n\nHi ${data.userName},\n\nYour trial has started on the ${data.planName} plan.\n\nTrial ends: ${data.trialEndDate}\n\nGo to your dashboard: ${data.dashboardUrl}`
+  }),
+
+  trial_expired: (data: EmailTemplateData['trial_expired']) => ({
+    subject: `⚠️ Your ${data.companyName} trial has ended`,
+    html: wrapTemplate(`
+      <div class="header" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
+        <h1>⚠️ Trial Ended</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p>Your trial for <strong>${data.companyName}</strong> has ended. Your account is now in <strong>read-only mode</strong>.</p>
+        <div class="highlight" style="border-left-color: #dc2626;">
+          <p><strong>What this means:</strong></p>
+          <ul>
+            <li>You can still view all your data</li>
+            <li>You cannot create, edit, or delete records</li>
+            <li>Features like payroll processing are disabled</li>
+          </ul>
+        </div>
+        <p><strong>Your data is safe!</strong> Upgrade now to restore full access and continue where you left off.</p>
+        <p style="text-align: center;">
+          <a href="${data.upgradeUrl}" class="button" style="background: #dc2626;">Upgrade Now</a>
+        </p>
+      </div>
+      <div class="footer">
+        <p>Questions? Contact our support team for help.</p>
+      </div>
+    `, 'Trial Ended'),
+    text: `Your ${data.companyName} trial has ended.\n\nHi ${data.userName},\n\nYour account is now in read-only mode. Your data is safe - upgrade to restore full access.\n\nUpgrade now: ${data.upgradeUrl}`
+  }),
+
   trial_expiring_7_days: (data: EmailTemplateData['trial_expiring_7_days']) => ({
     subject: `📅 7 days left in your ${data.companyName} trial`,
     html: wrapTemplate(`

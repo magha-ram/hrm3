@@ -231,12 +231,15 @@ export default function PlatformCompanyDetailPage() {
       // Get the new plan details to check if it's a paid plan
       const { data: newPlan } = await supabase
         .from('plans')
-        .select('price_monthly, price_yearly')
+        .select('price_monthly, price_yearly, name')
         .eq('id', newPlanId)
         .single();
       
       const isPaidPlan = newPlan && 
         (newPlan.price_monthly > 0 || newPlan.price_yearly > 0);
+
+      const wasTrialing = subscription?.status === 'trialing';
+      const previousPlanId = subscription?.plan_id;
 
       if (subscription) {
         const now = new Date();
@@ -262,18 +265,47 @@ export default function PlatformCompanyDetailPage() {
           .eq('id', subscription.id);
 
         if (error) throw error;
+
+        // Log the plan change / trial conversion
+        await supabase.from('billing_logs').insert({
+          company_id: companyId,
+          event_type: wasTrialing && isPaidPlan ? 'trial_converted' : 'plan_changed',
+          subscription_id: subscription.id,
+          plan_id: newPlanId,
+          previous_plan_id: previousPlanId,
+          metadata: {
+            new_plan_name: newPlan?.name,
+            was_trialing: wasTrialing,
+            is_paid_upgrade: isPaidPlan,
+            source: 'platform_admin',
+          },
+        });
       } else {
         // Create new subscription
-        const { error } = await supabase
+        const { data: newSub, error } = await supabase
           .from('company_subscriptions')
           .insert({
             company_id: companyId!,
             plan_id: newPlanId,
             status: 'active',
             current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Log new subscription
+        await supabase.from('billing_logs').insert({
+          company_id: companyId,
+          event_type: 'subscription_created',
+          subscription_id: newSub?.id,
+          plan_id: newPlanId,
+          metadata: {
+            new_plan_name: newPlan?.name,
+            source: 'platform_admin',
+          },
+        });
       }
     },
     onSuccess: () => {
@@ -303,6 +335,20 @@ export default function PlatformCompanyDetailPage() {
         .eq('id', subscription.id);
 
       if (error) throw error;
+
+      // Log the trial extension event
+      await supabase.from('billing_logs').insert({
+        company_id: companyId,
+        event_type: 'trial_extended',
+        subscription_id: subscription.id,
+        plan_id: subscription.plan_id,
+        metadata: {
+          extension_days: days,
+          new_trial_end: newEndDate.toISOString(),
+          previous_trial_end: subscription.trial_ends_at,
+          source: 'platform_admin',
+        },
+      });
     },
     onSuccess: () => {
       toast.success('Trial extended');
@@ -365,6 +411,33 @@ export default function PlatformCompanyDetailPage() {
           .eq('id', subscription.id);
 
         if (subError) throw subError;
+
+        // Log the extension approval
+        await supabase.from('billing_logs').insert({
+          company_id: companyId,
+          event_type: 'trial_extension_approved',
+          subscription_id: subscription.id,
+          plan_id: subscription.plan_id,
+          metadata: {
+            extension_days: request.requested_days,
+            new_trial_end: newEndDate.toISOString(),
+            request_id: requestId,
+            request_reason: request.reason,
+          },
+        });
+      } else {
+        // Log the extension rejection
+        await supabase.from('billing_logs').insert({
+          company_id: companyId,
+          event_type: 'trial_extension_rejected',
+          subscription_id: subscription?.id,
+          plan_id: subscription?.plan_id,
+          metadata: {
+            request_id: requestId,
+            request_reason: request.reason,
+            rejection_notes: notes,
+          },
+        });
       }
     },
     onSuccess: (_, { approved }) => {

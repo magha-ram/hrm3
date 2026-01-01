@@ -57,6 +57,13 @@ interface PlanFormData {
   audit: boolean;
   is_active: boolean;
   is_public: boolean;
+  // Trial configuration
+  trial_enabled: boolean;
+  trial_default_days: number;
+  trial_restrictions: {
+    disabled_modules: string[];
+    max_employees: number | null;
+  };
 }
 
 const defaultFormData: PlanFormData = {
@@ -72,6 +79,12 @@ const defaultFormData: PlanFormData = {
   audit: false,
   is_active: true,
   is_public: true,
+  trial_enabled: true,
+  trial_default_days: 14,
+  trial_restrictions: {
+    disabled_modules: [],
+    max_employees: null,
+  },
 };
 
 export default function PlatformPlansPage() {
@@ -115,6 +128,9 @@ export default function PlatformPlansPage() {
         is_active: data.is_active,
         is_public: data.is_public,
         sort_order: maxSortOrder + 1,
+        trial_enabled: data.trial_enabled,
+        trial_default_days: data.trial_default_days,
+        trial_restrictions: data.trial_restrictions,
       });
 
       if (error) throw error;
@@ -150,6 +166,9 @@ export default function PlatformPlansPage() {
           features,
           is_active: data.is_active,
           is_public: data.is_public,
+          trial_enabled: data.trial_enabled,
+          trial_default_days: data.trial_default_days,
+          trial_restrictions: data.trial_restrictions,
         }, { count: 'exact' })
         .eq('id', id);
 
@@ -238,6 +257,7 @@ export default function PlatformPlansPage() {
 
   const handleEdit = (plan: any) => {
     const features = plan.features || {};
+    const trialRestrictions = plan.trial_restrictions || {};
     setFormData({
       name: plan.name,
       description: plan.description || '',
@@ -251,6 +271,12 @@ export default function PlatformPlansPage() {
       audit: features.audit || false,
       is_active: plan.is_active,
       is_public: plan.is_public ?? true,
+      trial_enabled: plan.trial_enabled ?? true,
+      trial_default_days: plan.trial_default_days ?? 14,
+      trial_restrictions: {
+        disabled_modules: trialRestrictions.disabled_modules || [],
+        max_employees: trialRestrictions.max_employees ?? null,
+      },
     });
     setEditingPlan(plan);
     setIsDialogOpen(true);
@@ -325,6 +351,7 @@ export default function PlatformPlansPage() {
                   <TableHead>Monthly</TableHead>
                   <TableHead>Yearly</TableHead>
                   <TableHead>Max Employees</TableHead>
+                  <TableHead>Trial</TableHead>
                   <TableHead>Modules</TableHead>
                   <TableHead>Visibility</TableHead>
                   <TableHead>Status</TableHead>
@@ -373,6 +400,15 @@ export default function PlatformPlansPage() {
                       <TableCell>{formatPrice(plan.price_yearly)}</TableCell>
                       <TableCell>
                         {plan.max_employees ? plan.max_employees : 'Unlimited'}
+                      </TableCell>
+                      <TableCell>
+                        {plan.trial_enabled !== false ? (
+                          <Badge variant="outline" className="text-xs">
+                            {plan.trial_default_days || 14} days
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">Disabled</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -572,6 +608,89 @@ export default function PlatformPlansPage() {
                   <Label htmlFor="audit">Audit Logs</Label>
                 </div>
               </div>
+            </div>
+
+            {/* Trial Configuration */}
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Trial Configuration</Label>
+                <Switch
+                  id="trial_enabled"
+                  checked={formData.trial_enabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, trial_enabled: checked })}
+                />
+              </div>
+              
+              {formData.trial_enabled && (
+                <div className="space-y-4 pl-4 border-l-2 border-muted">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="trial_default_days">Default Trial Days</Label>
+                      <Input
+                        id="trial_default_days"
+                        type="number"
+                        min="1"
+                        max="90"
+                        value={formData.trial_default_days}
+                        onChange={(e) => setFormData({ ...formData, trial_default_days: parseInt(e.target.value) || 14 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="trial_max_employees">Max Employees During Trial</Label>
+                      <Input
+                        id="trial_max_employees"
+                        type="number"
+                        min="1"
+                        value={formData.trial_restrictions.max_employees || ''}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          trial_restrictions: {
+                            ...formData.trial_restrictions,
+                            max_employees: e.target.value ? parseInt(e.target.value) : null
+                          }
+                        })}
+                        placeholder="Same as plan"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Disabled Modules During Trial</Label>
+                    <div className="grid gap-2 md:grid-cols-3">
+                      {formData.modules.map((moduleId) => {
+                        const module = ALL_MODULES.find(m => m.id === moduleId);
+                        if (!module) return null;
+                        return (
+                          <div key={moduleId} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`trial-disable-${moduleId}`}
+                              checked={formData.trial_restrictions.disabled_modules.includes(moduleId)}
+                              onCheckedChange={(checked) => {
+                                const newDisabled = checked
+                                  ? [...formData.trial_restrictions.disabled_modules, moduleId]
+                                  : formData.trial_restrictions.disabled_modules.filter(m => m !== moduleId);
+                                setFormData({
+                                  ...formData,
+                                  trial_restrictions: {
+                                    ...formData.trial_restrictions,
+                                    disabled_modules: newDisabled
+                                  }
+                                });
+                              }}
+                            />
+                            <Label htmlFor={`trial-disable-${moduleId}`} className="text-sm font-normal text-muted-foreground">
+                              {module.label}
+                            </Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Checked modules will be disabled during the trial period.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Status & Visibility */}
