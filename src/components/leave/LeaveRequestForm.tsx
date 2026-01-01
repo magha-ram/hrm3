@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, AlertTriangle, Info } from 'lucide-react';
 import { useLeaveTypes, useCreateLeaveRequest } from '@/hooks/useLeave';
+import { useMyLeaveBalances } from '@/hooks/useLeaveBalances';
 import { differenceInBusinessDays, parseISO } from 'date-fns';
 
 const leaveSchema = z.object({
@@ -29,6 +31,7 @@ interface LeaveRequestFormProps {
 
 export function LeaveRequestForm({ onSuccess, onCancel }: LeaveRequestFormProps) {
   const { data: leaveTypes } = useLeaveTypes();
+  const { data: balances } = useMyLeaveBalances();
   const createRequest = useCreateLeaveRequest();
 
   const form = useForm<LeaveFormValues>({
@@ -41,11 +44,17 @@ export function LeaveRequestForm({ onSuccess, onCancel }: LeaveRequestFormProps)
     },
   });
 
+  const selectedLeaveTypeId = form.watch('leave_type_id');
   const startDate = form.watch('start_date');
   const endDate = form.watch('end_date');
+  
   const totalDays = startDate && endDate 
     ? Math.max(1, differenceInBusinessDays(parseISO(endDate), parseISO(startDate)) + 1)
     : 0;
+
+  // Find balance for selected leave type
+  const selectedBalance = balances?.find(b => b.leaveTypeId === selectedLeaveTypeId);
+  const isOverdraw = selectedBalance && totalDays > selectedBalance.remaining;
 
   const onSubmit = async (values: LeaveFormValues) => {
     await createRequest.mutateAsync({
@@ -74,15 +83,41 @@ export function LeaveRequestForm({ onSuccess, onCancel }: LeaveRequestFormProps)
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {leaveTypes?.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                  ))}
+                  {leaveTypes?.map((type) => {
+                    const balance = balances?.find(b => b.leaveTypeId === type.id);
+                    return (
+                      <SelectItem key={type.id} value={type.id}>
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <span>{type.name}</span>
+                          {balance && (
+                            <span className="text-xs text-muted-foreground">
+                              {balance.remaining} days left
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {/* Show balance for selected type */}
+        {selectedBalance && (
+          <div className="rounded-md bg-muted/50 p-3 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Info className="h-4 w-4" />
+              <span>
+                <strong>{selectedBalance.leaveTypeName}:</strong>{' '}
+                {selectedBalance.remaining} of {selectedBalance.allocated} days remaining
+                {selectedBalance.pending > 0 && ` (${selectedBalance.pending} pending)`}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <FormField control={form.control} name="start_date" render={({ field }) => (
@@ -103,6 +138,18 @@ export function LeaveRequestForm({ onSuccess, onCancel }: LeaveRequestFormProps)
 
         {totalDays > 0 && (
           <p className="text-sm text-muted-foreground">Total: {totalDays} day{totalDays !== 1 ? 's' : ''}</p>
+        )}
+
+        {/* Warning if overdrawing */}
+        {isOverdraw && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              This request exceeds your available balance by{' '}
+              <strong>{totalDays - selectedBalance.remaining} days</strong>. 
+              It may be rejected or require special approval.
+            </AlertDescription>
+          </Alert>
         )}
 
         <FormField control={form.control} name="reason" render={({ field }) => (
