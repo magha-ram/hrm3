@@ -1,10 +1,16 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { 
   User, 
   Mail, 
@@ -15,9 +21,11 @@ import {
   Users, 
   AlertTriangle,
   CreditCard,
-  Contact
+  Contact,
+  Pencil
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { WriteGate } from '@/components/PermissionGate';
 
 interface EmployeeRecord {
   id: string;
@@ -55,12 +63,192 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
   );
 }
 
+interface EditContactDialogProps {
+  employee: EmployeeRecord;
+  onSuccess: () => void;
+}
+
+function EditContactDialog({ employee, onSuccess }: EditContactDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [phone, setPhone] = useState(employee.phone || '');
+  const [personalEmail, setPersonalEmail] = useState(employee.personal_email || '');
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          phone: phone || null,
+          personal_email: personalEmail || null,
+        })
+        .eq('id', employee.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
+      toast.success('Contact information updated');
+      setOpen(false);
+      onSuccess();
+    },
+    onError: () => {
+      toast.error('Failed to update contact information');
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-1">
+          <Pencil className="h-3 w-3" />
+          Edit
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Contact Information</DialogTitle>
+          <DialogDescription>Update your phone number and personal email.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone Number</Label>
+            <Input
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 (555) 123-4567"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="personal-email">Personal Email</Label>
+            <Input
+              id="personal-email"
+              type="email"
+              value={personalEmail}
+              onChange={(e) => setPersonalEmail(e.target.value)}
+              placeholder="your.personal@email.com"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface EditEmergencyContactDialogProps {
+  employee: EmployeeRecord;
+  onSuccess: () => void;
+}
+
+function EditEmergencyContactDialog({ employee, onSuccess }: EditEmergencyContactDialogProps) {
+  const [open, setOpen] = useState(false);
+  const existing = (employee.emergency_contact as Record<string, string>) || {};
+  const [name, setName] = useState(existing.name || '');
+  const [relationship, setRelationship] = useState(existing.relationship || '');
+  const [phone, setPhone] = useState(existing.phone || '');
+  const [email, setEmail] = useState(existing.email || '');
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      const emergencyContact = {
+        name: name || null,
+        relationship: relationship || null,
+        phone: phone || null,
+        email: email || null,
+      };
+      const { error } = await supabase
+        .from('employees')
+        .update({ emergency_contact: emergencyContact })
+        .eq('id', employee.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
+      toast.success('Emergency contact updated');
+      setOpen(false);
+      onSuccess();
+    },
+    onError: () => {
+      toast.error('Failed to update emergency contact');
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-1">
+          <Pencil className="h-3 w-3" />
+          Edit
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Emergency Contact</DialogTitle>
+          <DialogDescription>Update your emergency contact information.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="ec-name">Name</Label>
+            <Input
+              id="ec-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Contact name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ec-relationship">Relationship</Label>
+            <Input
+              id="ec-relationship"
+              value={relationship}
+              onChange={(e) => setRelationship(e.target.value)}
+              placeholder="e.g., Spouse, Parent, Sibling"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ec-phone">Phone Number</Label>
+            <Input
+              id="ec-phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 (555) 123-4567"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ec-email">Email (optional)</Label>
+            <Input
+              id="ec-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="contact@email.com"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function MyInfoPage() {
   const { companyId } = useTenant();
   const { user } = useAuth();
   const userId = user?.user_id;
 
-  const { data: employee, isLoading } = useQuery({
+  const { data: employee, isLoading, refetch } = useQuery({
     queryKey: ['my-employee-record', companyId, userId],
     queryFn: async () => {
       if (!companyId || !userId) return null;
@@ -136,7 +324,7 @@ export default function MyInfoPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">My Information</h1>
-        <p className="text-muted-foreground">View your employee record</p>
+        <p className="text-muted-foreground">View and update your employee record</p>
       </div>
 
       {/* Header Card */}
@@ -164,10 +352,15 @@ export default function MyInfoPage() {
         {/* Contact Information */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Contact Information
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Contact Information
+              </CardTitle>
+              <WriteGate>
+                <EditContactDialog employee={employee} onSuccess={() => refetch()} />
+              </WriteGate>
+            </div>
           </CardHeader>
           <CardContent className="space-y-1">
             <InfoRow icon={Mail} label="Work Email" value={employee.email} />
@@ -210,11 +403,18 @@ export default function MyInfoPage() {
         {/* Emergency Contact */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Emergency Contact
-            </CardTitle>
-            <CardDescription>Contact in case of emergency</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Emergency Contact
+                </CardTitle>
+                <CardDescription>Contact in case of emergency</CardDescription>
+              </div>
+              <WriteGate>
+                <EditEmergencyContactDialog employee={employee} onSuccess={() => refetch()} />
+              </WriteGate>
+            </div>
           </CardHeader>
           <CardContent>
             {emergency && (emergency.name || emergency.phone) ? (
@@ -225,7 +425,7 @@ export default function MyInfoPage() {
                 {emergency.email && <InfoRow icon={Mail} label="Email" value={emergency.email} />}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No emergency contact on file.</p>
+              <p className="text-sm text-muted-foreground">No emergency contact on file. Click Edit to add one.</p>
             )}
           </CardContent>
         </Card>
@@ -248,7 +448,7 @@ export default function MyInfoPage() {
                 {bank.ifsc_code && <InfoRow icon={CreditCard} label="IFSC / Branch" value={bank.ifsc_code} />}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No bank details on file.</p>
+              <p className="text-sm text-muted-foreground">No bank details on file. Please contact HR.</p>
             )}
           </CardContent>
         </Card>
