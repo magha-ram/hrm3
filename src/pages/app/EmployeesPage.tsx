@@ -9,7 +9,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Loader2, Upload, Download, FileSpreadsheet, LayoutList, Network } from 'lucide-react';
-import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { WriteGate, RoleGate, PermGate } from '@/components/PermissionGate';
+import { usePermission } from '@/contexts/PermissionContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useEmployees, useDeleteEmployee, type Employee } from '@/hooks/useEmployees';
@@ -35,6 +36,7 @@ export default function EmployeesPage() {
   const { data: departments } = useDepartments();
   const deleteEmployee = useDeleteEmployee();
   const { isHROrAbove } = useUserRole();
+  const { can } = usePermission();
   
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<EmployeeFiltersState>({
@@ -117,8 +119,8 @@ export default function EmployeesPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Export/Import Dropdown - Only for HR */}
-            <RoleGate role="hr_manager">
+            {/* Export/Import Dropdown - Permission based */}
+            <PermGate module="employees" action="read">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
@@ -136,18 +138,20 @@ export default function EmployeesPage() {
                     Download Template
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <WriteGate>
-                    <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Bulk Import
-                    </DropdownMenuItem>
-                  </WriteGate>
+                  <PermGate module="employees" action="create">
+                    <WriteGate>
+                      <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Bulk Import
+                      </DropdownMenuItem>
+                    </WriteGate>
+                  </PermGate>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </RoleGate>
+            </PermGate>
 
-            <WriteGate>
-              <RoleGate role="hr_manager">
+            <PermGate module="employees" action="create">
+              <WriteGate>
                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                   <DialogTrigger asChild>
                     <Button onClick={() => setEditingEmployee(null)}>
@@ -166,8 +170,8 @@ export default function EmployeesPage() {
                     />
                   </DialogContent>
                 </Dialog>
-              </RoleGate>
-            </WriteGate>
+              </WriteGate>
+            </PermGate>
           </div>
         </div>
 
@@ -307,7 +311,7 @@ export default function EmployeesPage() {
                             </Badge>
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
-                            <RoleGate role="hr_manager">
+                            {can('employees', 'read') && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon">
@@ -319,12 +323,16 @@ export default function EmployeesPage() {
                                     <Eye className="h-4 w-4 mr-2" />
                                     View
                                   </DropdownMenuItem>
-                                  <WriteGate>
-                                    <DropdownMenuItem onClick={() => handleEdit(employee)}>
-                                      <Pencil className="h-4 w-4 mr-2" />
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <RoleGate role="company_admin">
+                                  <PermGate module="employees" action="update">
+                                    <WriteGate>
+                                      <DropdownMenuItem onClick={() => handleEdit(employee)}>
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                    </WriteGate>
+                                  </PermGate>
+                                  <PermGate module="employees" action="delete">
+                                    <WriteGate>
                                       <DropdownMenuItem 
                                         onClick={() => setDeletingId(employee.id)}
                                         className="text-destructive"
@@ -332,11 +340,11 @@ export default function EmployeesPage() {
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Delete
                                       </DropdownMenuItem>
-                                    </RoleGate>
-                                  </WriteGate>
+                                    </WriteGate>
+                                  </PermGate>
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                            </RoleGate>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
