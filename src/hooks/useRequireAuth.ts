@@ -18,7 +18,7 @@ export const useRequireAuth = (options: UseRequireAuthOptions = {}) => {
   } = options;
   
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, currentRole, currentCompanyId, isPlatformAdmin } = useAuth();
+  const { isAuthenticated, isLoading, currentRole, currentCompanyId, isPlatformAdmin, user } = useAuth();
   const { isImpersonating, effectiveCompanyId } = useImpersonation();
 
   // When impersonating, use the effective company ID instead of the user's actual company
@@ -27,10 +27,21 @@ export const useRequireAuth = (options: UseRequireAuthOptions = {}) => {
   const activeRole = isImpersonating && isPlatformAdmin ? 'company_admin' as AppRole : currentRole;
 
   useEffect(() => {
+    // CRITICAL: Wait for BOTH auth loading AND user context to be fully resolved
+    // isLoading now includes user context loading state
     if (isLoading) return;
 
+    // If not authenticated at all, redirect to auth
     if (!isAuthenticated) {
-      navigate('/auth', { replace: true });
+      navigate(redirectTo, { replace: true });
+      return;
+    }
+
+    // Wait for user context to be available before making decisions
+    // This prevents premature redirects while user data is still loading
+    if (isAuthenticated && user === null) {
+      // User context is still loading even though session exists
+      // This should be covered by isLoading, but add safety check
       return;
     }
 
@@ -47,10 +58,10 @@ export const useRequireAuth = (options: UseRequireAuthOptions = {}) => {
       navigate('/unauthorized', { replace: true });
       return;
     }
-  }, [isAuthenticated, isLoading, activeRole, activeCompanyId, navigate, redirectTo, requiredRole, requireCompany, isImpersonating]);
+  }, [isAuthenticated, isLoading, activeRole, activeCompanyId, navigate, redirectTo, requiredRole, requireCompany, isImpersonating, user]);
 
   return { 
-    isLoading, 
+    isLoading: isLoading || (isAuthenticated && user === null), 
     isAuthenticated, 
     currentRole: activeRole, 
     currentCompanyId: activeCompanyId 
