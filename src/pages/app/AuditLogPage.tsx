@@ -41,6 +41,13 @@ function ActionBadge({ action }: { action: AuditAction }) {
   );
 }
 
+function getUserDisplayName(log: any): string {
+  if (log.user_name) return log.user_name;
+  if (log.user_email) return log.user_email;
+  if (log.user_id) return log.user_id.slice(0, 8) + '...';
+  return 'System';
+}
+
 function LogDetailDialog({ log }: { log: any }) {
   return (
     <div className="space-y-4">
@@ -62,8 +69,11 @@ function LogDetailDialog({ log }: { log: any }) {
           <p className="font-mono text-sm truncate">{log.record_id || '-'}</p>
         </div>
         <div>
-          <p className="text-sm font-medium text-muted-foreground">User ID</p>
-          <p className="font-mono text-sm truncate">{log.user_id || 'System'}</p>
+          <p className="text-sm font-medium text-muted-foreground">User</p>
+          <p className="text-sm">{getUserDisplayName(log)}</p>
+          {log.user_email && log.user_name && (
+            <p className="text-xs text-muted-foreground">{log.user_email}</p>
+          )}
         </div>
         <div>
           <p className="text-sm font-medium text-muted-foreground">IP Address</p>
@@ -346,8 +356,8 @@ export default function AuditLogPage() {
                       <TableCell className="font-mono text-sm truncate max-w-[120px]">
                         {log.record_id?.slice(0, 8) || '-'}
                       </TableCell>
-                      <TableCell className="font-mono text-sm truncate max-w-[120px]">
-                        {log.user_id?.slice(0, 8) || 'System'}
+                      <TableCell className="text-sm truncate max-w-[160px]" title={log.user_email || log.user_id || undefined}>
+                        {getUserDisplayName(log)}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         {String(log.ip_address) || '-'}

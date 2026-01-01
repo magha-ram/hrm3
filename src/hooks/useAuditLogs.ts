@@ -3,7 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { Tables } from '@/integrations/supabase/types';
 
-export type AuditLog = Tables<'audit_logs'>;
+export type AuditLog = Tables<'audit_logs'> & {
+  user_name?: string | null;
+  user_email?: string | null;
+};
 
 type AuditAction = 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout' | 'export' | 'import';
 
@@ -24,6 +27,7 @@ export function useAuditLogs(filters: AuditLogFilters = {}, page = 1, pageSize =
     queryFn: async () => {
       if (!companyId) return { logs: [], total: 0 };
 
+      // First get the audit logs
       let query = supabase
         .from('audit_logs')
         .select('*', { count: 'exact' })
@@ -52,10 +56,43 @@ export function useAuditLogs(filters: AuditLogFilters = {}, page = 1, pageSize =
       const to = from + pageSize - 1;
       query = query.range(from, to);
 
-      const { data, error, count } = await query;
+      const { data: logs, error, count } = await query;
 
       if (error) throw error;
-      return { logs: data as AuditLog[], total: count || 0 };
+
+      // Get unique user IDs to fetch profiles
+      const userIds = [...new Set(logs?.map(l => l.user_id).filter(Boolean) as string[])];
+      
+      let profilesMap: Record<string, { first_name: string | null; last_name: string | null; email: string }> = {};
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', userIds);
+        
+        if (profiles) {
+          profilesMap = profiles.reduce((acc, p) => {
+            acc[p.id] = { first_name: p.first_name, last_name: p.last_name, email: p.email };
+            return acc;
+          }, {} as typeof profilesMap);
+        }
+      }
+
+      // Enhance logs with user info
+      const enhancedLogs = logs?.map(log => {
+        const profile = log.user_id ? profilesMap[log.user_id] : null;
+        const fullName = profile 
+          ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+          : null;
+        return {
+          ...log,
+          user_name: fullName,
+          user_email: profile?.email || null,
+        };
+      }) as AuditLog[];
+
+      return { logs: enhancedLogs, total: count || 0 };
     },
     enabled: !!companyId,
   });

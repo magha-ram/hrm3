@@ -11,6 +11,11 @@ interface CompanyData {
   is_active: boolean;
   timezone: string;
   settings: Record<string, unknown>;
+  email: string | null;
+  phone: string | null;
+  industry: string | null;
+  size_range: string | null;
+  address: Record<string, string> | null;
 }
 
 interface SubscriptionData {
@@ -44,7 +49,7 @@ export function useCompany(companyId: string | null) {
 
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .select('id, name, slug, logo_url, is_active, timezone, settings')
+        .select('id, name, slug, logo_url, is_active, timezone, settings, email, phone, industry, size_range, address')
         .eq('id', companyId)
         .maybeSingle();
 

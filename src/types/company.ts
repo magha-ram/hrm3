@@ -32,6 +32,11 @@ export interface Company {
   is_active: boolean;
   timezone: string;
   settings: Record<string, unknown>;
+  email?: string | null;
+  phone?: string | null;
+  industry?: string | null;
+  size_range?: string | null;
+  address?: Record<string, string> | null;
 }
 
 export interface CompanyWithSubscription extends Company {

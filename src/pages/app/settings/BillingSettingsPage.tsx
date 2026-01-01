@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Check, Crown, AlertTriangle, ArrowUp, ArrowDown, Loader2, Clock, Gift } from 'lucide-react';
+import { EmployeeUsageCard } from '@/components/settings/EmployeeUsageCard';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -111,46 +112,50 @@ export default function BillingSettingsPage() {
         </Alert>
       )}
 
-      {/* Current Plan Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Crown className="h-5 w-5 text-primary" />
-            Current Plan
-          </CardTitle>
-          <CardDescription>
-            You are currently on the{' '}
-            <span className="font-semibold text-foreground">{planName || 'Free'}</span> plan
-            {isTrialing && trialDaysRemaining !== null && (
-              <Badge variant="secondary" className="ml-2">
-                {trialDaysRemaining} days left in trial
-              </Badge>
-            )}
-          </CardDescription>
-        </CardHeader>
-        {subscription && (
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <div className="flex justify-between">
-              <span>Billing interval:</span>
-              <span className="capitalize font-medium text-foreground">
-                {subscription.billing_interval}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Current period ends:</span>
-              <span className="font-medium text-foreground">
-                {new Date(subscription.current_period_end).toLocaleDateString()}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Status:</span>
-              <Badge variant={health.isHealthy ? 'default' : 'destructive'}>
-                {subscription.status}
-              </Badge>
-            </div>
-          </CardContent>
-        )}
-      </Card>
+      {/* Current Plan & Employee Usage */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-primary" />
+              Current Plan
+            </CardTitle>
+            <CardDescription>
+              You are currently on the{' '}
+              <span className="font-semibold text-foreground">{planName || 'Free'}</span> plan
+              {isTrialing && trialDaysRemaining !== null && (
+                <Badge variant="secondary" className="ml-2">
+                  {trialDaysRemaining} days left in trial
+                </Badge>
+              )}
+            </CardDescription>
+          </CardHeader>
+          {subscription && (
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Billing interval:</span>
+                <span className="capitalize font-medium text-foreground">
+                  {subscription.billing_interval}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Current period ends:</span>
+                <span className="font-medium text-foreground">
+                  {new Date(subscription.current_period_end).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Status:</span>
+                <Badge variant={health.isHealthy ? 'default' : 'destructive'}>
+                  {subscription.status}
+                </Badge>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        <EmployeeUsageCard />
+      </div>
 
       {/* Trial Extension Section */}
       {isTrialing && isAdmin && (

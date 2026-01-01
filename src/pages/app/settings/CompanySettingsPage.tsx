@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import { Loader2, Building2, Hash, RefreshCw, Check, X } from 'lucide-react';
 import { MultiCompanyRequestDialog } from '@/components/MultiCompanyRequestDialog';
 import { DomainSettingsSection } from '@/components/settings/DomainSettingsSection';
+import { CompanyLogoUpload } from '@/components/settings/CompanyLogoUpload';
+import { CompanyAddressSection } from '@/components/settings/CompanyAddressSection';
 import { type EmployeeIdSettings, formatPreviewNumber, generateEmployeeNumber } from '@/hooks/useEmployeeNumber';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -335,6 +337,12 @@ export default function CompanySettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <CompanyLogoUpload
+              currentLogoUrl={company?.logo_url || null}
+              companyName={company?.name || ''}
+              disabled={!canEdit}
+            />
+
             <div className="space-y-2">
               <Label htmlFor="company-name">Company Name</Label>
               <Input 
@@ -398,6 +406,16 @@ export default function CompanySettingsPage() {
           </CardContent>
         </Card>
       </form>
+
+      {/* Company Address & Contact */}
+      <CompanyAddressSection
+        address={(company?.address as Record<string, string>) || null}
+        email={company?.email || null}
+        phone={company?.phone || null}
+        industry={company?.industry || null}
+        sizeRange={company?.size_range || null}
+        disabled={!canEdit}
+      />
 
       {/* Employee ID Format */}
       <Card>
