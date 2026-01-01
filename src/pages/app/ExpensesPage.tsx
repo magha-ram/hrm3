@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { ModuleGuard } from '@/components/ModuleGuard';
-import { PermissionGate } from '@/components/PermissionGate';
 import { 
   useMyExpenses, 
   useAllExpenses, 
@@ -57,6 +56,9 @@ import * as z from 'zod';
 import { format } from 'date-fns';
 import { Plus, Receipt, Check, X, Trash2, Settings } from 'lucide-react';
 import { getStatusColor, formatStatus } from '@/lib/status-utils';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const PAGE_SIZE = 10;
 
 const expenseSchema = z.object({
   category_id: z.string().min(1, 'Category is required'),
@@ -225,16 +227,25 @@ function ExpenseTable({
   expenses, 
   showEmployee = false,
   showActions = false,
+  currentPage,
+  onPageChange,
 }: { 
   expenses: Expense[];
   showEmployee?: boolean;
   showActions?: boolean;
+  currentPage: number;
+  onPageChange: (page: number) => void;
 }) {
   const approveExpense = useApproveExpense();
   const rejectExpense = useRejectExpense();
   const deleteExpense = useDeleteExpense();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  const paginatedExpenses = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return expenses.slice(start, start + PAGE_SIZE);
+  }, [expenses, currentPage]);
 
   const handleReject = (id: string) => {
     rejectExpense.mutate({ expenseId: id, reason: rejectReason }, {
@@ -246,95 +257,103 @@ function ExpenseTable({
   };
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Date</TableHead>
-          {showEmployee && <TableHead>Employee</TableHead>}
-          <TableHead>Category</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
-          <TableHead>Status</TableHead>
-          {showActions && <TableHead className="text-right">Actions</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {expenses.length === 0 ? (
+    <>
+      <Table>
+        <TableHeader>
           <TableRow>
-            <TableCell colSpan={showEmployee ? 7 : 6} className="text-center py-8 text-muted-foreground">
-              No expenses found
-            </TableCell>
+            <TableHead>Date</TableHead>
+            {showEmployee && <TableHead>Employee</TableHead>}
+            <TableHead>Category</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+            <TableHead>Status</TableHead>
+            {showActions && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
-        ) : (
-          expenses.map((expense) => (
-            <TableRow key={expense.id}>
-              <TableCell>{format(new Date(expense.expense_date), 'MMM d, yyyy')}</TableCell>
-              {showEmployee && (
-                <TableCell>
-                  {expense.employee?.first_name} {expense.employee?.last_name}
-                </TableCell>
-              )}
-              <TableCell>{expense.category?.name || '-'}</TableCell>
-              <TableCell className="max-w-xs truncate">{expense.description}</TableCell>
-              <TableCell className="text-right font-medium">
-                {expense.currency} {expense.amount.toFixed(2)}
+        </TableHeader>
+        <TableBody>
+          {paginatedExpenses.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={showEmployee ? 7 : 6} className="text-center py-8 text-muted-foreground">
+                No expenses found
               </TableCell>
-              <TableCell>
-                <ExpenseStatusBadge status={expense.status} />
-              </TableCell>
-              {showActions && (
-                <TableCell className="text-right">
-                  {expense.status === 'pending' && (
-                    <div className="flex gap-1 justify-end">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => approveExpense.mutate(expense.id)}
-                        disabled={approveExpense.isPending}
-                      >
-                        <Check className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Dialog open={rejectingId === expense.id} onOpenChange={(open) => !open && setRejectingId(null)}>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="ghost" onClick={() => setRejectingId(expense.id)}>
-                            <X className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Reject Expense</DialogTitle>
-                            <DialogDescription>Provide a reason for rejection</DialogDescription>
-                          </DialogHeader>
-                          <Textarea
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
-                            placeholder="Reason for rejection..."
-                          />
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setRejectingId(null)}>Cancel</Button>
-                            <Button variant="destructive" onClick={() => handleReject(expense.id)}>
-                              Reject
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => deleteExpense.mutate(expense.id)}
-                        disabled={deleteExpense.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  )}
-                </TableCell>
-              )}
             </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
+          ) : (
+            paginatedExpenses.map((expense) => (
+              <TableRow key={expense.id}>
+                <TableCell>{format(new Date(expense.expense_date), 'MMM d, yyyy')}</TableCell>
+                {showEmployee && (
+                  <TableCell>
+                    {expense.employee?.first_name} {expense.employee?.last_name}
+                  </TableCell>
+                )}
+                <TableCell>{expense.category?.name || '-'}</TableCell>
+                <TableCell className="max-w-xs truncate">{expense.description}</TableCell>
+                <TableCell className="text-right font-medium">
+                  {expense.currency} {expense.amount.toFixed(2)}
+                </TableCell>
+                <TableCell>
+                  <ExpenseStatusBadge status={expense.status} />
+                </TableCell>
+                {showActions && (
+                  <TableCell className="text-right">
+                    {expense.status === 'pending' && (
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => approveExpense.mutate(expense.id)}
+                          disabled={approveExpense.isPending}
+                        >
+                          <Check className="h-4 w-4 text-green-600" />
+                        </Button>
+                        <Dialog open={rejectingId === expense.id} onOpenChange={(open) => !open && setRejectingId(null)}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="ghost" onClick={() => setRejectingId(expense.id)}>
+                              <X className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Reject Expense</DialogTitle>
+                              <DialogDescription>Provide a reason for rejection</DialogDescription>
+                            </DialogHeader>
+                            <Textarea
+                              value={rejectReason}
+                              onChange={(e) => setRejectReason(e.target.value)}
+                              placeholder="Reason for rejection..."
+                            />
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setRejectingId(null)}>Cancel</Button>
+                              <Button variant="destructive" onClick={() => handleReject(expense.id)}>
+                                Reject
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteExpense.mutate(expense.id)}
+                          disabled={deleteExpense.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                )}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+      <TablePagination
+        currentPage={currentPage}
+        totalItems={expenses.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={onPageChange}
+      />
+    </>
   );
 }
 
@@ -481,6 +500,9 @@ export default function ExpensesPage() {
   const { data: allExpenses = [], isLoading: loadingAll } = useAllExpenses();
   const { data: pendingExpenses = [] } = useAllExpenses('pending');
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [myExpensesPage, setMyExpensesPage] = useState(1);
+  const [allExpensesPage, setAllExpensesPage] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
 
   return (
     <ModuleGuard moduleId="expenses">
@@ -583,7 +605,7 @@ export default function ExpensesPage() {
                 {loadingMy ? (
                   <div className="text-center py-8 text-muted-foreground">Loading...</div>
                 ) : (
-                  <ExpenseTable expenses={myExpenses} />
+                  <ExpenseTable expenses={myExpenses} currentPage={myExpensesPage} onPageChange={setMyExpensesPage} />
                 )}
               </CardContent>
             </Card>
@@ -600,7 +622,7 @@ export default function ExpensesPage() {
                     {loadingAll ? (
                       <div className="text-center py-8 text-muted-foreground">Loading...</div>
                     ) : (
-                      <ExpenseTable expenses={allExpenses} showEmployee showActions />
+                      <ExpenseTable expenses={allExpenses} showEmployee showActions currentPage={allExpensesPage} onPageChange={setAllExpensesPage} />
                     )}
                   </CardContent>
                 </Card>
@@ -612,7 +634,7 @@ export default function ExpensesPage() {
                     <CardTitle>Pending Approval</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ExpenseTable expenses={pendingExpenses} showEmployee showActions />
+                    <ExpenseTable expenses={pendingExpenses} showEmployee showActions currentPage={pendingPage} onPageChange={setPendingPage} />
                   </CardContent>
                 </Card>
               </TabsContent>
