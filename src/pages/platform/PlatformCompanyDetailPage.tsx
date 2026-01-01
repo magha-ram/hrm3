@@ -205,36 +205,6 @@ export default function PlatformCompanyDetailPage() {
     },
   });
 
-  // Fetch platform settings for impersonation visibility
-  const { data: platformSettings } = useQuery({
-    queryKey: ['platform-settings-impersonation'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('platform_settings')
-        .select('value')
-        .eq('key', 'impersonation')
-        .maybeSingle();
-
-      if (error) throw error;
-      return data?.value as { enabled_for_all?: boolean; enterprise_only?: boolean } || { enterprise_only: true };
-    },
-  });
-
-  // Check if impersonation is allowed for this company
-  const isEnterpriseOrBusiness = subscription?.plans?.name?.toLowerCase().includes('enterprise') || 
-                                  subscription?.plans?.name?.toLowerCase().includes('business');
-  
-  // Logic:
-  // - If enabled_for_all is explicitly true, allow for all companies
-  // - If enterprise_only is explicitly true, only allow for Enterprise/Business plans
-  // - Otherwise (no settings or enterprise_only is false/undefined), allow for all
-  const canImpersonate = platformSettings === undefined 
-    ? true // Allow by default while loading
-    : platformSettings?.enabled_for_all === true 
-      ? true 
-      : platformSettings?.enterprise_only === true 
-        ? isEnterpriseOrBusiness 
-        : true;
 
   // Toggle company active status
   const toggleActiveMutation = useMutation({
@@ -486,22 +456,20 @@ export default function PlatformCompanyDetailPage() {
             <Shield className="h-4 w-4 mr-2" />
             Permissions
           </Button>
-          {canImpersonate && (
-            <Button
-              variant="default"
-              onClick={async () => {
-                await startImpersonation({
-                  id: company.id,
-                  name: company.name,
-                  slug: company.slug,
-                });
-                navigate('/app/dashboard');
-              }}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Impersonate
-            </Button>
-          )}
+          <Button
+            variant="default"
+            onClick={async () => {
+              await startImpersonation({
+                id: company.id,
+                name: company.name,
+                slug: company.slug,
+              });
+              navigate('/app/dashboard');
+            }}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Impersonate
+          </Button>
           <Button
             variant="outline"
             onClick={() => toggleActiveMutation.mutate()}

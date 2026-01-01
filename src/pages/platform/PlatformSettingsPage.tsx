@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Eye, Bell, CheckCircle2, XCircle, AlertCircle, ExternalLink, Globe, RefreshCw } from 'lucide-react';
+import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Bell, CheckCircle2, XCircle, AlertCircle, ExternalLink, Globe, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
@@ -44,10 +44,6 @@ interface EmailSettings {
   from_address: string;
 }
 
-interface ImpersonationSettings {
-  enabled_for_all: boolean;
-  enterprise_only: boolean;
-}
 
 interface NotificationSettings {
   user_invitation: boolean;
@@ -600,10 +596,6 @@ export default function PlatformSettingsPage() {
     from_address: 'noreply@example.com',
   });
 
-  const [impersonation, setImpersonation] = useState<ImpersonationSettings>({
-    enabled_for_all: false,
-    enterprise_only: true,
-  });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     user_invitation: true,
@@ -645,7 +637,7 @@ export default function PlatformSettingsPage() {
       if (settings.registration) setRegistration(settings.registration);
       if (settings.trial) setTrial(settings.trial);
       if (settings.email) setEmail(settings.email);
-      if (settings.impersonation) setImpersonation(settings.impersonation);
+      
       if (settings.notifications) setNotifications(settings.notifications);
     }
   }, [settings]);
@@ -684,9 +676,6 @@ export default function PlatformSettingsPage() {
     updateSettingMutation.mutate({ key: 'email', value: email });
   };
 
-  const handleSaveImpersonation = () => {
-    updateSettingMutation.mutate({ key: 'impersonation', value: impersonation });
-  };
 
   const handleSaveNotifications = () => {
     updateSettingMutation.mutate({ key: 'notifications', value: notifications });
@@ -1211,58 +1200,6 @@ export default function PlatformSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Impersonation Settings */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <CardTitle>Impersonation</CardTitle>
-                <CardDescription>Control admin impersonation access</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="enabled_for_all">Enable for All Companies</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow impersonation for all companies regardless of plan
-                </p>
-              </div>
-              <Switch
-                id="enabled_for_all"
-                checked={impersonation.enabled_for_all}
-                onCheckedChange={(checked) => setImpersonation({ ...impersonation, enabled_for_all: checked })}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="enterprise_only">Enterprise Only</Label>
-                <p className="text-sm text-muted-foreground">
-                  Only allow impersonation for Enterprise/Business plan companies
-                </p>
-              </div>
-              <Switch
-                id="enterprise_only"
-                checked={impersonation.enterprise_only}
-                disabled={impersonation.enabled_for_all}
-                onCheckedChange={(checked) => setImpersonation({ ...impersonation, enterprise_only: checked })}
-              />
-            </div>
-
-            <p className="text-sm text-muted-foreground border-l-2 pl-3 py-1 bg-muted/50 rounded">
-              Impersonation allows platform admins to view company data as if they were logged in as that company. 
-              All impersonation sessions are logged in the Impersonation Logs page.
-            </p>
-
-            <Button onClick={handleSaveImpersonation} disabled={updateSettingMutation.isPending}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Impersonation Settings
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
