@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, BarChart3 } from 'lucide-react';
+import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { WriteGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTenant } from '@/contexts/TenantContext';
@@ -19,7 +21,10 @@ import {
   useTimeSummary, 
   useMyTimeEntries,
   useTeamTimeEntries,
-  useApproveTimeEntry 
+  useApproveTimeEntry,
+  useUpdateBreakMinutes,
+  getClockStatus,
+  ClockStatus
 } from '@/hooks/useTimeTracking';
 import { AttendanceReportCard } from '@/components/attendance/AttendanceReportCard';
 import { WorkScheduleConfiguration } from '@/components/settings/WorkScheduleConfiguration';
@@ -42,6 +47,38 @@ function formatElapsedTime(startTime: string): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function getStatusConfig(status: ClockStatus) {
+  switch (status) {
+    case 'clocked_in':
+      return {
+        label: 'Currently Working',
+        color: 'bg-green-500/20 text-green-600',
+        icon: 'working',
+        buttonLabel: 'Clock Out',
+        buttonVariant: 'destructive' as const,
+        buttonIcon: Square,
+      };
+    case 'clocked_out':
+      return {
+        label: 'Completed for Today',
+        color: 'bg-blue-500/20 text-blue-600',
+        icon: 'done',
+        buttonLabel: 'Day Complete',
+        buttonVariant: 'secondary' as const,
+        buttonIcon: CheckCircle2,
+      };
+    default:
+      return {
+        label: 'Not Started',
+        color: 'bg-muted text-muted-foreground',
+        icon: 'idle',
+        buttonLabel: 'Clock In',
+        buttonVariant: 'default' as const,
+        buttonIcon: Play,
+      };
+  }
+}
+
 export default function TimePage() {
   const { employeeId } = useTenant();
   const { isHROrAbove, isManager } = useUserRole();
@@ -52,36 +89,57 @@ export default function TimePage() {
   const clockIn = useClockIn();
   const clockOut = useClockOut();
   const approveEntry = useApproveTimeEntry();
+  const updateBreak = useUpdateBreakMinutes();
   
   const [activeTab, setActiveTab] = useState('my');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [breakMinutes, setBreakMinutes] = useState<string>('');
 
-  const isClockedIn = todayEntry?.clock_in && !todayEntry?.clock_out;
+  const clockStatus = getClockStatus(todayEntry);
+  const statusConfig = getStatusConfig(clockStatus);
   const hasEmployeeRecord = !!employeeId;
+  const isActionDisabled = clockIn.isPending || clockOut.isPending || todayLoading || !hasEmployeeRecord;
+
+  // Sync break minutes from entry
+  useEffect(() => {
+    if (todayEntry?.break_minutes !== undefined) {
+      setBreakMinutes(todayEntry.break_minutes.toString());
+    }
+  }, [todayEntry?.break_minutes]);
 
   // Live timer effect
   useEffect(() => {
-    if (!isClockedIn || !todayEntry?.clock_in) {
+    if (clockStatus !== 'clocked_in' || !todayEntry?.clock_in) {
       setElapsedTime('00:00:00');
       return;
     }
 
-    // Update immediately
     setElapsedTime(formatElapsedTime(todayEntry.clock_in));
 
-    // Update every second
     const interval = setInterval(() => {
       setElapsedTime(formatElapsedTime(todayEntry.clock_in!));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isClockedIn, todayEntry?.clock_in]);
+  }, [clockStatus, todayEntry?.clock_in]);
 
   const handleClockAction = () => {
-    if (isClockedIn) {
+    if (clockStatus === 'clocked_out') {
+      // Day is complete, do nothing (or show message)
+      return;
+    }
+    
+    if (clockStatus === 'clocked_in') {
       clockOut.mutate();
     } else {
       clockIn.mutate();
+    }
+  };
+
+  const handleBreakUpdate = () => {
+    const mins = parseInt(breakMinutes, 10);
+    if (!isNaN(mins) && mins >= 0) {
+      updateBreak.mutate(mins);
     }
   };
 
@@ -102,18 +160,16 @@ export default function TimePage() {
             <WriteGate>
               <Button 
                 onClick={handleClockAction}
-                disabled={clockIn.isPending || clockOut.isPending || todayLoading || !hasEmployeeRecord}
-                variant={isClockedIn ? 'destructive' : 'default'}
+                disabled={isActionDisabled || clockStatus === 'clocked_out'}
+                variant={statusConfig.buttonVariant}
                 size="lg"
               >
                 {(clockIn.isPending || clockOut.isPending) ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : isClockedIn ? (
-                  <Square className="h-4 w-4 mr-2" />
                 ) : (
-                  <Play className="h-4 w-4 mr-2" />
+                  <statusConfig.buttonIcon className="h-4 w-4 mr-2" />
                 )}
-                {isClockedIn ? 'Clock Out' : 'Clock In'}
+                {statusConfig.buttonLabel}
               </Button>
             </WriteGate>
           </div>
@@ -125,47 +181,86 @@ export default function TimePage() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>No Employee Record Found</AlertTitle>
             <AlertDescription>
-              Your user account is not linked to an employee record. Please contact your HR administrator to create an employee record and link it to your account. Time tracking features require an employee profile.
+              Your user account is not linked to an employee record. Please contact your HR administrator to create an employee record and link it to your account.
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Current Status */}
-        {todayEntry?.clock_in && (
-          <Card className="border-primary/50 bg-primary/5">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${isClockedIn ? 'bg-green-500/20 text-green-600' : 'bg-muted'}`}>
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium">
-                      {isClockedIn ? 'Currently Working' : 'Completed for Today'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Clocked in at {format(new Date(todayEntry.clock_in), 'h:mm a')}
-                      {todayEntry.clock_out && ` • Clocked out at ${format(new Date(todayEntry.clock_out), 'h:mm a')}`}
-                    </p>
-                  </div>
+        {/* Current Status Card */}
+        <Card className={clockStatus === 'clocked_in' ? 'border-green-500/50 bg-green-500/5' : clockStatus === 'clocked_out' ? 'border-blue-500/50 bg-blue-500/5' : ''}>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${statusConfig.color}`}>
+                  <Clock className="h-5 w-5" />
                 </div>
-                <div className="text-right">
-                  {isClockedIn ? (
-                    <>
-                      <p className="text-2xl font-bold font-mono text-green-600">{elapsedTime}</p>
-                      <p className="text-xs text-muted-foreground">Time elapsed</p>
-                    </>
-                  ) : todayEntry.total_hours ? (
-                    <>
-                      <p className="text-2xl font-bold">{formatHours(todayEntry.total_hours)}</p>
-                      <p className="text-xs text-muted-foreground">Today's total</p>
-                    </>
-                  ) : null}
+                <div>
+                  <p className="font-medium">{statusConfig.label}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {todayEntry?.clock_in ? (
+                      <>
+                        Clocked in at {format(new Date(todayEntry.clock_in), 'h:mm a')}
+                        {todayEntry.clock_out && ` • Clocked out at ${format(new Date(todayEntry.clock_out), 'h:mm a')}`}
+                      </>
+                    ) : (
+                      'No activity recorded today'
+                    )}
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <div className="text-right">
+                {clockStatus === 'clocked_in' ? (
+                  <>
+                    <p className="text-2xl font-bold font-mono text-green-600">{elapsedTime}</p>
+                    <p className="text-xs text-muted-foreground">Time elapsed</p>
+                  </>
+                ) : todayEntry?.total_hours ? (
+                  <>
+                    <p className="text-2xl font-bold">{formatHours(todayEntry.total_hours)}</p>
+                    <p className="text-xs text-muted-foreground">Today's total</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-muted-foreground">--:--</p>
+                    <p className="text-xs text-muted-foreground">Not started</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Break Input - Show when clocked in or clocked out */}
+            {(clockStatus === 'clocked_in' || clockStatus === 'clocked_out') && (
+              <div className="mt-4 pt-4 border-t flex items-center gap-4">
+                <Coffee className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="break-minutes" className="text-sm text-muted-foreground whitespace-nowrap">
+                    Break time:
+                  </Label>
+                  <Input
+                    id="break-minutes"
+                    type="number"
+                    min="0"
+                    max="480"
+                    value={breakMinutes}
+                    onChange={(e) => setBreakMinutes(e.target.value)}
+                    className="w-20 h-8"
+                    placeholder="0"
+                  />
+                  <span className="text-sm text-muted-foreground">min</span>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleBreakUpdate}
+                    disabled={updateBreak.isPending}
+                    className="h-8"
+                  >
+                    {updateBreak.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Update'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -230,6 +325,7 @@ export default function TimePage() {
                           <TableHead>Date</TableHead>
                           <TableHead>Clock In</TableHead>
                           <TableHead>Clock Out</TableHead>
+                          <TableHead>Break</TableHead>
                           <TableHead>Hours</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
@@ -245,6 +341,9 @@ export default function TimePage() {
                             </TableCell>
                             <TableCell>
                               {entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {entry.break_minutes ? `${entry.break_minutes}m` : '-'}
                             </TableCell>
                             <TableCell>
                               {entry.total_hours ? formatHours(entry.total_hours) : '-'}
