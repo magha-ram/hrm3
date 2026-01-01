@@ -765,6 +765,47 @@ export type Database = {
           },
         ]
       }
+      company_settings: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_subscriptions: {
         Row: {
           billing_interval: Database["public"]["Enums"]["plan_interval"]
@@ -1143,6 +1184,8 @@ export type Database = {
           document_type_id: string
           employee_id: string
           expiry_date: string | null
+          expiry_notification_sent: boolean | null
+          expiry_notification_sent_at: string | null
           file_name: string
           file_size: number | null
           file_url: string
@@ -1154,6 +1197,10 @@ export type Database = {
           last_accessed_by: string | null
           metadata: Json | null
           mime_type: string | null
+          ocr_extracted_data: Json | null
+          ocr_processed: boolean | null
+          ocr_processed_at: string | null
+          ocr_text: string | null
           parent_document_id: string | null
           rejection_reason: string | null
           title: string
@@ -1175,6 +1222,8 @@ export type Database = {
           document_type_id: string
           employee_id: string
           expiry_date?: string | null
+          expiry_notification_sent?: boolean | null
+          expiry_notification_sent_at?: string | null
           file_name: string
           file_size?: number | null
           file_url: string
@@ -1186,6 +1235,10 @@ export type Database = {
           last_accessed_by?: string | null
           metadata?: Json | null
           mime_type?: string | null
+          ocr_extracted_data?: Json | null
+          ocr_processed?: boolean | null
+          ocr_processed_at?: string | null
+          ocr_text?: string | null
           parent_document_id?: string | null
           rejection_reason?: string | null
           title: string
@@ -1207,6 +1260,8 @@ export type Database = {
           document_type_id?: string
           employee_id?: string
           expiry_date?: string | null
+          expiry_notification_sent?: boolean | null
+          expiry_notification_sent_at?: string | null
           file_name?: string
           file_size?: number | null
           file_url?: string
@@ -1218,6 +1273,10 @@ export type Database = {
           last_accessed_by?: string | null
           metadata?: Json | null
           mime_type?: string | null
+          ocr_extracted_data?: Json | null
+          ocr_processed?: boolean | null
+          ocr_processed_at?: string | null
+          ocr_text?: string | null
           parent_document_id?: string | null
           rejection_reason?: string | null
           title?: string
@@ -1400,12 +1459,15 @@ export type Database = {
       employees: {
         Row: {
           address: Json | null
+          allowances: Json | null
           bank_details: Json | null
           benefits: Json | null
           certifications: Json | null
           company_id: string
           created_at: string
+          created_by: string | null
           date_of_birth: string | null
+          deductions: Json | null
           department_id: string | null
           email: string
           emergency_contact: Json | null
@@ -1427,22 +1489,29 @@ export type Database = {
           probation_end_date: string | null
           salary: number | null
           salary_currency: string | null
+          shift_end_time: string | null
+          shift_schedule_type: string | null
+          shift_start_time: string | null
           skills: string[] | null
           tax_info: Json | null
           termination_date: string | null
           termination_reason: string | null
           updated_at: string
           user_id: string | null
+          weekly_off_days: string[] | null
           work_location: string | null
         }
         Insert: {
           address?: Json | null
+          allowances?: Json | null
           bank_details?: Json | null
           benefits?: Json | null
           certifications?: Json | null
           company_id: string
           created_at?: string
+          created_by?: string | null
           date_of_birth?: string | null
+          deductions?: Json | null
           department_id?: string | null
           email: string
           emergency_contact?: Json | null
@@ -1464,22 +1533,29 @@ export type Database = {
           probation_end_date?: string | null
           salary?: number | null
           salary_currency?: string | null
+          shift_end_time?: string | null
+          shift_schedule_type?: string | null
+          shift_start_time?: string | null
           skills?: string[] | null
           tax_info?: Json | null
           termination_date?: string | null
           termination_reason?: string | null
           updated_at?: string
           user_id?: string | null
+          weekly_off_days?: string[] | null
           work_location?: string | null
         }
         Update: {
           address?: Json | null
+          allowances?: Json | null
           bank_details?: Json | null
           benefits?: Json | null
           certifications?: Json | null
           company_id?: string
           created_at?: string
+          created_by?: string | null
           date_of_birth?: string | null
+          deductions?: Json | null
           department_id?: string | null
           email?: string
           emergency_contact?: Json | null
@@ -1501,12 +1577,16 @@ export type Database = {
           probation_end_date?: string | null
           salary?: number | null
           salary_currency?: string | null
+          shift_end_time?: string | null
+          shift_schedule_type?: string | null
+          shift_start_time?: string | null
           skills?: string[] | null
           tax_info?: Json | null
           termination_date?: string | null
           termination_reason?: string | null
           updated_at?: string
           user_id?: string | null
+          weekly_off_days?: string[] | null
           work_location?: string | null
         }
         Relationships: [
@@ -2326,6 +2406,69 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_events: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          employee_id: string | null
+          error_message: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          notification_channels: string[] | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          employee_id?: string | null
+          error_message?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          notification_channels?: string[] | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          employee_id?: string | null
+          error_message?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          notification_channels?: string[] | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_logs: {
         Row: {
           company_id: string | null
@@ -2852,15 +2995,20 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           email: string
+          failed_login_attempts: number | null
           first_name: string | null
           force_password_change: boolean | null
           id: string
+          is_first_login: boolean | null
           last_login_at: string | null
           last_name: string | null
           locale: string | null
+          locked_until: string | null
           login_type: string | null
           max_companies: number
           metadata: Json | null
+          password_changed_at: string | null
+          password_expires_at: string | null
           phone: string | null
           timezone: string | null
           updated_at: string
@@ -2869,15 +3017,20 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           email: string
+          failed_login_attempts?: number | null
           first_name?: string | null
           force_password_change?: boolean | null
           id: string
+          is_first_login?: boolean | null
           last_login_at?: string | null
           last_name?: string | null
           locale?: string | null
+          locked_until?: string | null
           login_type?: string | null
           max_companies?: number
           metadata?: Json | null
+          password_changed_at?: string | null
+          password_expires_at?: string | null
           phone?: string | null
           timezone?: string | null
           updated_at?: string
@@ -2886,15 +3039,20 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           email?: string
+          failed_login_attempts?: number | null
           first_name?: string | null
           force_password_change?: boolean | null
           id?: string
+          is_first_login?: boolean | null
           last_login_at?: string | null
           last_name?: string | null
           locale?: string | null
+          locked_until?: string | null
           login_type?: string | null
           max_companies?: number
           metadata?: Json | null
+          password_changed_at?: string | null
+          password_expires_at?: string | null
           phone?: string | null
           timezone?: string | null
           updated_at?: string
@@ -3747,6 +3905,10 @@ export type Database = {
         Args: { _action?: string; _company_id: string; _module: string }
         Returns: boolean
       }
+      can_process_document_ocr: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_use_documents: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -3775,6 +3937,14 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_employee_payroll: {
+        Args: { _company_id: string; _employee_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_employee_personal: {
+        Args: { _company_id: string; _employee_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_view_reports: { Args: { _company_id: string }; Returns: boolean }
       can_write_action: { Args: { _company_id: string }; Returns: boolean }
       check_document_limits: {
@@ -3797,6 +3967,7 @@ export type Database = {
         Args: { _company_id: string; _module: string }
         Returns: boolean
       }
+      company_has_ocr: { Args: { _company_id: string }; Returns: boolean }
       create_company_with_admin: {
         Args: {
           _industry?: string
@@ -3811,6 +3982,10 @@ export type Database = {
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      generate_employee_number: {
+        Args: { _company_id: string }
+        Returns: string
       }
       get_company_branding_for_domain: {
         Args: { hostname: string }
@@ -3833,6 +4008,20 @@ export type Database = {
         }[]
       }
       get_current_employee: { Args: { _company_id: string }; Returns: string }
+      get_documents_needing_expiry_notification: {
+        Args: { _days_before?: number }
+        Returns: {
+          company_id: string
+          days_until_expiry: number
+          document_id: string
+          document_title: string
+          document_type_name: string
+          employee_email: string
+          employee_id: string
+          employee_name: string
+          expiry_date: string
+        }[]
+      }
       get_effective_subscription_status: {
         Args: { _company_id: string }
         Returns: string
@@ -3927,6 +4116,10 @@ export type Database = {
         Args: { _company_id: string }
         Returns: undefined
       }
+      initialize_company_settings: {
+        Args: { _company_id: string }
+        Returns: undefined
+      }
       invite_user_to_company: {
         Args: {
           _company_id: string
@@ -3935,6 +4128,7 @@ export type Database = {
         }
         Returns: string
       }
+      is_account_locked: { Args: { _user_id: string }; Returns: boolean }
       is_active_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -4046,7 +4240,27 @@ export type Database = {
         }
         Returns: string
       }
+      log_sensitive_access: {
+        Args: {
+          _access_type?: string
+          _company_id: string
+          _field_type: string
+          _record_id: string
+          _table_name: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      mark_expiry_notification_sent: {
+        Args: { _document_id: string }
+        Returns: undefined
+      }
       mask_ip_address: { Args: { ip_addr: string }; Returns: string }
+      record_failed_login: { Args: { _user_id: string }; Returns: undefined }
+      record_successful_login: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       set_primary_company: { Args: { _company_id: string }; Returns: boolean }
       set_role_permission: {
         Args: {
