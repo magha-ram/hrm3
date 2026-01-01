@@ -6,7 +6,9 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES, UTILITY_NAV, SETTINGS_NAV } from '@/config/modules';
 import { hasMinimumRole } from '@/types/auth';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Mail, Receipt, User } from 'lucide-react';
+import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Mail, Receipt, User, Users } from 'lucide-react';
+import { usePendingApprovalsCount } from '@/hooks/useMyTeam';
+import { useUserRole } from '@/hooks/useUserRole';
 import {
   Sidebar,
   SidebarContent,
@@ -63,6 +65,8 @@ export function AppSidebar() {
   const { role, isAdmin, planName, isTrialing } = useTenant();
   const { accessibleModules, moduleAccess, isFrozen } = useModuleAccess();
   const { isImpersonating, impersonatedCompany, stopImpersonation, impersonationStartedAt } = useImpersonation();
+  const { isManager } = useUserRole();
+  const { data: pendingApprovals } = usePendingApprovalsCount();
   const [duration, setDuration] = useState('');
 
   // Update duration every second
@@ -288,6 +292,29 @@ export function AppSidebar() {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {isManager && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive('/app/my-team')} tooltip="My Team">
+                    <NavLink 
+                      to="/app/my-team" 
+                      className="flex items-center gap-2"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <Users className="h-4 w-4" />
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1">My Team</span>
+                          {(pendingApprovals ?? 0) > 0 && (
+                            <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-600">
+                              {pendingApprovals}
+                            </Badge>
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

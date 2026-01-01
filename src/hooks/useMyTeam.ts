@@ -1,0 +1,284 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
+
+export interface TeamMember {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  job_title: string | null;
+  employment_status: string;
+  department: { name: string } | null;
+  pending_leave_count: number;
+  pending_expense_count: number;
+  is_on_leave: boolean;
+}
+
+export interface TeamStats {
+  teamSize: number;
+  pendingApprovals: number;
+  outToday: number;
+  onLeaveToday: string[];
+}
+
+export function useMyTeam() {
+  const { companyId } = useTenant();
+  const { user } = useAuth();
+  const userId = user?.user_id;
+
+  return useQuery({
+    queryKey: ['my-team', companyId, userId],
+    queryFn: async (): Promise<TeamMember[]> => {
+      if (!companyId || !userId) return [];
+
+      // First get the current user's employee record
+      const { data: currentEmployee } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!currentEmployee) return [];
+
+      // Get direct reports (employees where manager_id = current employee)
+      const { data: directReports, error } = await supabase
+        .from('employees')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email,
+          job_title,
+          employment_status,
+          department:departments(name)
+        `)
+        .eq('company_id', companyId)
+        .eq('manager_id', currentEmployee.id)
+        .neq('employment_status', 'terminated');
+
+      if (error) throw error;
+      if (!directReports) return [];
+
+      const today = new Date().toISOString().split('T')[0];
+      const employeeIds = directReports.map(e => e.id);
+
+      // Get pending leave requests for team members
+      const { data: pendingLeaves } = await supabase
+        .from('leave_requests')
+        .select('employee_id, start_date, end_date, status')
+        .eq('company_id', companyId)
+        .in('employee_id', employeeIds);
+
+      // Get pending expenses for team members (if manager can approve)
+      const { data: pendingExpenses } = await supabase
+        .from('expenses')
+        .select('employee_id')
+        .eq('company_id', companyId)
+        .in('employee_id', employeeIds)
+        .eq('status', 'pending');
+
+      // Map data
+      return directReports.map(emp => {
+        const empLeaves = pendingLeaves?.filter(l => l.employee_id === emp.id) || [];
+        const pendingLeaveCount = empLeaves.filter(l => l.status === 'pending').length;
+        const isOnLeave = empLeaves.some(l => 
+          l.status === 'approved' && 
+          l.start_date <= today && 
+          l.end_date >= today
+        );
+        const pendingExpenseCount = pendingExpenses?.filter(e => e.employee_id === emp.id).length || 0;
+
+        return {
+          id: emp.id,
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+          email: emp.email,
+          job_title: emp.job_title,
+          employment_status: emp.employment_status,
+          department: Array.isArray(emp.department) ? emp.department[0] : emp.department,
+          pending_leave_count: pendingLeaveCount,
+          pending_expense_count: pendingExpenseCount,
+          is_on_leave: isOnLeave,
+        };
+      });
+    },
+    enabled: !!companyId && !!userId,
+  });
+}
+
+export function useTeamStats() {
+  const { companyId } = useTenant();
+  const { user } = useAuth();
+  const userId = user?.user_id;
+
+  return useQuery({
+    queryKey: ['team-stats', companyId, userId],
+    queryFn: async (): Promise<TeamStats> => {
+      if (!companyId || !userId) {
+        return { teamSize: 0, pendingApprovals: 0, outToday: 0, onLeaveToday: [] };
+      }
+
+      // Get current employee
+      const { data: currentEmployee } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!currentEmployee) {
+        return { teamSize: 0, pendingApprovals: 0, outToday: 0, onLeaveToday: [] };
+      }
+
+      // Get team members
+      const { data: teamMembers } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name')
+        .eq('company_id', companyId)
+        .eq('manager_id', currentEmployee.id)
+        .neq('employment_status', 'terminated');
+
+      const teamSize = teamMembers?.length || 0;
+      const employeeIds = teamMembers?.map(e => e.id) || [];
+
+      if (employeeIds.length === 0) {
+        return { teamSize: 0, pendingApprovals: 0, outToday: 0, onLeaveToday: [] };
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get pending leave requests
+      const { data: pendingLeaves } = await supabase
+        .from('leave_requests')
+        .select('id')
+        .eq('company_id', companyId)
+        .in('employee_id', employeeIds)
+        .eq('status', 'pending');
+
+      // Get who's on approved leave today
+      const { data: onLeaveToday } = await supabase
+        .from('leave_requests')
+        .select('employee_id')
+        .eq('company_id', companyId)
+        .in('employee_id', employeeIds)
+        .eq('status', 'approved')
+        .lte('start_date', today)
+        .gte('end_date', today);
+
+      const outEmployeeIds = new Set(onLeaveToday?.map(l => l.employee_id) || []);
+      const onLeaveNames = teamMembers
+        ?.filter(e => outEmployeeIds.has(e.id))
+        .map(e => `${e.first_name} ${e.last_name}`) || [];
+
+      return {
+        teamSize,
+        pendingApprovals: pendingLeaves?.length || 0,
+        outToday: outEmployeeIds.size,
+        onLeaveToday: onLeaveNames,
+      };
+    },
+    enabled: !!companyId && !!userId,
+  });
+}
+
+export function useTeamLeaves() {
+  const { companyId } = useTenant();
+  const { user } = useAuth();
+  const userId = user?.user_id;
+
+  return useQuery({
+    queryKey: ['team-leaves', companyId, userId],
+    queryFn: async () => {
+      if (!companyId || !userId) return [];
+
+      // Get current employee
+      const { data: currentEmployee } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!currentEmployee) return [];
+
+      // Get team members
+      const { data: teamMembers } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('manager_id', currentEmployee.id)
+        .neq('employment_status', 'terminated');
+
+      const employeeIds = teamMembers?.map(e => e.id) || [];
+      if (employeeIds.length === 0) return [];
+
+      // Get approved leaves
+      const { data: leaves, error } = await supabase
+        .from('leave_requests')
+        .select(`
+          id,
+          start_date,
+          end_date,
+          status,
+          employee:employees(id, first_name, last_name),
+          leave_type:leave_types(name, color)
+        `)
+        .eq('company_id', companyId)
+        .in('employee_id', employeeIds)
+        .eq('status', 'approved');
+
+      if (error) throw error;
+      return leaves || [];
+    },
+    enabled: !!companyId && !!userId,
+  });
+}
+
+export function usePendingApprovalsCount() {
+  const { companyId } = useTenant();
+  const { user } = useAuth();
+  const userId = user?.user_id;
+
+  return useQuery({
+    queryKey: ['pending-approvals-count', companyId, userId],
+    queryFn: async (): Promise<number> => {
+      if (!companyId || !userId) return 0;
+
+      // Get current employee
+      const { data: currentEmployee } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!currentEmployee) return 0;
+
+      // Get team member IDs
+      const { data: teamMembers } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('manager_id', currentEmployee.id)
+        .neq('employment_status', 'terminated');
+
+      const employeeIds = teamMembers?.map(e => e.id) || [];
+      if (employeeIds.length === 0) return 0;
+
+      // Count pending leave requests
+      const { count } = await supabase
+        .from('leave_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .in('employee_id', employeeIds)
+        .eq('status', 'pending');
+
+      return count || 0;
+    },
+    enabled: !!companyId && !!userId,
+    staleTime: 1000 * 30, // 30 seconds
+  });
+}
