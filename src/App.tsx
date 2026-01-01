@@ -59,6 +59,8 @@ const SecuritySettingsPage = lazy(() => import("./pages/app/settings/SecuritySet
 const EmailSettingsPage = lazy(() => import("./pages/app/settings/EmailSettingsPage"));
 const PermissionsSettingsPage = lazy(() => import("./pages/app/settings/PermissionsSettingsPage"));
 const NotificationSettingsPage = lazy(() => import("./pages/app/settings/NotificationSettingsPage"));
+const AppearanceSettingsPage = lazy(() => import("./pages/app/settings/AppearanceSettingsPage"));
+const LocalizationSettingsPage = lazy(() => import("./pages/app/settings/LocalizationSettingsPage"));
 // Utility pages
 const HelpPage = lazy(() => import("./pages/app/HelpPage"));
 const EmailLogsPage = lazy(() => import("./pages/app/EmailLogsPage"));
@@ -174,6 +176,8 @@ const App = () => (
                       <Route path="email" element={<EmailSettingsPage />} />
                       <Route path="permissions" element={<PermissionsSettingsPage />} />
                       <Route path="notifications" element={<NotificationSettingsPage />} />
+                      <Route path="appearance" element={<AppearanceSettingsPage />} />
+                      <Route path="localization" element={<LocalizationSettingsPage />} />
                     </Route>
                     <Route path="email-logs" element={<EmailLogsPage />} />
                     <Route path="help" element={<HelpPage />} />
