@@ -2326,6 +2326,33 @@ export type Database = {
           },
         ]
       }
+      permissions: {
+        Row: {
+          action: Database["public"]["Enums"]["permission_action"]
+          created_at: string
+          description: string | null
+          id: string
+          module: Database["public"]["Enums"]["permission_module"]
+          name: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["permission_action"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          module: Database["public"]["Enums"]["permission_module"]
+          name: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["permission_action"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          module?: Database["public"]["Enums"]["permission_module"]
+          name?: string
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
           created_at: string
@@ -2484,6 +2511,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          permission_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       screening_tests: {
         Row: {
@@ -3032,6 +3101,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          granted: boolean
+          id: string
+          permission_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          granted?: boolean
+          id?: string
+          permission_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          granted?: boolean
+          id?: string
+          permission_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_logs: {
         Row: {
           attempt_number: number | null
@@ -3288,6 +3405,19 @@ export type Database = {
         }[]
       }
       get_platform_admin_role: { Args: { _user_id: string }; Returns: string }
+      get_role_permissions: {
+        Args: {
+          _company_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: {
+          action: Database["public"]["Enums"]["permission_action"]
+          is_granted: boolean
+          module: Database["public"]["Enums"]["permission_module"]
+          name: string
+          permission_id: string
+        }[]
+      }
       get_user_companies: {
         Args: never
         Returns: {
@@ -3304,6 +3434,17 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: string
       }
+      get_user_permissions: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: {
+          action: Database["public"]["Enums"]["permission_action"]
+          has_permission: boolean
+          module: Database["public"]["Enums"]["permission_module"]
+          name: string
+          permission_id: string
+          source: string
+        }[]
+      }
       get_user_role: {
         Args: { _company_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -3316,9 +3457,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_permission: {
+        Args: {
+          _action: Database["public"]["Enums"]["permission_action"]
+          _company_id: string
+          _module: Database["public"]["Enums"]["permission_module"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_valid_support_access: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
+      }
+      initialize_company_permissions: {
+        Args: { _company_id: string }
+        Returns: undefined
       }
       invite_user_to_company: {
         Args: {
@@ -3373,6 +3527,26 @@ export type Database = {
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_platform_owner: { Args: { _user_id: string }; Returns: boolean }
       set_primary_company: { Args: { _company_id: string }; Returns: boolean }
+      set_role_permission: {
+        Args: {
+          _action: Database["public"]["Enums"]["permission_action"]
+          _company_id: string
+          _grant: boolean
+          _module: Database["public"]["Enums"]["permission_module"]
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
+      set_user_permission: {
+        Args: {
+          _action: Database["public"]["Enums"]["permission_action"]
+          _company_id: string
+          _granted: boolean
+          _module: Database["public"]["Enums"]["permission_module"]
+          _target_user_id: string
+        }
+        Returns: boolean
+      }
       validate_tenant_access: {
         Args: { _company_id: string }
         Returns: boolean
@@ -3436,6 +3610,32 @@ export type Database = {
         | "expired"
         | "withdrawn"
       payroll_status: "draft" | "processing" | "completed" | "failed"
+      permission_action:
+        | "read"
+        | "create"
+        | "update"
+        | "delete"
+        | "approve"
+        | "process"
+        | "verify"
+        | "export"
+        | "manage"
+      permission_module:
+        | "dashboard"
+        | "employees"
+        | "departments"
+        | "leave"
+        | "time_tracking"
+        | "documents"
+        | "recruitment"
+        | "performance"
+        | "payroll"
+        | "expenses"
+        | "compliance"
+        | "audit"
+        | "integrations"
+        | "settings"
+        | "users"
       plan_interval: "monthly" | "yearly"
       review_status: "draft" | "in_progress" | "completed" | "acknowledged"
       screening_status:
@@ -3653,6 +3853,34 @@ export const Constants = {
         "withdrawn",
       ],
       payroll_status: ["draft", "processing", "completed", "failed"],
+      permission_action: [
+        "read",
+        "create",
+        "update",
+        "delete",
+        "approve",
+        "process",
+        "verify",
+        "export",
+        "manage",
+      ],
+      permission_module: [
+        "dashboard",
+        "employees",
+        "departments",
+        "leave",
+        "time_tracking",
+        "documents",
+        "recruitment",
+        "performance",
+        "payroll",
+        "expenses",
+        "compliance",
+        "audit",
+        "integrations",
+        "settings",
+        "users",
+      ],
       plan_interval: ["monthly", "yearly"],
       review_status: ["draft", "in_progress", "completed", "acknowledged"],
       screening_status: [
