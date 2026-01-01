@@ -734,20 +734,6 @@ export function useCreateOffer() {
       const { data, error } = await supabase
         .from('job_offers')
         .insert(insertData as Database['public']['Tables']['job_offers']['Insert'])
-          created_by: employeeId,
-          candidate_id: offer.candidate_id,
-          job_id: offer.job_id,
-          status: offer.status || 'draft',
-          salary_offered: offer.salary_offered,
-          salary_currency: offer.salary_currency || 'USD',
-          start_date: offer.start_date,
-          offer_expiry_date: offer.offer_expiry_date,
-          employment_type: offer.employment_type || 'full_time',
-          department_id: offer.department_id,
-          reporting_to: offer.reporting_to,
-          benefits: offer.benefits || {},
-          additional_terms: offer.additional_terms,
-        })
         .select()
         .single();
       
