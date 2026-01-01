@@ -3,9 +3,10 @@ import { AppRole, hasMinimumRole } from '@/types/auth';
 import { ModuleId } from '@/config/modules';
 import { useTenant } from '@/contexts/TenantContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Lock, Crown, Eye } from 'lucide-react';
+import { usePermission } from '@/contexts/PermissionContext';
+import { Lock, Crown, Eye, ShieldOff } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { PermissionModule, PermissionAction } from '@/types/permissions';
+import { PermissionModule, PermissionAction, ACTION_LABELS } from '@/types/permissions';
 
 export interface PermissionGateProps {
   /** Required minimum role to access content */
@@ -42,10 +43,12 @@ export interface PermissionCheckResult {
 export function usePermissionCheck(options: {
   requiredRole?: AppRole;
   requiredModule?: ModuleId;
+  permission?: { module: PermissionModule; action: PermissionAction };
   writesOnly?: boolean;
 }): PermissionCheckResult {
   const { role, isFrozen, hasModule, isImpersonating } = useTenant();
-  const { requiredRole, requiredModule, writesOnly } = options;
+  const { can } = usePermission();
+  const { requiredRole, requiredModule, permission, writesOnly } = options;
 
   // If only checking frozen state for writes
   if (writesOnly) {
@@ -69,7 +72,18 @@ export function usePermissionCheck(options: {
     };
   }
 
-  // Check role first
+  // Check fine-grained permission first (highest priority)
+  if (permission && !can(permission.module, permission.action)) {
+    return {
+      hasAccess: false,
+      denialReason: 'permission',
+      isFrozen,
+      isImpersonating,
+      message: `You don't have permission to ${ACTION_LABELS[permission.action].toLowerCase()} ${permission.module.replace('_', ' ')}`,
+    };
+  }
+
+  // Check role
   if (requiredRole && !hasMinimumRole(role, requiredRole)) {
     return {
       hasAccess: false,
@@ -120,6 +134,7 @@ export function usePermissionCheck(options: {
 export function PermissionGate({
   requiredRole,
   requiredModule,
+  permission,
   fallback = 'hide',
   disabledWrapper = 'div',
   deniedMessage,
@@ -129,6 +144,7 @@ export function PermissionGate({
   const { hasAccess, denialReason, message } = usePermissionCheck({
     requiredRole,
     requiredModule,
+    permission,
     writesOnly,
   });
 
@@ -164,8 +180,8 @@ export function PermissionGate({
   }
 
   if (fallback === 'lock-icon') {
-    const Icon = denialReason === 'module' ? Crown : denialReason === 'impersonating' ? Eye : Lock;
-    const iconColor = denialReason === 'impersonating' ? 'text-amber-500' : '';
+    const Icon = denialReason === 'permission' ? ShieldOff : denialReason === 'module' ? Crown : denialReason === 'impersonating' ? Eye : Lock;
+    const iconColor = denialReason === 'impersonating' ? 'text-amber-500' : denialReason === 'permission' ? 'text-destructive' : '';
     return (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -232,6 +248,28 @@ export function ModuleGate({
 }) {
   return (
     <PermissionGate requiredModule={module} fallback={fallback}>
+      {children}
+    </PermissionGate>
+  );
+}
+
+/**
+ * PermGate - Shorthand for fine-grained permission-based access
+ * Uses the advanced permission system with module + action checks
+ */
+export function PermGate({ 
+  module, 
+  action, 
+  children, 
+  fallback = 'hide' 
+}: {
+  module: PermissionModule;
+  action: PermissionAction;
+  children: React.ReactNode;
+  fallback?: PermissionGateProps['fallback'];
+}) {
+  return (
+    <PermissionGate permission={{ module, action }} fallback={fallback}>
       {children}
     </PermissionGate>
   );

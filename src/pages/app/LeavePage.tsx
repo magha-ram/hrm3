@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Plus, Calendar, Loader2, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WriteGate, RoleGate } from '@/components/PermissionGate';
+import { WriteGate, RoleGate, PermGate } from '@/components/PermissionGate';
+import { usePermission } from '@/contexts/PermissionContext';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useMyLeaveRequests, usePendingLeaveRequests, useApproveLeaveRequest, useRejectLeaveRequest, useCancelLeaveRequest } from '@/hooks/useLeave';
 import { useMyLeaveBalances, useAllEmployeeLeaveBalances } from '@/hooks/useLeaveBalances';
@@ -44,39 +45,43 @@ export default function LeavePage() {
           <h1 className="text-2xl font-bold">Leave Management</h1>
           <p className="text-muted-foreground">Request and manage time off</p>
         </div>
-        <WriteGate>
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Request Leave
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>New Leave Request</DialogTitle>
-              </DialogHeader>
-              <LeaveRequestForm onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
-            </DialogContent>
-          </Dialog>
-        </WriteGate>
+        <PermGate module="leave" action="create">
+          <WriteGate>
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Request Leave
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>New Leave Request</DialogTitle>
+                </DialogHeader>
+                <LeaveRequestForm onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          </WriteGate>
+        </PermGate>
       </div>
 
       <Tabs defaultValue="my-leave" className="space-y-4">
         <TabsList>
           <TabsTrigger value="my-leave">My Leave</TabsTrigger>
-          <RoleGate role="manager">
+          <PermGate module="leave" action="approve">
             <TabsTrigger value="team">
               Team Requests
               {pendingRequests && pendingRequests.length > 0 && (
                 <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
               )}
             </TabsTrigger>
-          </RoleGate>
-          <RoleGate role="hr_manager">
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            <TabsTrigger value="balances">All Balances</TabsTrigger>
-          </RoleGate>
+          </PermGate>
+          <PermGate module="leave" action="read">
+            <RoleGate role="hr_manager">
+              <TabsTrigger value="calendar">Calendar</TabsTrigger>
+              <TabsTrigger value="balances">All Balances</TabsTrigger>
+            </RoleGate>
+          </PermGate>
         </TabsList>
 
         <TabsContent value="my-leave" className="space-y-4">
@@ -158,7 +163,7 @@ export default function LeavePage() {
         </TabsContent>
 
         <TabsContent value="team">
-          <RoleGate role="manager">
+          <PermGate module="leave" action="approve">
             <Card>
               <CardHeader>
                 <CardTitle>Pending Approvals</CardTitle>
@@ -206,19 +211,19 @@ export default function LeavePage() {
                 )}
               </CardContent>
             </Card>
-          </RoleGate>
+          </PermGate>
         </TabsContent>
 
         <TabsContent value="calendar">
-          <RoleGate role="hr_manager">
+          <PermGate module="leave" action="read">
             <LeaveCalendarView />
-          </RoleGate>
+          </PermGate>
         </TabsContent>
 
         <TabsContent value="balances">
-          <RoleGate role="hr_manager">
+          <PermGate module="leave" action="read">
             <LeaveBalanceTable data={allBalances} isLoading={loadingAllBalances} />
-          </RoleGate>
+          </PermGate>
         </TabsContent>
       </Tabs>
       </div>
