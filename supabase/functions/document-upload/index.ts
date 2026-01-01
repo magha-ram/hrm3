@@ -5,17 +5,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Support both camelCase (frontend) and snake_case field names
 interface UploadRequest {
-  employee_id: string;
-  document_type_id: string;
-  title: string;
-  description?: string;
+  // snake_case (original)
+  employee_id?: string;
+  document_type_id?: string;
+  file_name?: string;
+  file_size?: number;
+  mime_type?: string;
   issue_date?: string;
   expiry_date?: string;
-  file_name: string;
-  file_size: number;
-  mime_type: string;
-  parent_document_id?: string; // For versioning
+  parent_document_id?: string;
+  company_id?: string;
+  // camelCase (frontend sends these)
+  employeeId?: string;
+  documentTypeId?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  parentDocumentId?: string;
+  companyId?: string;
+  // Common fields
+  title?: string;
+  description?: string;
 }
 
 const ALLOWED_MIME_TYPES = [
@@ -66,10 +80,24 @@ Deno.serve(async (req) => {
     }
 
     const body: UploadRequest = await req.json();
-    console.log("[document-upload] Request body:", { ...body, title: body.title });
+    
+    // Normalize fields - support both camelCase and snake_case
+    const employeeId = body.employeeId || body.employee_id;
+    const documentTypeId = body.documentTypeId || body.document_type_id;
+    const fileName = body.fileName || body.file_name;
+    const fileSize = body.fileSize || body.file_size;
+    const mimeType = body.mimeType || body.mime_type;
+    const issueDate = body.issueDate || body.issue_date;
+    const expiryDate = body.expiryDate || body.expiry_date;
+    const parentDocumentId = body.parentDocumentId || body.parent_document_id;
+    const title = body.title;
+    const description = body.description;
+
+    console.log("[document-upload] Normalized request:", { employeeId, documentTypeId, title, fileName });
 
     // Validate required fields
-    if (!body.employee_id || !body.document_type_id || !body.title || !body.file_name || !body.file_size || !body.mime_type) {
+    if (!employeeId || !documentTypeId || !title || !fileName || !fileSize || !mimeType) {
+      console.error("[document-upload] Missing required fields:", { employeeId, documentTypeId, title, fileName, fileSize, mimeType });
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -77,8 +105,8 @@ Deno.serve(async (req) => {
     }
 
     // Validate MIME type
-    if (!ALLOWED_MIME_TYPES.includes(body.mime_type)) {
-      console.error("[document-upload] Invalid MIME type:", body.mime_type);
+    if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+      console.error("[document-upload] Invalid MIME type:", mimeType);
       return new Response(
         JSON.stringify({ error: "Invalid file type. Allowed: PDF, JPEG, PNG, WEBP, DOC, DOCX" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -86,8 +114,8 @@ Deno.serve(async (req) => {
     }
 
     // Validate file size
-    if (body.file_size > MAX_FILE_SIZE) {
-      console.error("[document-upload] File too large:", body.file_size);
+    if (fileSize > MAX_FILE_SIZE) {
+      console.error("[document-upload] File too large:", fileSize);
       return new Response(
         JSON.stringify({ error: "File size exceeds 50MB limit" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -98,7 +126,7 @@ Deno.serve(async (req) => {
     const { data: employee, error: empError } = await supabaseAdmin
       .from("employees")
       .select("id, company_id, user_id")
-      .eq("id", body.employee_id)
+      .eq("id", employeeId)
       .single();
 
     if (empError || !employee) {
@@ -178,7 +206,7 @@ Deno.serve(async (req) => {
     // Check document limits
     const { data: limits } = await supabaseAdmin.rpc("check_document_limits", {
       _company_id: companyId,
-      _employee_id: body.employee_id,
+      _employee_id: employeeId,
     });
 
     if (limits && !limits.can_upload) {
@@ -196,7 +224,7 @@ Deno.serve(async (req) => {
     const { data: docType, error: dtError } = await supabaseAdmin
       .from("document_types")
       .select("id, name, has_expiry, is_required")
-      .eq("id", body.document_type_id)
+      .eq("id", documentTypeId)
       .eq("company_id", companyId)
       .eq("is_active", true)
       .single();
@@ -210,7 +238,7 @@ Deno.serve(async (req) => {
     }
 
     // If document type has expiry, require expiry date
-    if (docType.has_expiry && !body.expiry_date) {
+    if (docType.has_expiry && !expiryDate) {
       return new Response(
         JSON.stringify({ error: "Expiry date is required for this document type" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -219,12 +247,12 @@ Deno.serve(async (req) => {
 
     // Handle versioning - if replacing a document
     let versionNumber = 1;
-    if (body.parent_document_id) {
+    if (parentDocumentId) {
       // Mark old version as not latest
       const { data: parentDoc } = await supabaseAdmin
         .from("employee_documents")
         .select("version_number")
-        .eq("id", body.parent_document_id)
+        .eq("id", parentDocumentId)
         .single();
 
       if (parentDoc) {
@@ -233,15 +261,14 @@ Deno.serve(async (req) => {
         await supabaseAdmin
           .from("employee_documents")
           .update({ is_latest_version: false })
-          .eq("id", body.parent_document_id);
+          .eq("id", parentDocumentId);
       }
     }
 
     // Generate unique file path: company_id/employee_id/document_id/filename
     const documentId = crypto.randomUUID();
-    const fileExt = body.file_name.split(".").pop();
-    const sanitizedFileName = body.file_name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const storagePath = `${companyId}/${body.employee_id}/${documentId}/${sanitizedFileName}`;
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const storagePath = `${companyId}/${employeeId}/${documentId}/${sanitizedFileName}`;
 
     // Generate signed upload URL
     const { data: signedUrl, error: signError } = await supabaseAdmin.storage
@@ -262,20 +289,20 @@ Deno.serve(async (req) => {
       .insert({
         id: documentId,
         company_id: companyId,
-        employee_id: body.employee_id,
-        document_type_id: body.document_type_id,
-        title: body.title,
-        description: body.description || null,
-        file_name: body.file_name,
+        employee_id: employeeId,
+        document_type_id: documentTypeId,
+        title: title,
+        description: description || null,
+        file_name: fileName,
         file_url: storagePath,
-        file_size: body.file_size,
-        mime_type: body.mime_type,
-        issue_date: body.issue_date || null,
-        expiry_date: body.expiry_date || null,
+        file_size: fileSize,
+        mime_type: mimeType,
+        issue_date: issueDate || null,
+        expiry_date: expiryDate || null,
         verification_status: "pending",
         is_verified: false,
         version_number: versionNumber,
-        parent_document_id: body.parent_document_id || null,
+        parent_document_id: parentDocumentId || null,
         is_latest_version: true,
       })
       .select()
@@ -297,28 +324,36 @@ Deno.serve(async (req) => {
       action: "create",
       record_id: documentId,
       new_values: {
-        title: body.title,
-        employee_id: body.employee_id,
+        title: title,
+        employee_id: employeeId,
         document_type: docType.name,
-        file_size: body.file_size,
+        file_size: fileSize,
       },
       metadata: {
         action_type: "document_upload_initiated",
         version_number: versionNumber,
-        parent_document_id: body.parent_document_id,
+        parent_document_id: parentDocumentId,
       },
     });
 
     console.log("[document-upload] Success - document created:", documentId);
 
+    // Return both camelCase and snake_case for compatibility
     return new Response(
       JSON.stringify({
         success: true,
+        // camelCase (frontend expects)
+        documentId: documentId,
+        uploadUrl: signedUrl.signedUrl,
+        uploadToken: signedUrl.token,
+        storagePath: storagePath,
+        expiresIn: 300,
+        // snake_case (backward compatibility)
         document_id: documentId,
         upload_url: signedUrl.signedUrl,
         upload_token: signedUrl.token,
         storage_path: storagePath,
-        expires_in: 300, // 5 minutes
+        expires_in: 300,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

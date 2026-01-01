@@ -5,8 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Support both camelCase (frontend) and snake_case field names
 interface DeleteRequest {
-  document_id: string;
+  document_id?: string;
+  documentId?: string;
   hard_delete?: boolean; // Only for cleanup jobs, not normal users
 }
 
@@ -47,9 +49,13 @@ Deno.serve(async (req) => {
     }
 
     const body: DeleteRequest = await req.json();
-    console.log("[document-delete] Request for document:", body.document_id);
+    
+    // Support both camelCase and snake_case
+    const documentId = body.documentId || body.document_id;
+    
+    console.log("[document-delete] Request for document:", documentId);
 
-    if (!body.document_id) {
+    if (!documentId) {
       return new Response(
         JSON.stringify({ error: "Missing document_id" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -68,7 +74,7 @@ Deno.serve(async (req) => {
         title,
         deleted_at
       `)
-      .eq("id", body.document_id)
+      .eq("id", documentId)
       .single();
 
     if (docError || !document) {
@@ -134,7 +140,7 @@ Deno.serve(async (req) => {
         deleted_at: new Date().toISOString(),
         deleted_by: deleterEmployee?.id || null,
       })
-      .eq("id", body.document_id);
+      .eq("id", documentId);
 
     if (updateError) {
       console.error("[document-delete] Failed to soft delete:", updateError);
@@ -160,7 +166,7 @@ Deno.serve(async (req) => {
       user_id: user.id,
       table_name: "employee_documents",
       action: "delete",
-      record_id: body.document_id,
+      record_id: documentId,
       old_values: {
         title: document.title,
         file_name: document.file_name,
@@ -180,13 +186,13 @@ Deno.serve(async (req) => {
       _description: `Document deleted: ${document.title}`,
       _severity: "medium",
       _metadata: {
-        document_id: body.document_id,
+        document_id: documentId,
         document_title: document.title,
         action: "delete",
       },
     });
 
-    console.log("[document-delete] Document soft deleted:", body.document_id);
+    console.log("[document-delete] Document soft deleted:", documentId);
 
     return new Response(
       JSON.stringify({

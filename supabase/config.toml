@@ -85,10 +85,10 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.document-upload]
-verify_jwt = true
+verify_jwt = false
 
 [functions.document-access]
-verify_jwt = true
+verify_jwt = false
 
 [functions.document-delete]
-verify_jwt = true
+verify_jwt = false
