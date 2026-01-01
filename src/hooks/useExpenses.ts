@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 export interface ExpenseCategory {
@@ -296,5 +297,56 @@ export function useDeleteExpense() {
     onError: (error: Error) => {
       toast.error(`Failed to delete expense: ${error.message}`);
     },
+  });
+}
+
+// Hook for managers to view team expenses (for approval workflow)
+export function useTeamExpenses(status?: string) {
+  const { companyId } = useTenant();
+  const { user } = useAuth();
+  const userId = user?.user_id;
+
+  return useQuery({
+    queryKey: ['expenses', 'team', companyId, userId, status],
+    queryFn: async () => {
+      if (!companyId || !userId) return [];
+
+      // Get current employee (manager)
+      const { data: currentEmployee } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!currentEmployee) return [];
+
+      // Get direct reports
+      const { data: directReports } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('manager_id', currentEmployee.id)
+        .neq('employment_status', 'terminated');
+
+      const employeeIds = directReports?.map(e => e.id) || [];
+      if (employeeIds.length === 0) return [];
+
+      // Get expenses for team members
+      let query = supabase
+        .from('expenses')
+        .select('*, category:expense_categories(*), employee:employees!expenses_employee_id_fkey(first_name, last_name)')
+        .in('employee_id', employeeIds)
+        .order('expense_date', { ascending: false });
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as unknown as Expense[];
+    },
+    enabled: !!companyId && !!userId,
   });
 }

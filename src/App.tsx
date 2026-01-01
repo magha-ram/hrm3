@@ -29,6 +29,7 @@ const DepartmentsPage = lazy(() => import("./pages/app/DepartmentsPage"));
 const LeavePage = lazy(() => import("./pages/app/LeavePage"));
 const TimePage = lazy(() => import("./pages/app/TimePage"));
 const PayrollPage = lazy(() => import("./pages/app/PayrollPage"));
+const ExpensesPage = lazy(() => import("./pages/app/ExpensesPage"));
 const RecruitmentPage = lazy(() => import("./pages/app/RecruitmentPage"));
 const PerformancePage = lazy(() => import("./pages/app/PerformancePage"));
 const DocumentsPage = lazy(() => import("./pages/app/DocumentsPage"));
@@ -135,6 +136,7 @@ const App = () => (
                     <Route path="leave" element={<LeavePage />} />
                     <Route path="time" element={<TimePage />} />
                     <Route path="payroll" element={<PayrollPage />} />
+                    <Route path="expenses" element={<ExpensesPage />} />
                     <Route path="recruitment" element={<RecruitmentPage />} />
                     <Route path="performance" element={<PerformancePage />} />
                     <Route path="documents" element={<DocumentsPage />} />

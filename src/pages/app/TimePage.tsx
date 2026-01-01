@@ -11,6 +11,7 @@ import { WriteGate, RoleGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTenant } from '@/contexts/TenantContext';
+import { TimeCorrectionDialog } from '@/components/time/TimeCorrectionDialog';
 import { 
   useTodayEntry, 
   useClockIn, 
@@ -63,23 +64,28 @@ export default function TimePage() {
             <h1 className="text-2xl font-bold">Time Tracking</h1>
             <p className="text-muted-foreground">Track your work hours and attendance</p>
           </div>
-          <WriteGate>
-            <Button 
-              onClick={handleClockAction}
-              disabled={clockIn.isPending || clockOut.isPending || todayLoading || !hasEmployeeRecord}
-              variant={isClockedIn ? 'destructive' : 'default'}
-              size="lg"
-            >
-              {(clockIn.isPending || clockOut.isPending) ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : isClockedIn ? (
-                <Square className="h-4 w-4 mr-2" />
-              ) : (
-                <Play className="h-4 w-4 mr-2" />
-              )}
-              {isClockedIn ? 'Clock Out' : 'Clock In'}
-            </Button>
-          </WriteGate>
+          <div className="flex items-center gap-2">
+            <WriteGate>
+              <TimeCorrectionDialog />
+            </WriteGate>
+            <WriteGate>
+              <Button 
+                onClick={handleClockAction}
+                disabled={clockIn.isPending || clockOut.isPending || todayLoading || !hasEmployeeRecord}
+                variant={isClockedIn ? 'destructive' : 'default'}
+                size="lg"
+              >
+                {(clockIn.isPending || clockOut.isPending) ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : isClockedIn ? (
+                  <Square className="h-4 w-4 mr-2" />
+                ) : (
+                  <Play className="h-4 w-4 mr-2" />
+                )}
+                {isClockedIn ? 'Clock Out' : 'Clock In'}
+              </Button>
+            </WriteGate>
+          </div>
         </div>
 
         {/* No Employee Record Warning */}

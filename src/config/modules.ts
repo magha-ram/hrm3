@@ -112,8 +112,17 @@ export const HR_MODULES: ModuleConfig[] = [
     description: 'Process payroll runs',
     icon: DollarSign,
     path: '/app/payroll',
-    minRole: 'company_admin',
+    minRole: 'hr_manager', // HR Admin can now access payroll (Workflow 1)
     planRequired: 'payroll',
+  },
+  {
+    id: 'expenses',
+    name: 'Expenses',
+    description: 'Submit and manage expense claims',
+    icon: DollarSign,
+    path: '/app/expenses',
+    minRole: 'employee',
+    planRequired: 'expenses',
   },
   {
     id: 'compliance',
