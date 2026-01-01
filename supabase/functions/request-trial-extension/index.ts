@@ -250,6 +250,34 @@ serve(async (req: Request) => {
       }
     }
 
+    // Log billing event
+    await supabaseAdmin.from("billing_logs").insert({
+      company_id: companyId,
+      event_type: "trial_extension_requested",
+      metadata: {
+        requested_days: requestedDays,
+        request_id: newRequest.id,
+        extension_number: (approvedCount || 0) + 1,
+        requested_by: user.id,
+      },
+    });
+
+    // Log audit event
+    await supabaseAdmin.from("audit_logs").insert({
+      company_id: companyId,
+      user_id: user.id,
+      action: "create",
+      table_name: "trial_extension_requests",
+      record_id: newRequest.id,
+      actor_role: companyUser.role,
+      target_type: "subscription",
+      severity: "medium",
+      metadata: {
+        requested_days: requestedDays,
+        extension_number: (approvedCount || 0) + 1,
+      },
+    });
+
     return new Response(
       JSON.stringify({ 
         success: true, 

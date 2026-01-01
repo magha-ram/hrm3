@@ -157,6 +157,24 @@ serve(async (req: Request): Promise<Response> => {
   } catch (error) {
     console.error("Unexpected error in send-email:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    // Log application error
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && supabaseServiceKey) {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        await supabase.from("application_logs").insert({
+          service: "send-email",
+          level: "error",
+          message: `Email send failed: ${errorMessage}`,
+          context: { error: errorMessage },
+        });
+      }
+    } catch (logError) {
+      console.error("Failed to log error:", logError);
+    }
+
     return new Response(
       JSON.stringify({ error: "Internal Server Error", message: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

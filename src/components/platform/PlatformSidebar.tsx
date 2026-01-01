@@ -14,6 +14,8 @@ import {
   UserCog,
   Webhook,
   Mail,
+  Receipt,
+  AlertTriangle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -58,6 +60,16 @@ const platformNavItems = [
     name: 'Impersonation Logs', 
     path: '/platform/impersonation-logs', 
     icon: UserCog 
+  },
+  { 
+    name: 'Billing Logs', 
+    path: '/platform/billing-logs', 
+    icon: Receipt 
+  },
+  { 
+    name: 'Application Logs', 
+    path: '/platform/application-logs', 
+    icon: AlertTriangle 
   },
   { 
     name: 'Webhooks', 

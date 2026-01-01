@@ -204,12 +204,27 @@ serve(async (req) => {
       action: "update",
       table_name: "company_users",
       record_id: company_user_id,
+      actor_role: requesterRole.role,
+      target_type: "user",
+      severity: "medium",
       old_values: { is_active: false },
       new_values: { is_active: true },
       metadata: { 
         action_type: "user_reactivated",
         email_sent: emailResult.success,
         target_user_id: user_id,
+      },
+    });
+
+    // Log security event
+    await adminClient.from("security_events").insert({
+      company_id,
+      user_id: requestingUser.id,
+      event_type: "user_reactivated",
+      severity: "medium",
+      metadata: {
+        target_user_id: user_id,
+        reactivated_by: requestingUser.id,
       },
     });
 
