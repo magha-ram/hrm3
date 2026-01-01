@@ -153,15 +153,3 @@ export function useRecordFailedLogin() {
     },
   });
 }
-
-// Record failed login (for security logging)
-export function useRecordFailedLogin() {
-  return useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .rpc('record_failed_login', { _user_id: userId });
-      
-      if (error) throw error;
-    },
-  });
-}
