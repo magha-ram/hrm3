@@ -11,6 +11,8 @@ import { useCreateEmployee, useUpdateEmployee, type Employee } from '@/hooks/use
 import { useDepartments } from '@/hooks/useDepartments';
 import { useNextEmployeeNumber } from '@/hooks/useEmployeeNumber';
 import { DocumentScanDialog } from './DocumentScanDialog';
+import { EmergencyContactSection, type EmergencyContact } from './EmergencyContactSection';
+import { BankDetailsSection, type BankDetails } from './BankDetailsSection';
 import type { ExtractedData } from '@/hooks/useOCR';
 
 const employeeSchema = z.object({
@@ -45,6 +47,12 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
   const { data: departments } = useDepartments();
   const { data: nextEmployeeNumber, isLoading: isLoadingNumber } = useNextEmployeeNumber();
   const [scanDialogOpen, setScanDialogOpen] = useState(false);
+  const [emergencyContact, setEmergencyContact] = useState<EmergencyContact>(
+    (employee?.emergency_contact as EmergencyContact) || {}
+  );
+  const [bankDetails, setBankDetails] = useState<BankDetails>(
+    (employee?.bank_details as BankDetails) || {}
+  );
   
   const isEditing = !!employee;
   const isLoading = createEmployee.isPending || updateEmployee.isPending;
@@ -95,6 +103,8 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
           ...values,
           department_id: values.department_id || null,
           personal_email: values.personal_email || null,
+          emergency_contact: emergencyContact as Record<string, string>,
+          bank_details: bankDetails as Record<string, string>,
         });
       } else {
         await createEmployee.mutateAsync({
@@ -110,6 +120,8 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
           phone: values.phone || null,
           personal_email: values.personal_email || null,
           work_location: values.work_location || null,
+          emergency_contact: emergencyContact as Record<string, string>,
+          bank_details: bankDetails as Record<string, string>,
         });
       }
       onSuccess();
@@ -402,6 +414,18 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
               )}
             />
           </div>
+
+          {/* Emergency Contact Section */}
+          <EmergencyContactSection
+            value={emergencyContact}
+            onChange={setEmergencyContact}
+          />
+
+          {/* Bank Details Section */}
+          <BankDetailsSection
+            value={bankDetails}
+            onChange={setBankDetails}
+          />
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onCancel}>

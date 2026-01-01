@@ -15,6 +15,7 @@ import { RoleGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { PayslipDownloadButton } from '@/components/payroll/PayslipDownloadButton';
 import { PayrollStatusBadge } from '@/components/payroll/PayrollStatusBadge';
+import { BulkAddEmployeesDialog } from '@/components/payroll/BulkAddEmployeesDialog';
 import { CreatePayrollRunDialog } from '@/components/payroll/CreatePayrollRunDialog';
 import { usePayrollRuns, usePayrollEntries, useLockPayrollRun, usePayrollStats, useAddPayrollEntry } from '@/hooks/usePayroll';
 import { useEmployees } from '@/hooks/useEmployees';
@@ -82,10 +83,17 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
 
       <div className="flex gap-2">
         {!isLocked && (
-          <Button variant="outline" size="sm" onClick={() => setShowAddEntry(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Employee
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => setShowAddEntry(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Employee
+            </Button>
+            <BulkAddEmployeesDialog
+              runId={runId}
+              existingEmployeeIds={existingEmployeeIds}
+              isLocked={isLocked}
+            />
+          </>
         )}
         {canProcess && (
           <Button 
