@@ -12,11 +12,13 @@ import {
   HelpCircle,
   Mail,
   Globe,
+  LayoutDashboard,
   type LucideIcon 
 } from 'lucide-react';
 import { AppRole } from '@/types/auth';
 
 export type ModuleId = 
+  | 'dashboard'
   | 'employees'
   | 'directory'
   | 'departments'
@@ -43,6 +45,15 @@ export interface ModuleConfig {
 }
 
 export const HR_MODULES: ModuleConfig[] = [
+  {
+    id: 'dashboard',
+    name: 'Dashboard',
+    description: 'Your personalized overview and quick actions',
+    icon: LayoutDashboard,
+    path: '/app/dashboard',
+    minRole: 'employee',
+    planRequired: null, // Always available
+  },
   {
     id: 'employees',
     name: 'Employees',
