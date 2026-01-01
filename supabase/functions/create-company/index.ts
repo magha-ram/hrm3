@@ -368,6 +368,9 @@ serve(async (req: Request): Promise<Response> => {
       action: "create",
       table_name: "companies",
       record_id: company.id,
+      actor_role: "company_admin",
+      target_type: "company",
+      severity: "info",
       new_values: { 
         name: company.name, 
         slug: company.slug,
@@ -375,6 +378,17 @@ serve(async (req: Request): Promise<Response> => {
         vercel_registered: vercelResult.success,
       },
     });
+
+    // Log billing event for trial start
+    if (freePlan) {
+      await supabaseAdmin.from("billing_logs").insert({
+        company_id: company.id,
+        event_type: "trial_started",
+        plan_id: freePlan.id,
+        triggered_by: user.id,
+        metadata: { trial_days: 14, subdomain: slug },
+      });
+    }
 
     console.log(`Company provisioning complete: ${company.id}`);
 

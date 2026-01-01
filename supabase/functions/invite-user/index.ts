@@ -200,6 +200,9 @@ serve(async (req: Request): Promise<Response> => {
         user_id: user.id,
         action: "create",
         table_name: "company_users",
+        actor_role: inviterRole.role,
+        target_type: "user",
+        severity: "info",
         new_values: { email: body.email, role: body.role, invited_existing_user: true },
       });
 
@@ -244,6 +247,9 @@ serve(async (req: Request): Promise<Response> => {
       user_id: user.id,
       action: "create",
       table_name: "company_users",
+      actor_role: inviterRole.role,
+      target_type: "user",
+      severity: "info",
       new_values: { email: body.email, role: body.role, invitation_sent: true },
     });
 
