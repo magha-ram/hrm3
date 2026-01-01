@@ -106,27 +106,54 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
         accessType: 'download',
       });
 
-      // Create download link
+      // Fetch as blob to guarantee a download across browsers
+      const res = await fetch(result.signedUrl);
+      if (!res.ok) throw new Error('Failed to download document');
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
       const a = document.createElement('a');
-      a.href = result.signedUrl;
+      a.href = url;
       a.download = doc.file_name;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+
+      URL.revokeObjectURL(url);
     } catch (error: any) {
       // Error already handled by hook
     }
   };
 
   const handleView = async (doc: DocumentWithRelations) => {
+    // Open synchronously to avoid popup blockers
+    const popup = window.open('about:blank', '_blank');
+
     try {
       const result = await documentAccess.mutateAsync({
         documentId: doc.id,
         accessType: 'view',
       });
 
-      window.open(result.signedUrl, '_blank');
+      if (popup) {
+        popup.location.href = result.signedUrl;
+      } else {
+        // Popup blocked; fallback to a normal link click
+        const a = document.createElement('a');
+        a.href = result.signedUrl;
+        a.target = '_blank';
+        a.rel = 'noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        toast.message('Popup blocked', {
+          description: 'Please allow popups for this site to view documents in a new tab.',
+        });
+      }
     } catch (error: any) {
+      if (popup) popup.close();
       // Error already handled by hook
     }
   };
