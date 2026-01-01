@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle } from 'lucide-react';
+import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +20,8 @@ import {
   useTeamTimeEntries,
   useApproveTimeEntry 
 } from '@/hooks/useTimeTracking';
+import { AttendanceReportCard } from '@/components/attendance/AttendanceReportCard';
+import { WorkScheduleConfiguration } from '@/components/settings/WorkScheduleConfiguration';
 
 function formatHours(hours: number): string {
   const h = Math.floor(hours);
@@ -153,6 +155,12 @@ export default function TimePage() {
                   <Badge variant="secondary" className="ml-2">{pendingApprovals.length}</Badge>
                 )}
               </TabsTrigger>
+            )}
+            {isHROrAbove && (
+              <>
+                <TabsTrigger value="reports">Reports</TabsTrigger>
+                <TabsTrigger value="settings">Schedule</TabsTrigger>
+              </>
             )}
           </TabsList>
 
@@ -291,6 +299,18 @@ export default function TimePage() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+          )}
+
+          {isHROrAbove && (
+            <TabsContent value="reports" className="mt-4">
+              <AttendanceReportCard />
+            </TabsContent>
+          )}
+
+          {isHROrAbove && (
+            <TabsContent value="settings" className="mt-4">
+              <WorkScheduleConfiguration />
             </TabsContent>
           )}
         </Tabs>

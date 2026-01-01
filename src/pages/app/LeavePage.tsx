@@ -15,6 +15,7 @@ import { LeaveRequestForm } from '@/components/leave/LeaveRequestForm';
 import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
 import { LeaveBalanceTable } from '@/components/leave/LeaveBalanceTable';
 import { TeamLeaveRequestRow } from '@/components/leave/TeamLeaveRequestRow';
+import { LeaveCalendarView } from '@/components/leave/LeaveCalendarView';
 import { format } from 'date-fns';
 
 const statusColors: Record<string, string> = {
@@ -73,6 +74,7 @@ export default function LeavePage() {
             </TabsTrigger>
           </RoleGate>
           <RoleGate role="hr_manager">
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="balances">All Balances</TabsTrigger>
           </RoleGate>
         </TabsList>
@@ -199,6 +201,12 @@ export default function LeavePage() {
                 )}
               </CardContent>
             </Card>
+          </RoleGate>
+        </TabsContent>
+
+        <TabsContent value="calendar">
+          <RoleGate role="hr_manager">
+            <LeaveCalendarView />
           </RoleGate>
         </TabsContent>
 
