@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Calendar, Loader2, Check, X } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Plus, Calendar, Loader2, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WriteGate, RoleGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
@@ -13,6 +14,7 @@ import { useMyLeaveBalances, useAllEmployeeLeaveBalances } from '@/hooks/useLeav
 import { LeaveRequestForm } from '@/components/leave/LeaveRequestForm';
 import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
 import { LeaveBalanceTable } from '@/components/leave/LeaveBalanceTable';
+import { TeamLeaveRequestRow } from '@/components/leave/TeamLeaveRequestRow';
 import { format } from 'date-fns';
 
 const statusColors: Record<string, string> = {
@@ -93,38 +95,56 @@ export default function LeavePage() {
                   <p>No leave requests found.</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Dates</TableHead>
-                      <TableHead>Days</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {myRequests.map((req) => (
-                      <TableRow key={req.id}>
-                        <TableCell>
-                          <Badge style={{ backgroundColor: (req as any).leave_type?.color }} variant="secondary">
-                            {(req as any).leave_type?.name}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d, yyyy')}</TableCell>
-                        <TableCell>{req.total_days}</TableCell>
-                        <TableCell><Badge className={statusColors[req.status]}>{req.status}</Badge></TableCell>
-                        <TableCell>
-                          {req.status === 'pending' && (
-                            <WriteGate>
-                              <Button variant="ghost" size="sm" onClick={() => cancelRequest.mutate(req.id)}>Cancel</Button>
-                            </WriteGate>
-                          )}
-                        </TableCell>
+                <TooltipProvider>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Dates</TableHead>
+                        <TableHead>Days</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {myRequests.map((req) => (
+                        <TableRow key={req.id}>
+                          <TableCell>
+                            <Badge style={{ backgroundColor: (req as any).leave_type?.color }} variant="secondary">
+                              {(req as any).leave_type?.name}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>{req.total_days}</TableCell>
+                          <TableCell><Badge className={statusColors[req.status]}>{req.status}</Badge></TableCell>
+                          <TableCell>
+                            {req.review_notes ? (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p className="text-sm font-medium mb-1">Manager's notes:</p>
+                                  <p className="text-sm">{req.review_notes}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {req.status === 'pending' && (
+                              <WriteGate>
+                                <Button variant="ghost" size="sm" onClick={() => cancelRequest.mutate(req.id)}>Cancel</Button>
+                              </WriteGate>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TooltipProvider>
               )}
             </CardContent>
           </Card>
@@ -150,29 +170,29 @@ export default function LeavePage() {
                         <TableHead>Type</TableHead>
                         <TableHead>Dates</TableHead>
                         <TableHead>Days</TableHead>
+                        <TableHead>Balance</TableHead>
+                        <TableHead>Reason</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {pendingRequests.map((req) => (
-                        <TableRow key={req.id}>
-                          <TableCell>{(req as any).employee?.first_name} {(req as any).employee?.last_name}</TableCell>
-                          <TableCell><Badge variant="secondary">{(req as any).leave_type?.name}</Badge></TableCell>
-                          <TableCell>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d')}</TableCell>
-                          <TableCell>{req.total_days}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <WriteGate>
-                                <Button size="sm" variant="default" onClick={() => approveRequest.mutate({ id: req.id })}>
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => rejectRequest.mutate({ id: req.id })}>
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </WriteGate>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                        <TeamLeaveRequestRow
+                          key={req.id}
+                          request={{
+                            id: req.id,
+                            start_date: req.start_date,
+                            end_date: req.end_date,
+                            total_days: req.total_days,
+                            reason: req.reason,
+                            employee: (req as any).employee,
+                            leave_type: (req as any).leave_type,
+                          }}
+                          onApprove={(id) => approveRequest.mutate({ id })}
+                          onReject={(id, reason) => rejectRequest.mutate({ id, review_notes: reason })}
+                          isApproving={approveRequest.isPending}
+                          isRejecting={rejectRequest.isPending}
+                        />
                       ))}
                     </TableBody>
                   </Table>
