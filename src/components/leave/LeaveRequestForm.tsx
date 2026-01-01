@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertTriangle, Info } from 'lucide-react';
 import { useLeaveTypes, useCreateLeaveRequest } from '@/hooks/useLeave';
 import { useMyLeaveBalances } from '@/hooks/useLeaveBalances';
+import { TeamConflictWarning } from './TeamConflictWarning';
 import { differenceInBusinessDays, parseISO } from 'date-fns';
 
 const leaveSchema = z.object({
@@ -138,6 +139,11 @@ export function LeaveRequestForm({ onSuccess, onCancel }: LeaveRequestFormProps)
 
         {totalDays > 0 && (
           <p className="text-sm text-muted-foreground">Total: {totalDays} day{totalDays !== 1 ? 's' : ''}</p>
+        )}
+
+        {/* Team conflict warning - show who else is on leave */}
+        {startDate && endDate && (
+          <TeamConflictWarning startDate={startDate} endDate={endDate} />
         )}
 
         {/* Warning if overdrawing */}

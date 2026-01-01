@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Tables, TablesInsert } from '@/integrations/supabase/types';
 
@@ -100,6 +101,56 @@ export function useAllDocuments() {
       return data;
     },
     enabled: !!companyId,
+  });
+}
+
+// Hook for managers to view documents of their direct reports
+export function useTeamDocuments() {
+  const { companyId } = useTenant();
+  const { user } = useAuth();
+  const userId = user?.user_id;
+
+  return useQuery({
+    queryKey: ['documents', 'team', companyId, userId],
+    queryFn: async () => {
+      if (!companyId || !userId) return [];
+
+      // Get current employee (manager)
+      const { data: currentEmployee } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('user_id', userId)
+        .single();
+
+      if (!currentEmployee) return [];
+
+      // Get direct reports
+      const { data: directReports } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('manager_id', currentEmployee.id)
+        .neq('employment_status', 'terminated');
+
+      const employeeIds = directReports?.map(e => e.id) || [];
+      if (employeeIds.length === 0) return [];
+
+      // Get documents for team members
+      const { data, error } = await supabase
+        .from('employee_documents')
+        .select(`
+          *,
+          employee:employees!employee_documents_employee_id_fkey(id, first_name, last_name, email),
+          document_type:document_types(id, name, code)
+        `)
+        .in('employee_id', employeeIds)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId && !!userId,
   });
 }
 
