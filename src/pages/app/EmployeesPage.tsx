@@ -111,38 +111,40 @@ export default function EmployeesPage() {
         <ReadOnlyPageBanner />
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Employees</h1>
-            <p className="text-muted-foreground">Manage your organization's employees</p>
+            <h1 className="text-2xl font-bold">{isHROrAbove ? 'Employees' : 'Company Directory'}</h1>
+            <p className="text-muted-foreground">
+              {isHROrAbove ? "Manage your organization's employees" : 'View your colleagues'}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Export/Import Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Import/Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportEmployees} disabled={!employees?.length}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Employees
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={downloadEmployeeImportTemplate}>
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Download Template
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <WriteGate>
-                  <RoleGate role="hr_manager">
+            {/* Export/Import Dropdown - Only for HR */}
+            <RoleGate role="hr_manager">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Import/Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportEmployees} disabled={!employees?.length}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Employees
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={downloadEmployeeImportTemplate}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Download Template
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <WriteGate>
                     <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
                       <Upload className="h-4 w-4 mr-2" />
                       Bulk Import
                     </DropdownMenuItem>
-                  </RoleGate>
-                </WriteGate>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  </WriteGate>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </RoleGate>
 
             <WriteGate>
               <RoleGate role="hr_manager">
