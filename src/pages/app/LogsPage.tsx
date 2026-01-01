@@ -396,7 +396,7 @@ function SecurityEventsTab() {
       if (!companyId) return { events: [], total: 0 };
       let query = supabase.from('security_events').select('*', { count: 'exact' })
         .eq('company_id', companyId).order('created_at', { ascending: false });
-      if (eventType !== 'all') query = query.eq('event_type', eventType);
+      if (eventType !== 'all') query = query.eq('event_type', eventType as any);
       const from = (page - 1) * pageSize;
       query = query.range(from, from + pageSize - 1);
       const { data: events, error, count } = await query;

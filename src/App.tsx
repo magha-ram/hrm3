@@ -135,13 +135,15 @@ const App = () => (
                     <Route path="users" element={<PlatformUsersPage />} />
                     <Route path="plans" element={<PlatformPlansPage />} />
                     <Route path="analytics" element={<PlatformAnalyticsPage />} />
-                    <Route path="audit-logs" element={<PlatformAuditLogsPage />} />
-                    <Route path="impersonation-logs" element={<PlatformImpersonationLogsPage />} />
+                    <Route path="logs" element={<PlatformLogsPage />} />
                     <Route path="webhooks" element={<PlatformWebhooksPage />} />
-                    <Route path="email-logs" element={<PlatformEmailLogsPage />} />
-                    <Route path="billing-logs" element={<PlatformBillingLogsPage />} />
-                    <Route path="application-logs" element={<PlatformApplicationLogsPage />} />
                     <Route path="settings" element={<PlatformSettingsPage />} />
+                    {/* Redirects for old log routes */}
+                    <Route path="audit-logs" element={<Navigate to="/platform/logs" replace />} />
+                    <Route path="impersonation-logs" element={<Navigate to="/platform/logs" replace />} />
+                    <Route path="email-logs" element={<Navigate to="/platform/logs" replace />} />
+                    <Route path="billing-logs" element={<Navigate to="/platform/logs" replace />} />
+                    <Route path="application-logs" element={<Navigate to="/platform/logs" replace />} />
                   </Route>
 
                   {/* Protected app routes */}
@@ -158,9 +160,11 @@ const App = () => (
                     <Route path="recruitment/candidates/:candidateId" element={<CandidateDetailPage />} />
                     <Route path="performance" element={<PerformancePage />} />
                     <Route path="documents" element={<DocumentsPage />} />
-                    <Route path="audit" element={<AuditLogPage />} />
-                    <Route path="security-events" element={<SecurityEventsPage />} />
+                    <Route path="logs" element={<LogsPage />} />
                     <Route path="compliance" element={<CompliancePage />} />
+                    {/* Redirects for old log routes */}
+                    <Route path="audit" element={<Navigate to="/app/logs" replace />} />
+                    <Route path="security-events" element={<Navigate to="/app/logs" replace />} />
                     <Route path="integrations" element={<IntegrationsPage />} />
                     <Route path="shifts" element={<ShiftManagementPage />} />
                     <Route path="settings" element={<SettingsPage />}>
@@ -176,7 +180,7 @@ const App = () => (
                       <Route path="appearance" element={<AppearanceSettingsPage />} />
                       <Route path="localization" element={<LocalizationSettingsPage />} />
                     </Route>
-                    <Route path="email-logs" element={<EmailLogsPage />} />
+                    <Route path="email-logs" element={<Navigate to="/app/logs" replace />} />
                     <Route path="help" element={<HelpPage />} />
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="payslips" element={<MyPayslipsPage />} />
