@@ -163,271 +163,264 @@ export function UserPermissionsEditor() {
           Grant or deny specific permissions for individual users.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* User Selection Panel */}
-          <div className="lg:col-span-1 border rounded-lg p-4">
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, email, or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            
-            <ScrollArea className="h-[400px]">
-              <div className="space-y-1">
-                {usersLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
-                  ))
-                ) : filteredUsers.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    {searchQuery ? 'No users found' : 'No users available'}
-                  </div>
-                ) : (
-                  filteredUsers.map((user) => {
-                    const empData = employeeByUserId.get(user.user_id);
-                    const isSelected = selectedUserId === user.user_id;
-                    
-                    return (
-                      <button
-                        key={user.user_id}
-                        onClick={() => setSelectedUserId(user.user_id)}
-                        className={cn(
-                          "w-full text-left p-3 rounded-lg transition-colors",
-                          isSelected 
-                            ? "bg-primary text-primary-foreground" 
-                            : "hover:bg-muted"
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium truncate">
-                              {user.profile?.first_name} {user.profile?.last_name}
-                            </div>
+      <CardContent className="space-y-4">
+        {/* Search bar at top */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, email, or ID..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* User selection - horizontal scroll */}
+        <div className="border rounded-lg p-3">
+          <ScrollArea className="w-full">
+            <div className="flex gap-2 pb-1">
+              {usersLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-48 shrink-0" />
+                ))
+              ) : filteredUsers.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground text-sm w-full">
+                  {searchQuery ? 'No users found' : 'No users available'}
+                </div>
+              ) : (
+                filteredUsers.map((user) => {
+                  const empData = employeeByUserId.get(user.user_id);
+                  const isSelected = selectedUserId === user.user_id;
+                  
+                  return (
+                    <button
+                      key={user.user_id}
+                      onClick={() => setSelectedUserId(user.user_id)}
+                      className={cn(
+                        "shrink-0 text-left p-3 rounded-lg border transition-colors min-w-[200px]",
+                        isSelected 
+                          ? "bg-primary text-primary-foreground border-primary" 
+                          : "hover:bg-muted border-border"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate text-sm">
+                            {user.profile?.first_name} {user.profile?.last_name}
+                          </div>
+                          <div className={cn(
+                            "text-xs truncate flex items-center gap-1",
+                            isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
+                          )}>
+                            <Mail className="h-3 w-3 shrink-0" />
+                            {user.profile?.email || empData?.email}
+                          </div>
+                          {empData?.employee_number && (
                             <div className={cn(
-                              "text-xs truncate flex items-center gap-1",
+                              "text-xs flex items-center gap-1 mt-0.5",
                               isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
                             )}>
-                              <Mail className="h-3 w-3 shrink-0" />
-                              {user.profile?.email || empData?.email}
+                              <Hash className="h-3 w-3 shrink-0" />
+                              {empData.employee_number}
                             </div>
-                            {empData?.employee_number && (
-                              <div className={cn(
-                                "text-xs flex items-center gap-1 mt-0.5",
-                                isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
-                              )}>
-                                <Hash className="h-3 w-3 shrink-0" />
-                                {empData.employee_number}
-                              </div>
+                          )}
+                        </div>
+                      </div>
+                      <Badge 
+                        variant={isSelected ? "secondary" : "outline"} 
+                        className="text-xs mt-2"
+                      >
+                        {user.role?.replace('_', ' ')}
+                      </Badge>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Permissions Panel */}
+        {!selectedUserId ? (
+          <div className="flex items-center justify-center py-12 border rounded-lg">
+            <div className="text-center text-muted-foreground">
+              <User className="h-10 w-10 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Select a user above to manage permissions</p>
+            </div>
+          </div>
+        ) : selectedUser?.role === 'super_admin' ? (
+          <Alert>
+            <Shield className="h-4 w-4" />
+            <AlertDescription>
+              Super admins have all permissions and cannot be modified.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="border rounded-lg">
+            {/* Selected user header */}
+            <div className="p-3 border-b bg-muted/30 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div>
+                  <span className="font-medium">
+                    {selectedUser?.profile?.first_name} {selectedUser?.profile?.last_name}
+                  </span>
+                  {selectedEmployeeData?.employee_number && (
+                    <span className="text-sm text-muted-foreground ml-2">
+                      #{selectedEmployeeData.employee_number}
+                    </span>
+                  )}
+                </div>
+                <Badge variant="secondary">{selectedUser?.role?.replace('_', ' ')}</Badge>
+              </div>
+              
+              {/* Legend */}
+              <div className="hidden sm:flex gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-3 rounded bg-green-500/20 border border-green-300" />
+                  <span>Allowed</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-3 rounded bg-red-500/20 border border-red-300" />
+                  <span>Denied</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-3 rounded bg-muted border" />
+                  <span>Inherited</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Permissions list */}
+            <ScrollArea className="max-h-[400px]">
+              {isLoading ? (
+                <div className="p-4 space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {Object.entries(permissionsByModule || {}).map(([module, permissions]) => {
+                    const isExpanded = expandedModules.has(module);
+                    const overrideCount = overrideCountByModule[module] || 0;
+                    
+                    return (
+                      <Collapsible 
+                        key={module} 
+                        open={isExpanded} 
+                        onOpenChange={() => toggleModule(module)}
+                      >
+                        <CollapsibleTrigger className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span className="font-medium">
+                              {MODULE_LABELS[module as PermissionModule]}
+                            </span>
+                            {overrideCount > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                {overrideCount} override{overrideCount > 1 ? 's' : ''}
+                              </Badge>
                             )}
                           </div>
-                          <Badge 
-                            variant={isSelected ? "secondary" : "outline"} 
-                            className="text-xs shrink-0"
-                          >
-                            {user.role?.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                      </button>
+                          <span className="text-xs text-muted-foreground">
+                            {permissions?.length} permissions
+                          </span>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="px-4 pb-3 space-y-1">
+                            {permissions?.map((perm) => {
+                              const isExplicitAllow = perm.source === 'explicit_allow';
+                              const isExplicitDeny = perm.source === 'explicit_deny';
+                              const hasOverride = isExplicitAllow || isExplicitDeny;
+
+                              return (
+                                <div
+                                  key={perm.permission_id}
+                                  className={cn(
+                                    "flex items-center justify-between py-2 px-3 rounded-md text-sm",
+                                    isExplicitAllow && "bg-green-500/10",
+                                    isExplicitDeny && "bg-red-500/10",
+                                    !hasOverride && "bg-muted/30"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span>{ACTION_LABELS[perm.action]}</span>
+                                    {perm.has_permission && !hasOverride && (
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    )}
+                                    {!perm.has_permission && !hasOverride && (
+                                      <X className="h-3 w-3 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className={cn(
+                                        "h-7 w-7 p-0",
+                                        isExplicitAllow && "bg-green-600 text-white hover:bg-green-700"
+                                      )}
+                                      onClick={() => handleSetPermission(
+                                        perm.module,
+                                        perm.action,
+                                        isExplicitAllow ? null : true
+                                      )}
+                                      disabled={setPermission.isPending}
+                                      title="Allow"
+                                    >
+                                      <ShieldCheck className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className={cn(
+                                        "h-7 w-7 p-0",
+                                        isExplicitDeny && "bg-red-600 text-white hover:bg-red-700"
+                                      )}
+                                      onClick={() => handleSetPermission(
+                                        perm.module,
+                                        perm.action,
+                                        isExplicitDeny ? null : false
+                                      )}
+                                      disabled={setPermission.isPending}
+                                      title="Deny"
+                                    >
+                                      <ShieldOff className="h-3.5 w-3.5" />
+                                    </Button>
+                                    {hasOverride && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
+                                        onClick={() => handleSetPermission(
+                                          perm.module,
+                                          perm.action,
+                                          null
+                                        )}
+                                        disabled={setPermission.isPending}
+                                        title="Reset to role default"
+                                      >
+                                        <RotateCcw className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     );
-                  })
-                )}
-              </div>
+                  })}
+                </div>
+              )}
             </ScrollArea>
           </div>
-
-          {/* Permissions Panel */}
-          <div className="lg:col-span-2">
-            {!selectedUserId ? (
-              <div className="flex items-center justify-center h-full min-h-[400px] border rounded-lg">
-                <div className="text-center text-muted-foreground">
-                  <User className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="font-medium">Select a user</p>
-                  <p className="text-sm">Choose a user from the list to manage permissions</p>
-                </div>
-              </div>
-            ) : selectedUser?.role === 'super_admin' ? (
-              <Alert className="h-full flex items-center">
-                <Shield className="h-4 w-4" />
-                <AlertDescription>
-                  Super admins have all permissions and cannot be modified.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="border rounded-lg">
-                {/* Selected user header */}
-                <div className="p-4 border-b bg-muted/30">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">
-                        {selectedUser?.profile?.first_name} {selectedUser?.profile?.last_name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedUser?.profile?.email}
-                        {selectedEmployeeData?.employee_number && (
-                          <span className="ml-2">• #{selectedEmployeeData.employee_number}</span>
-                        )}
-                      </p>
-                    </div>
-                    <Badge variant="secondary">{selectedUser?.role?.replace('_', ' ')}</Badge>
-                  </div>
-                </div>
-
-                {/* Legend */}
-                <div className="px-4 py-2 border-b flex flex-wrap gap-4 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded bg-green-500/20 border border-green-300" />
-                    <span>Allowed</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded bg-red-500/20 border border-red-300" />
-                    <span>Denied</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="h-3 w-3 rounded bg-muted border" />
-                    <span>Inherited from role</span>
-                  </div>
-                </div>
-
-                {/* Permissions list */}
-                <ScrollArea className="h-[350px]">
-                  {isLoading ? (
-                    <div className="p-4 space-y-2">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Skeleton key={i} className="h-12 w-full" />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="divide-y">
-                      {Object.entries(permissionsByModule || {}).map(([module, permissions]) => {
-                        const isExpanded = expandedModules.has(module);
-                        const overrideCount = overrideCountByModule[module] || 0;
-                        
-                        return (
-                          <Collapsible 
-                            key={module} 
-                            open={isExpanded} 
-                            onOpenChange={() => toggleModule(module)}
-                          >
-                            <CollapsibleTrigger className="w-full p-3 flex items-center justify-between hover:bg-muted/50 transition-colors">
-                              <div className="flex items-center gap-2">
-                                {isExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
-                                <span className="font-medium">
-                                  {MODULE_LABELS[module as PermissionModule]}
-                                </span>
-                                {overrideCount > 0 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {overrideCount} override{overrideCount > 1 ? 's' : ''}
-                                  </Badge>
-                                )}
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {permissions?.length} permissions
-                              </span>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <div className="px-4 pb-3 space-y-1">
-                                {permissions?.map((perm) => {
-                                  const isExplicitAllow = perm.source === 'explicit_allow';
-                                  const isExplicitDeny = perm.source === 'explicit_deny';
-                                  const hasOverride = isExplicitAllow || isExplicitDeny;
-
-                                  return (
-                                    <div
-                                      key={perm.permission_id}
-                                      className={cn(
-                                        "flex items-center justify-between py-2 px-3 rounded-md text-sm",
-                                        isExplicitAllow && "bg-green-500/10",
-                                        isExplicitDeny && "bg-red-500/10",
-                                        !hasOverride && "bg-muted/30"
-                                      )}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span>{ACTION_LABELS[perm.action]}</span>
-                                        {perm.has_permission && !hasOverride && (
-                                          <Check className="h-3 w-3 text-green-600" />
-                                        )}
-                                        {!perm.has_permission && !hasOverride && (
-                                          <X className="h-3 w-3 text-muted-foreground" />
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className={cn(
-                                            "h-7 w-7 p-0",
-                                            isExplicitAllow && "bg-green-600 text-white hover:bg-green-700"
-                                          )}
-                                          onClick={() => handleSetPermission(
-                                            perm.module,
-                                            perm.action,
-                                            isExplicitAllow ? null : true
-                                          )}
-                                          disabled={setPermission.isPending}
-                                          title="Allow"
-                                        >
-                                          <ShieldCheck className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className={cn(
-                                            "h-7 w-7 p-0",
-                                            isExplicitDeny && "bg-red-600 text-white hover:bg-red-700"
-                                          )}
-                                          onClick={() => handleSetPermission(
-                                            perm.module,
-                                            perm.action,
-                                            isExplicitDeny ? null : false
-                                          )}
-                                          disabled={setPermission.isPending}
-                                          title="Deny"
-                                        >
-                                          <ShieldOff className="h-3.5 w-3.5" />
-                                        </Button>
-                                        {hasOverride && (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 w-7 p-0"
-                                            onClick={() => handleSetPermission(
-                                              perm.module,
-                                              perm.action,
-                                              null
-                                            )}
-                                            disabled={setPermission.isPending}
-                                            title="Reset to role default"
-                                          >
-                                            <RotateCcw className="h-3.5 w-3.5" />
-                                          </Button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        );
-                      })}
-                    </div>
-                  )}
-                </ScrollArea>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
