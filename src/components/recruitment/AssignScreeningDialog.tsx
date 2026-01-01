@@ -79,12 +79,7 @@ export function AssignScreeningDialog({
                 <SelectContent>
                   {tests.map((test) => (
                     <SelectItem key={test.id} value={test.id}>
-                      <div className="flex flex-col">
-                        <span>{test.title}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {test.duration_minutes} min • {test.questions.length} questions
-                        </span>
-                      </div>
+                      {test.title} ({test.duration_minutes} min • {test.questions.length} questions)
                     </SelectItem>
                   ))}
                 </SelectContent>
