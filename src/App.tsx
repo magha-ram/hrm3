@@ -13,6 +13,7 @@ import { lazy, Suspense } from "react";
 // Public pages (lazy loaded)
 const CareersPage = lazy(() => import("./pages/CareersPage"));
 const JobDetailPage = lazy(() => import("./pages/JobDetailPage"));
+const CandidateScreeningPage = lazy(() => import("./pages/CandidateScreeningPage"));
 
 // Core pages (not lazy - needed immediately)
 import Auth from "./pages/Auth";
@@ -35,6 +36,7 @@ const TimePage = lazy(() => import("./pages/app/TimePage"));
 const PayrollPage = lazy(() => import("./pages/app/PayrollPage"));
 const ExpensesPage = lazy(() => import("./pages/app/ExpensesPage"));
 const RecruitmentPage = lazy(() => import("./pages/app/RecruitmentPage"));
+const CandidateDetailPage = lazy(() => import("./pages/app/CandidateDetailPage"));
 const PerformancePage = lazy(() => import("./pages/app/PerformancePage"));
 const DocumentsPage = lazy(() => import("./pages/app/DocumentsPage"));
 const SettingsPage = lazy(() => import("./pages/app/SettingsPage"));
@@ -114,6 +116,7 @@ const App = () => (
                   <Route path="/setup" element={<Setup />} />
                   <Route path="/careers" element={<CareersPage />} />
                   <Route path="/careers/:slug" element={<JobDetailPage />} />
+                  <Route path="/screening/:token" element={<CandidateScreeningPage />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -145,6 +148,7 @@ const App = () => (
                     <Route path="payroll" element={<PayrollPage />} />
                     <Route path="expenses" element={<ExpensesPage />} />
                     <Route path="recruitment" element={<RecruitmentPage />} />
+                    <Route path="recruitment/candidates/:candidateId" element={<CandidateDetailPage />} />
                     <Route path="performance" element={<PerformancePage />} />
                     <Route path="documents" element={<DocumentsPage />} />
                     <Route path="audit" element={<AuditLogPage />} />
