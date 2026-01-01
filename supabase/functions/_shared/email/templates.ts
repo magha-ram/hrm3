@@ -405,6 +405,32 @@ const templates: Record<EmailTemplateType, (data: any) => RenderedTemplate> = {
     `, `Login Credentials - ${data.companyName}`),
     text: `Welcome to ${data.companyName}!\n\nHi ${data.employeeName},\n\nYour user account has been created.\n\n${data.loginType === 'employee_id' ? `Employee ID: ${data.employeeNumber}\nCompany: ${data.companySlug}` : 'Use your work email to login'}\nTemporary Password: ${data.temporaryPassword}\n\nIMPORTANT: You will be required to change your password on first login.\n\nLogin at: ${data.loginUrl}\n\nSecurity Notice: Do not share your password with anyone.`
   }),
+
+  user_reactivated: (data: EmailTemplateData['user_reactivated']) => ({
+    subject: `Your ${data.companyName} Account Has Been Reactivated`,
+    html: wrapTemplate(`
+      <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        <h1>Account Reactivated!</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.userName},</p>
+        <p>Great news! Your account at <strong>${data.companyName}</strong> has been reactivated.</p>
+        <p>For security purposes, your password has been reset. Please use the temporary password below to log in:</p>
+        <div class="highlight" style="border-left-color: #10b981;">
+          <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">${data.temporaryPassword}</code></p>
+        </div>
+        <p><strong>Important:</strong> You will be required to change your password on first login.</p>
+        <p style="text-align: center;">
+          <a href="${data.loginUrl}" class="button" style="background: #10b981;">Login Now</a>
+        </p>
+        <p style="color: #dc2626; font-size: 14px;"><strong>Security Notice:</strong> Do not share your password with anyone. If you did not expect this email, please contact your administrator immediately.</p>
+      </div>
+      <div class="footer">
+        <p>This is an automated message from ${data.companyName}.</p>
+      </div>
+    `, `Account Reactivated - ${data.companyName}`),
+    text: `Account Reactivated!\n\nHi ${data.userName},\n\nYour account at ${data.companyName} has been reactivated.\n\nTemporary Password: ${data.temporaryPassword}\n\nIMPORTANT: You will be required to change your password on first login.\n\nLogin at: ${data.loginUrl}\n\nSecurity Notice: Do not share your password with anyone.`
+  }),
 };
 
 export function renderTemplate<T extends EmailTemplateType>(
