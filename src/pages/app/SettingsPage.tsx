@@ -1,16 +1,21 @@
-import { Outlet } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Outlet, Navigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { SETTINGS_NAV } from '@/config/modules';
 import { useTenant } from '@/contexts/TenantContext';
 import { hasMinimumRole } from '@/types/auth';
 import { ReadOnlyPageBanner } from '@/components/platform/ImpersonationRestricted';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export default function SettingsPage() {
   const location = useLocation();
   const { role } = useTenant();
+  const { isCompanyAdmin } = useUserRole();
+
+  // Non-admins should not access company settings - redirect to personal security
+  if (!isCompanyAdmin) {
+    return <Navigate to="/app/my-security" replace />;
+  }
 
   const visibleSettings = SETTINGS_NAV.filter(item => hasMinimumRole(role, item.minRole));
 
@@ -18,8 +23,8 @@ export default function SettingsPage() {
     <div className="p-6 space-y-6">
       <ReadOnlyPageBanner />
       <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your company settings and preferences</p>
+        <h1 className="text-2xl font-bold">Company Settings</h1>
+        <p className="text-muted-foreground">Manage your company configuration and preferences</p>
       </div>
 
       <div className="flex gap-6">
