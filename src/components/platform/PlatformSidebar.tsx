@@ -21,71 +21,15 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 const platformNavItems = [
-  { 
-    name: 'Dashboard', 
-    path: '/platform/dashboard', 
-    icon: LayoutDashboard 
-  },
-  { 
-    name: 'Companies', 
-    path: '/platform/companies', 
-    icon: Building2 
-  },
-  { 
-    name: 'Users', 
-    path: '/platform/users', 
-    icon: Users 
-  },
-  { 
-    name: 'Platform Admins', 
-    path: '/platform/admins', 
-    icon: Shield 
-  },
-  { 
-    name: 'Plans', 
-    path: '/platform/plans', 
-    icon: CreditCard 
-  },
-  { 
-    name: 'Analytics', 
-    path: '/platform/analytics', 
-    icon: BarChart3 
-  },
-  { 
-    name: 'Audit Logs', 
-    path: '/platform/audit-logs', 
-    icon: FileText 
-  },
-  { 
-    name: 'Impersonation Logs', 
-    path: '/platform/impersonation-logs', 
-    icon: UserCog 
-  },
-  { 
-    name: 'Billing Logs', 
-    path: '/platform/billing-logs', 
-    icon: Receipt 
-  },
-  { 
-    name: 'Application Logs', 
-    path: '/platform/application-logs', 
-    icon: AlertTriangle 
-  },
-  { 
-    name: 'Webhooks', 
-    path: '/platform/webhooks', 
-    icon: Webhook 
-  },
-  { 
-    name: 'Email Logs', 
-    path: '/platform/email-logs', 
-    icon: Mail 
-  },
-  { 
-    name: 'Settings', 
-    path: '/platform/settings', 
-    icon: Settings 
-  },
+  { name: 'Dashboard', path: '/platform/dashboard', icon: LayoutDashboard },
+  { name: 'Companies', path: '/platform/companies', icon: Building2 },
+  { name: 'Users', path: '/platform/users', icon: Users },
+  { name: 'Platform Admins', path: '/platform/admins', icon: Shield },
+  { name: 'Plans', path: '/platform/plans', icon: CreditCard },
+  { name: 'Analytics', path: '/platform/analytics', icon: BarChart3 },
+  { name: 'Logs', path: '/platform/logs', icon: FileText },
+  { name: 'Webhooks', path: '/platform/webhooks', icon: Webhook },
+  { name: 'Settings', path: '/platform/settings', icon: Settings },
 ];
 
 export function PlatformSidebar() {
