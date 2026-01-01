@@ -772,13 +772,251 @@ CREATE TABLE employee_documents (
   mime_type TEXT,
   issue_date DATE,
   expiry_date DATE,
+  -- Verification workflow
   is_verified BOOLEAN DEFAULT false,
+  verification_status document_verification_status DEFAULT 'pending',
   verified_by UUID REFERENCES employees(id),
   verified_at TIMESTAMPTZ,
+  rejection_reason TEXT,
+  -- Versioning
+  version_number INTEGER DEFAULT 1,
+  parent_document_id UUID REFERENCES employee_documents(id),
+  is_latest_version BOOLEAN DEFAULT true,
+  -- Soft delete
+  deleted_at TIMESTAMPTZ,
+  deleted_by UUID REFERENCES employees(id),
+  -- Access tracking
+  access_count INTEGER DEFAULT 0,
+  last_accessed_at TIMESTAMPTZ,
+  last_accessed_by UUID,
+  -- Metadata
   metadata JSONB,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Document verification status enum
+CREATE TYPE document_verification_status AS ENUM (
+  'pending',
+  'verified',
+  'rejected',
+  'expired'
+);
+
+-- Document access logs for compliance
+CREATE TABLE document_access_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id UUID REFERENCES employee_documents(id) NOT NULL,
+  company_id UUID REFERENCES companies(id) NOT NULL,
+  accessed_by UUID NOT NULL,
+  access_type TEXT NOT NULL, -- 'view', 'download', 'delete'
+  ip_address_masked TEXT,
+  user_agent TEXT,
+  access_granted BOOLEAN DEFAULT true,
+  denial_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Auto-expire trigger
+CREATE OR REPLACE FUNCTION check_document_expiry()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.expiry_date IS NOT NULL 
+       AND NEW.expiry_date < CURRENT_DATE 
+       AND NEW.verification_status != 'expired' THEN
+        NEW.verification_status := 'expired';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER auto_expire_documents
+BEFORE UPDATE ON employee_documents
+FOR EACH ROW
+EXECUTE FUNCTION check_document_expiry();
+```
+
+**Document RLS Policies (Permission-Based):**
+
+```sql
+-- SELECT: Own documents, manager's team, or has read permission
+CREATE POLICY documents_select_permission ON employee_documents
+FOR SELECT USING (
+  deleted_at IS NULL
+  AND can_use_documents(auth.uid(), company_id)
+  AND (
+    is_own_employee_record(auth.uid(), employee_id)
+    OR is_manager_of_employee(auth.uid(), employee_id)
+    OR has_permission(auth.uid(), company_id, 'documents', 'read')
+  )
+);
+
+-- INSERT: Own document or has create permission
+CREATE POLICY documents_insert_permission ON employee_documents
+FOR INSERT WITH CHECK (
+  can_use_documents(auth.uid(), company_id)
+  AND guard_write_operation(company_id)
+  AND (
+    is_own_employee_record(auth.uid(), employee_id)
+    OR has_permission(auth.uid(), company_id, 'documents', 'create')
+  )
+);
+
+-- UPDATE: Has update permission only
+CREATE POLICY documents_update_permission ON employee_documents
+FOR UPDATE USING (
+  deleted_at IS NULL
+  AND can_use_documents(auth.uid(), company_id)
+  AND has_permission(auth.uid(), company_id, 'documents', 'update')
+) WITH CHECK (
+  guard_write_operation(company_id)
+);
+
+-- DELETE: Has delete permission only
+CREATE POLICY documents_delete_permission ON employee_documents
+FOR DELETE USING (
+  can_use_documents(auth.uid(), company_id)
+  AND has_permission(auth.uid(), company_id, 'documents', 'delete')
+);
+```
+
+**Document Access Functions:**
+
+```sql
+-- Check document access for specific actions
+CREATE FUNCTION can_access_document(_user_id uuid, _document_id uuid, _action text)
+RETURNS boolean AS $$
+DECLARE
+    _company_id uuid;
+    _employee_id uuid;
+    _doc_employee_id uuid;
+    _is_own boolean;
+    _is_manager boolean;
+BEGIN
+    SELECT company_id, employee_id INTO _company_id, _doc_employee_id
+    FROM employee_documents
+    WHERE id = _document_id AND deleted_at IS NULL;
+    
+    IF _company_id IS NULL THEN RETURN false; END IF;
+    IF NOT can_use_documents(_user_id, _company_id) THEN RETURN false; END IF;
+    
+    SELECT id INTO _employee_id
+    FROM employees WHERE user_id = _user_id AND company_id = _company_id;
+    
+    _is_own := _employee_id = _doc_employee_id;
+    _is_manager := is_manager_of_employee(_user_id, _doc_employee_id);
+    
+    CASE _action
+        WHEN 'read' THEN
+            RETURN _is_own OR _is_manager OR has_permission(_user_id, _company_id, 'documents', 'read');
+        WHEN 'create' THEN
+            RETURN has_permission(_user_id, _company_id, 'documents', 'create')
+                OR (_is_own AND is_active_company_member(_user_id, _company_id));
+        WHEN 'update' THEN
+            RETURN has_permission(_user_id, _company_id, 'documents', 'update');
+        WHEN 'delete' THEN
+            RETURN has_permission(_user_id, _company_id, 'documents', 'delete');
+        WHEN 'verify' THEN
+            RETURN has_permission(_user_id, _company_id, 'documents', 'verify');
+        ELSE RETURN false;
+    END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- Log document access
+CREATE FUNCTION log_document_access(_document_id uuid, _access_type text, _ip_address text, _user_agent text)
+RETURNS uuid AS $$
+DECLARE
+    _log_id uuid;
+    _company_id uuid;
+BEGIN
+    SELECT company_id INTO _company_id FROM employee_documents WHERE id = _document_id;
+    
+    INSERT INTO document_access_logs (document_id, company_id, accessed_by, access_type, ip_address_masked, user_agent)
+    VALUES (_document_id, _company_id, auth.uid(), _access_type, mask_ip_address(_ip_address), truncate_user_agent(_user_agent))
+    RETURNING id INTO _log_id;
+    
+    UPDATE employee_documents SET
+        access_count = COALESCE(access_count, 0) + 1,
+        last_accessed_at = now(),
+        last_accessed_by = auth.uid()
+    WHERE id = _document_id;
+    
+    RETURN _log_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Soft delete document
+CREATE FUNCTION soft_delete_document(_document_id uuid, _employee_id uuid)
+RETURNS boolean AS $$
+BEGIN
+    IF NOT can_access_document(auth.uid(), _document_id, 'delete') THEN
+        RAISE EXCEPTION 'Not authorized to delete this document';
+    END IF;
+    
+    UPDATE employee_documents SET deleted_at = now(), deleted_by = _employee_id
+    WHERE id = _document_id;
+    
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Verify document with status
+CREATE FUNCTION verify_document(_document_id uuid, _status document_verification_status, _verifier_employee_id uuid, _rejection_reason text DEFAULT NULL)
+RETURNS boolean AS $$
+BEGIN
+    IF NOT can_access_document(auth.uid(), _document_id, 'verify') THEN
+        RAISE EXCEPTION 'Not authorized to verify this document';
+    END IF;
+    
+    IF _status = 'rejected' AND (_rejection_reason IS NULL OR _rejection_reason = '') THEN
+        RAISE EXCEPTION 'Rejection reason is required';
+    END IF;
+    
+    UPDATE employee_documents SET
+        verification_status = _status,
+        verified_by = _verifier_employee_id,
+        verified_at = now(),
+        is_verified = (_status = 'verified'),
+        rejection_reason = _rejection_reason
+    WHERE id = _document_id;
+    
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check document limits
+CREATE FUNCTION check_document_limits(_company_id uuid, _employee_id uuid)
+RETURNS jsonb AS $$
+DECLARE
+    _plan_features jsonb;
+    _max_storage_mb integer;
+    _max_per_employee integer;
+    _current_storage_bytes bigint;
+    _current_count integer;
+BEGIN
+    SELECT p.features INTO _plan_features
+    FROM company_subscriptions cs JOIN plans p ON p.id = cs.plan_id
+    WHERE cs.company_id = _company_id AND cs.status IN ('active', 'trialing');
+    
+    _max_storage_mb := COALESCE((_plan_features->'documents'->>'max_storage_mb')::integer, -1);
+    _max_per_employee := COALESCE((_plan_features->'documents'->>'max_per_employee')::integer, -1);
+    
+    SELECT COALESCE(SUM(file_size), 0), COUNT(*) INTO _current_storage_bytes, _current_count
+    FROM employee_documents WHERE company_id = _company_id AND employee_id = _employee_id AND deleted_at IS NULL;
+    
+    RETURN jsonb_build_object(
+        'max_storage_mb', _max_storage_mb,
+        'max_per_employee', _max_per_employee,
+        'current_storage_bytes', _current_storage_bytes,
+        'current_count', _current_count,
+        'can_upload', (
+            (_max_storage_mb = -1 OR (_current_storage_bytes / 1024 / 1024) < _max_storage_mb)
+            AND (_max_per_employee = -1 OR _current_count < _max_per_employee)
+        )
+    );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 ```
 
 ### 3.9 Expense Management Tables
@@ -1248,8 +1486,40 @@ CREATE TABLE multi_company_requests (
 | `security_event_type` | login_success, login_failure, password_change, mfa_enabled, mfa_disabled, suspicious_activity, permission_denied, data_export |
 | `subdomain_request_status` | pending, approved, rejected |
 | `subscription_status` | active, past_due, canceled, trialing, trial_expired, paused |
+| `document_verification_status` | pending, verified, rejected, expired |
 
 ---
+
+### 4.2 Document Module Datapoints
+
+| Datapoint | Type | Source | Sensitivity | Stored In |
+|-----------|------|--------|-------------|-----------|
+| document_id | UUID | database | internal | employee_documents.id |
+| title | string | user_input | internal | employee_documents.title |
+| description | string | user_input | internal | employee_documents.description |
+| file_name | string | user_input | internal | employee_documents.file_name |
+| file_url | string | computed | internal | employee_documents.file_url |
+| file_size | number | computed | internal | employee_documents.file_size |
+| mime_type | string | computed | internal | employee_documents.mime_type |
+| issue_date | date | user_input | pii | employee_documents.issue_date |
+| expiry_date | date | user_input | pii | employee_documents.expiry_date |
+| verification_status | enum | database | internal | employee_documents.verification_status |
+| rejection_reason | string | user_input | internal | employee_documents.rejection_reason |
+| version_number | number | computed | internal | employee_documents.version_number |
+| is_latest_version | boolean | computed | internal | employee_documents.is_latest_version |
+| parent_document_id | UUID | computed | internal | employee_documents.parent_document_id |
+| deleted_at | timestamp | database | internal | employee_documents.deleted_at |
+| access_count | number | computed | internal | employee_documents.access_count |
+| last_accessed_at | timestamp | computed | internal | employee_documents.last_accessed_at |
+| access_type | enum | event | internal | document_access_logs.access_type |
+| ip_address_masked | string | event | internal | document_access_logs.ip_address_masked |
+
+**Document Lifecycle:**
+- Created: On upload via document-upload edge function
+- Updated: Verification status changes, metadata updates
+- Soft Deleted: deleted_at set, file removed from storage
+- Access Logged: Every view/download recorded
+- Retention: Configurable per plan, audit logs preserved
 
 ## 5. User Roles & Permissions
 
@@ -1276,7 +1546,7 @@ employee (1)        - Self-service access only
 | departments | ✓ All | Admin+ | Admin+ | Admin+ | - | - | - | - | Admin+ |
 | leave | ✓ Self+Manager | ✓ Self | ✓ Self | ✓ Self | Manager+ | - | - | HR+ | HR+ |
 | time_tracking | ✓ Self+Manager | ✓ Self | HR+ | HR+ | Manager+ | - | - | HR+ | HR+ |
-| documents | ✓ HR+ | HR+ | HR+ | HR+ | - | - | HR+ | HR+ | Admin+ |
+| documents | ✓ Self+Manager+HR | ✓ Self+HR | HR+ | HR+ | - | - | HR+ | HR+ | Admin+ |
 | recruitment | HR+ | HR+ | HR+ | HR+ | HR+ | - | - | HR+ | Admin+ |
 | performance | ✓ Self+Manager | Manager+ | Manager+ | Admin+ | - | - | - | HR+ | Admin+ |
 | payroll | HR+ | HR+ | HR+ | Admin+ | Admin+ | Admin+ | - | Admin+ | Admin+ |
@@ -1447,6 +1717,119 @@ PROCESSING:
 OUTPUT: New company ready for use
 ```
 
+### 7.6 Document Upload Workflow (Hardened)
+
+```
+TRIGGER: User uploads a document
+INPUT: file, title, description, document_type_id, employee_id, dates
+
+PROCESSING (Edge Function: document-upload):
+1. Validate JWT authentication
+2. Verify user has documents.create permission
+3. Check plan limits (check_document_limits RPC)
+4. Validate file:
+   - MIME type (PDF, JPEG, PNG, WEBP, DOC, DOCX only)
+   - File size (max 50MB)
+   - Reject executable content
+5. Generate storage path: {company_id}/{employee_id}/{document_id}
+6. Create signed upload URL (server-side)
+7. Create employee_documents record with status='pending'
+8. Log audit event (document_upload_initiated)
+
+CLIENT UPLOAD:
+1. Client uploads file to signed URL
+2. On success, confirm upload via API
+
+VERSION HANDLING:
+- If parentDocumentId provided:
+  - Set parent's is_latest_version = false
+  - Increment version_number
+  - Link via parent_document_id
+
+OUTPUT: documentId, storage path, upload confirmation
+```
+
+### 7.7 Document Access Workflow (Audited)
+
+```
+TRIGGER: User views or downloads a document
+INPUT: documentId, accessType ('view' | 'download')
+
+PROCESSING (Edge Function: document-access):
+1. Validate JWT authentication
+2. Check can_access_document permission:
+   - Own document (employee_id matches)
+   - Manager of document owner
+   - Has documents.read permission
+3. Log access to document_access_logs:
+   - accessed_by
+   - access_type
+   - ip_address_masked
+   - user_agent
+   - timestamp
+4. Update employee_documents:
+   - access_count++
+   - last_accessed_at
+   - last_accessed_by
+5. Generate time-limited signed URL:
+   - View: 5 minutes
+   - Download: 1 minute
+6. Log security event (if sensitive document type)
+
+OUTPUT: signedUrl, expiresIn
+```
+
+### 7.8 Document Verification Workflow
+
+```
+TRIGGER: HR/Admin verifies a document
+INPUT: documentId, status, rejectionReason (if rejected)
+
+VERIFICATION STATES:
+pending → verified (approved by HR)
+pending → rejected (with mandatory reason)
+verified → expired (auto-triggered by expiry date)
+
+PROCESSING (RPC: verify_document):
+1. Check documents.verify permission
+2. Validate status transition:
+   - Cannot change verified→pending
+   - Rejection requires reason
+3. Update employee_documents:
+   - verification_status
+   - verified_by
+   - verified_at
+   - rejection_reason (if rejected)
+   - is_verified (boolean for backward compat)
+4. Log audit event
+
+OUTPUT: Updated document record
+```
+
+### 7.9 Document Deletion Workflow (Soft Delete)
+
+```
+TRIGGER: User deletes a document
+INPUT: documentId
+
+PROCESSING (Edge Function: document-delete):
+1. Validate JWT authentication
+2. Check documents.delete permission
+3. Soft delete in database:
+   - deleted_at = now()
+   - deleted_by = current employee
+4. Delete file from storage bucket
+5. Log audit event
+6. Note: Access logs preserved for compliance
+
+RETENTION:
+- Soft-deleted records visible to admins
+- Hard delete after retention period (configurable)
+- Storage file removed immediately
+
+OUTPUT: success, deletedAt
+```
+
 ---
 
 ## 8. API & Edge Functions
@@ -1483,6 +1866,93 @@ OUTPUT: New company ready for use
 | `reactivate-user` | No | Reactivate deactivated user |
 | `check-suspicious-login` | No | Detect suspicious login activity |
 | `create-employee-user` | No | Create user for employee |
+| `document-upload` | JWT | Secure document upload initiation |
+| `document-access` | JWT | Logged document view/download |
+| `document-delete` | JWT | Soft delete with storage cleanup |
+
+### 8.1.1 Document Edge Functions Detail
+
+**document-upload**
+```
+Purpose: Secure document upload with server-side validation
+Auth: JWT Required
+
+Input:
+- companyId: UUID
+- employeeId: UUID
+- documentTypeId: UUID
+- fileName: string
+- fileSize: number
+- mimeType: string
+- title: string
+- description?: string
+- issueDate?: string
+- expiryDate?: string
+- parentDocumentId?: UUID (for versioning)
+
+Validations:
+1. Permission check: has_permission('documents', 'create')
+2. Plan limits: check_document_limits()
+3. MIME type: PDF, JPEG, PNG, WEBP, DOC, DOCX only
+4. File size: Max 50MB
+5. Executable content blocked
+
+Output:
+- uploadUrl: Signed upload URL
+- uploadToken: Token for upload
+- storagePath: Storage path
+- documentId: Created document ID
+
+Flow:
+1. Validate all inputs
+2. Check permissions via RPC
+3. Generate signed upload URL from Supabase Storage
+4. Create employee_documents record with status 'pending'
+5. Log audit event
+6. Return upload credentials
+```
+
+**document-access**
+```
+Purpose: Secure document viewing/downloading with audit logging
+Auth: JWT Required
+
+Input:
+- documentId: UUID
+- accessType: 'view' | 'download'
+
+Flow:
+1. Validate document exists
+2. Check can_access_document permission
+3. Log to document_access_logs
+4. Update access_count, last_accessed_at
+5. Generate time-limited signed URL (1-5 min)
+6. Log security event if sensitive
+
+Output:
+- signedUrl: Time-limited access URL
+- expiresIn: Expiry in seconds
+```
+
+**document-delete**
+```
+Purpose: Soft delete with storage cleanup
+Auth: JWT Required
+
+Input:
+- documentId: UUID
+
+Flow:
+1. Validate document exists
+2. Check delete permission
+3. Soft delete DB record (deleted_at = now())
+4. Delete file from storage bucket
+5. Log audit event
+
+Output:
+- success: boolean
+- deletedAt: timestamp
+```
 
 ### 8.2 Database Functions (RPC)
 
