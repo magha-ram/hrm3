@@ -79,6 +79,8 @@ export type EmailTemplateType =
   | 'subscription_expiring'
   | 'company_frozen'
   | 'suspicious_login'
+  | 'trial_started'
+  | 'trial_expired'
   | 'trial_expiring_7_days'
   | 'trial_expiring_3_days'
   | 'trial_expiring_1_day'
@@ -147,6 +149,20 @@ export interface EmailTemplateData {
     ipAddress: string;
     reason: string;
     secureAccountUrl: string;
+  };
+  trial_started: {
+    companyName: string;
+    userName: string;
+    trialDays: number;
+    trialEndDate: string;
+    dashboardUrl: string;
+    planName: string;
+  };
+  trial_expired: {
+    companyName: string;
+    userName: string;
+    upgradeUrl: string;
+    featuresLost: string[];
   };
   trial_expiring_7_days: {
     companyName: string;
