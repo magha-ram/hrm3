@@ -14,12 +14,16 @@ import {
   PayrollAnalyticsCard 
 } from '@/components/analytics/HRAnalyticsCards';
 import { useUserRole } from '@/hooks/useUserRole';
+import { ManagerDashboardStats } from '@/components/dashboard/ManagerDashboardStats';
 
 export default function DashboardPage() {
   const { companyName, role, isTrialing, trialDaysRemaining, isFrozen, planName, isImpersonating } = useTenant();
   const { accessibleModules, canAccessModule } = useModuleAccess();
   const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
-  const { isHROrAbove } = useUserRole();
+  const { isHROrAbove, isManager: isManagerRole } = useUserRole();
+
+  // Show manager-focused stats for managers (but not HR+ who see full stats)
+  const showManagerStats = isManagerRole && !isHROrAbove;
 
   const statItems = [
     { 
@@ -94,24 +98,31 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statItems.map((stat) => (
-          <Card key={stat.label}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>{stat.label}</CardDescription>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              {stat.value === null ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <div className="text-2xl font-bold">{stat.value}</div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Manager Team Stats - shown for managers who are not HR+ */}
+      {showManagerStats && (
+        <ManagerDashboardStats />
+      )}
+
+      {/* Company Stats Grid - shown for HR+ or non-managers */}
+      {(!showManagerStats) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {statItems.map((stat) => (
+            <Card key={stat.label}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardDescription>{stat.label}</CardDescription>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                {stat.value === null ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Tabbed Content: Quick Access & Analytics */}
       <Tabs defaultValue="quick-access">

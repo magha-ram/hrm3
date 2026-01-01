@@ -39,6 +39,7 @@ const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
 const ProfilePage = lazy(() => import("./pages/app/ProfilePage"));
 const MyPayslipsPage = lazy(() => import("./pages/app/MyPayslipsPage"));
 const MyInfoPage = lazy(() => import("./pages/app/MyInfoPage"));
+const MyTeamPage = lazy(() => import("./pages/app/MyTeamPage"));
 
 // Settings sub-pages
 const CompanySettingsPage = lazy(() => import("./pages/app/settings/CompanySettingsPage"));
@@ -154,6 +155,7 @@ const App = () => (
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="payslips" element={<MyPayslipsPage />} />
                     <Route path="my-info" element={<MyInfoPage />} />
+                    <Route path="my-team" element={<MyTeamPage />} />
                   </Route>
 
                   {/* Catch-all */}
