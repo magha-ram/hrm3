@@ -73,6 +73,7 @@ const PlatformImpersonationLogsPage = lazy(() => import("./pages/platform/Platfo
 const PlatformWebhooksPage = lazy(() => import("./pages/platform/PlatformWebhooksPage"));
 const PlatformUsersPage = lazy(() => import("./pages/platform/PlatformUsersPage"));
 const PlatformEmailLogsPage = lazy(() => import("./pages/platform/PlatformEmailLogsPage"));
+const PlatformCompanyPermissionsPage = lazy(() => import("./pages/platform/PlatformCompanyPermissionsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -128,6 +129,7 @@ const App = () => (
                     <Route path="admins" element={<PlatformAdminsPage />} />
                     <Route path="companies" element={<PlatformCompaniesPage />} />
                     <Route path="companies/:companyId" element={<PlatformCompanyDetailPage />} />
+                    <Route path="companies/:companyId/permissions" element={<PlatformCompanyPermissionsPage />} />
                     <Route path="users" element={<PlatformUsersPage />} />
                     <Route path="plans" element={<PlatformPlansPage />} />
                     <Route path="analytics" element={<PlatformAnalyticsPage />} />

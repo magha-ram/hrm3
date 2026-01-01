@@ -7,3 +7,4 @@ export {
   ReadOnlyBadge, 
   ReadOnlyPageBanner 
 } from './ImpersonationRestricted';
+export { PlatformPermissionViewer } from './PlatformPermissionViewer';
