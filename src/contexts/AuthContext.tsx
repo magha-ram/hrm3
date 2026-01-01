@@ -25,6 +25,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<UserContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Track if we're still fetching user context after session is established
+  const [isUserContextLoading, setIsUserContextLoading] = useState(false);
 
   const fetchUserContext = useCallback(async (): Promise<UserContext | null> => {
     try {
@@ -46,15 +48,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [fetchUserContext]);
 
   useEffect(() => {
+    let mounted = true;
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
+        
         setSession(session);
         
         if (session?.user) {
+          // Mark that we're loading user context
+          setIsUserContextLoading(true);
+          
           // Defer Supabase calls with setTimeout to prevent deadlock
           setTimeout(async () => {
-            fetchUserContext().then(setUser);
+            if (!mounted) return;
+            
+            const context = await fetchUserContext();
+            if (mounted) {
+              setUser(context);
+              setIsUserContextLoading(false);
+              setIsLoading(false);
+            }
             
             // Log login event
             if (event === 'SIGNED_IN') {
@@ -89,26 +105,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }, 0);
         } else {
           setUser(null);
+          setIsUserContextLoading(false);
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      
       setSession(session);
       if (session?.user) {
-        fetchUserContext().then(context => {
+        setIsUserContextLoading(true);
+        const context = await fetchUserContext();
+        if (mounted) {
           setUser(context);
+          setIsUserContextLoading(false);
           setIsLoading(false);
-        });
+        }
       } else {
         setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchUserContext]);
 
   const signIn = async (email: string, password: string) => {
@@ -184,9 +208,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Combined loading state: loading until BOTH session check AND user context are complete
+  const combinedIsLoading = isLoading || isUserContextLoading;
+
   const value: AuthContextValue = {
     user,
-    isLoading,
+    isLoading: combinedIsLoading,
     isAuthenticated: !!session?.user,
     currentCompanyId: user?.current_company_id || null,
     currentRole: user?.current_role || null,

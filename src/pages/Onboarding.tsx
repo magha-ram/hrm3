@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, Building2, ArrowRight } from 'lucide-react';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 const INDUSTRIES = [
   'Technology',
@@ -32,31 +31,37 @@ const SIZE_RANGES = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { refreshUserContext, user, isLoading: authContextLoading, isPlatformAdmin } = useAuth();
-  const { isLoading: authLoading } = useRequireAuth({ redirectTo: '/auth' });
+  const { refreshUserContext, user, isLoading: authLoading, isPlatformAdmin, isAuthenticated } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('');
   const [sizeRange, setSizeRange] = useState('');
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate('/auth', { replace: true });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
   // Redirect platform admins - they cannot create companies
   useEffect(() => {
-    if (!authContextLoading && isPlatformAdmin) {
+    if (!authLoading && isAuthenticated && isPlatformAdmin) {
       toast.error('Platform admins cannot create companies. Use impersonation to access company data.');
       navigate('/platform/dashboard', { replace: true });
     }
-  }, [isPlatformAdmin, authContextLoading, navigate]);
+  }, [isPlatformAdmin, authLoading, isAuthenticated, navigate]);
 
   // Redirect to dashboard if user already has companies
   useEffect(() => {
-    if (!authContextLoading && user && !isPlatformAdmin) {
+    if (!authLoading && isAuthenticated && user && !isPlatformAdmin) {
       const hasCompanies = user.companies && user.companies.length > 0;
       if (hasCompanies) {
         navigate('/app/dashboard', { replace: true });
       }
     }
-  }, [user, authContextLoading, isPlatformAdmin, navigate]);
+  }, [user, authLoading, isPlatformAdmin, isAuthenticated, navigate]);
 
   const generateSlug = (name: string): string => {
     return name
@@ -106,7 +111,7 @@ export default function Onboarding() {
     }
   };
 
-  if (authLoading || authContextLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
