@@ -29,6 +29,8 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState<'employee' | 'admin' | 'signup'>('admin');
   const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
   const [domainAuthTab, setDomainAuthTab] = useState<'employee' | 'admin'>('employee');
+  const [lockoutMessage, setLockoutMessage] = useState<string | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState(0);
   
   // Check if public signup is enabled
   const isSignupEnabled = registrationSettings?.open_registration ?? false;
@@ -153,17 +155,72 @@ export default function Auth() {
     return false;
   };
 
+  const checkAccountLockout = async (userId: string): Promise<{ locked: boolean; minutesRemaining?: number }> => {
+    try {
+      const { data, error } = await supabase.rpc('is_account_locked', { _user_id: userId });
+      if (error) {
+        console.error('Error checking lockout:', error);
+        return { locked: false };
+      }
+      
+      if (data) {
+        // Get lock expiry time
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('locked_until')
+          .eq('id', userId)
+          .single();
+        
+        if (profile?.locked_until) {
+          const lockedUntil = new Date(profile.locked_until);
+          const now = new Date();
+          const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
+          return { locked: true, minutesRemaining: Math.max(1, minutesRemaining) };
+        }
+        return { locked: true };
+      }
+      return { locked: false };
+    } catch {
+      return { locked: false };
+    }
+  };
+
+  const recordFailedLogin = async (userId: string) => {
+    try {
+      await supabase.rpc('record_failed_login', { _user_id: userId });
+    } catch (error) {
+      console.error('Error recording failed login:', error);
+    }
+  };
+
+  const recordSuccessfulLogin = async (userId: string) => {
+    try {
+      await supabase.rpc('record_successful_login', { _user_id: userId });
+    } catch (error) {
+      console.error('Error recording successful login:', error);
+    }
+  };
+
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateAdminForm()) return;
     
     setIsLoading(true);
+    setLockoutMessage(null);
+    
     const { error } = await signIn(email, password);
     
     if (error) {
       setIsLoading(false);
+      const newFailedAttempts = failedAttempts + 1;
+      setFailedAttempts(newFailedAttempts);
+      
       if (error.message.includes('Invalid login credentials')) {
-        toast.error('Invalid email or password');
+        if (newFailedAttempts >= 3) {
+          toast.error(`Invalid password. ${5 - newFailedAttempts} attempts remaining before lockout.`);
+        } else {
+          toast.error('Invalid email or password');
+        }
       } else if (error.message.includes('Email not confirmed')) {
         toast.error('Please confirm your email address before signing in');
       } else {
@@ -173,6 +230,10 @@ export default function Auth() {
       // Check if password change is required
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
+        // Record successful login
+        await recordSuccessfulLogin(authUser.id);
+        setFailedAttempts(0);
+        
         const needsPasswordChange = await checkForcePasswordChange(authUser.id);
         if (!needsPasswordChange) {
           toast.success('Welcome back!');
@@ -187,6 +248,7 @@ export default function Auth() {
     if (!validateEmployeeForm()) return;
     
     setIsLoading(true);
+    setLockoutMessage(null);
     
     try {
       let companyId: string;
@@ -227,19 +289,44 @@ export default function Auth() {
         setIsLoading(false);
         return;
       }
+
+      // Check if account is locked before attempting login
+      const lockoutStatus = await checkAccountLockout(employee.user_id);
+      if (lockoutStatus.locked) {
+        setLockoutMessage(
+          lockoutStatus.minutesRemaining 
+            ? `Account temporarily locked. Try again in ${lockoutStatus.minutesRemaining} minute(s).`
+            : 'Account temporarily locked due to too many failed attempts.'
+        );
+        setIsLoading(false);
+        return;
+      }
       
       // Sign in with the employee's email
       const { error: signInError } = await signIn(employee.email, employeePassword);
       
       if (signInError) {
+        // Record failed login attempt
+        await recordFailedLogin(employee.user_id);
+        const newFailedAttempts = failedAttempts + 1;
+        setFailedAttempts(newFailedAttempts);
+        
         if (signInError.message.includes('Invalid login credentials')) {
-          toast.error('Invalid password');
+          if (newFailedAttempts >= 3) {
+            toast.error(`Invalid password. ${5 - newFailedAttempts} attempts remaining before lockout.`);
+          } else {
+            toast.error('Invalid password');
+          }
         } else {
           toast.error(signInError.message);
         }
         setIsLoading(false);
         return;
       }
+      
+      // Record successful login and reset counter
+      await recordSuccessfulLogin(employee.user_id);
+      setFailedAttempts(0);
       
       // Check if password change is required
       const needsPasswordChange = await checkForcePasswordChange(employee.user_id);

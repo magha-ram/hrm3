@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   XCircle,
   RefreshCw,
-  History
+  History,
+  FileSearch
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useVerifyDocument, useDeleteDocument, useDocumentAccess } from '@/hooks/useDocuments';
 import { usePermission } from '@/contexts/PermissionContext';
 import { toast } from 'sonner';
+import { DocumentVersionHistory } from './DocumentVersionHistory';
+import { DocumentOCRViewer } from './DocumentOCRViewer';
+import type { Json } from '@/integrations/supabase/types';
 
 interface DocumentWithRelations {
   id: string;
@@ -44,6 +48,10 @@ interface DocumentWithRelations {
   version_number: number | null;
   is_latest_version: boolean | null;
   parent_document_id: string | null;
+  ocr_text: string | null;
+  ocr_extracted_data: Json | null;
+  ocr_processed: boolean | null;
+  ocr_processed_at: string | null;
   employee?: {
     id: string;
     first_name: string;
@@ -79,6 +87,14 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  
+  // Version history dialog state
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [versionHistoryDoc, setVersionHistoryDoc] = useState<{ id: string; title: string } | null>(null);
+  
+  // OCR viewer dialog state
+  const [ocrViewerOpen, setOcrViewerOpen] = useState(false);
+  const [ocrDoc, setOcrDoc] = useState<DocumentWithRelations | null>(null);
 
   const canVerify = can('documents', 'verify');
   const canDelete = can('documents', 'delete');
@@ -308,10 +324,24 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
                         </DropdownMenuItem>
                         
                         {/* Version history */}
-                        {(doc.parent_document_id || doc.version_number && doc.version_number > 1) && (
-                          <DropdownMenuItem>
+                        {(doc.parent_document_id || (doc.version_number && doc.version_number > 1)) && (
+                          <DropdownMenuItem onClick={() => {
+                            setVersionHistoryDoc({ id: doc.parent_document_id || doc.id, title: doc.title });
+                            setVersionHistoryOpen(true);
+                          }}>
                             <History className="h-4 w-4 mr-2" />
                             Version History
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {/* OCR Results */}
+                        {doc.ocr_processed && (
+                          <DropdownMenuItem onClick={() => {
+                            setOcrDoc(doc);
+                            setOcrViewerOpen(true);
+                          }}>
+                            <FileSearch className="h-4 w-4 mr-2" />
+                            View OCR Results
                           </DropdownMenuItem>
                         )}
                         
@@ -421,6 +451,21 @@ export function DocumentList({ documents, isLoading, showEmployee = true, onUplo
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Version History Dialog */}
+      <DocumentVersionHistory
+        open={versionHistoryOpen}
+        onOpenChange={setVersionHistoryOpen}
+        documentId={versionHistoryDoc?.id || null}
+        documentTitle={versionHistoryDoc?.title || ''}
+      />
+
+      {/* OCR Viewer Dialog */}
+      <DocumentOCRViewer
+        open={ocrViewerOpen}
+        onOpenChange={setOcrViewerOpen}
+        document={ocrDoc}
+      />
     </>
   );
 }
