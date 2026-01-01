@@ -8,22 +8,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Loader2, Upload, Download, FileSpreadsheet, LayoutList, Network, LayoutGrid } from 'lucide-react';
 import { WriteGate, RoleGate, PermGate } from '@/components/PermissionGate';
 import { usePermission } from '@/contexts/PermissionContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { ModuleGuard } from '@/components/ModuleGuard';
-import { useEmployees, useDeleteEmployee, type Employee } from '@/hooks/useEmployees';
+import { useEmployees, useDeleteEmployee, useUpdateEmployee, type Employee } from '@/hooks/useEmployees';
 import { useDepartments } from '@/hooks/useDepartments';
 import { EmployeeForm } from '@/components/employees/EmployeeForm';
 import { EmployeeDetail } from '@/components/employees/EmployeeDetail';
 import { BulkImportDialog } from '@/components/employees/BulkImportDialog';
 import { OrgChart } from '@/components/employees/OrgChart';
 import { EmployeeFilters, type EmployeeFiltersState } from '@/components/employees/EmployeeFilters';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ReadOnlyPageBanner } from '@/components/platform/ImpersonationRestricted';
 import { exportEmployeesToCSV, downloadEmployeeImportTemplate } from '@/lib/export-utils';
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
+import { TablePagination, LoadMoreButton } from '@/components/ui/table-pagination';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
@@ -32,12 +37,23 @@ const statusColors: Record<string, string> = {
   suspended: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
 };
 
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'on_leave', label: 'On Leave' },
+  { value: 'suspended', label: 'Suspended' },
+  { value: 'terminated', label: 'Terminated' },
+];
+
+const LIST_PAGE_SIZE = 10;
+const GRID_LOAD_INCREMENT = 12;
+
 export default function EmployeesPage() {
   const { data: employees, isLoading } = useEmployees();
   const { data: departments } = useDepartments();
   const deleteEmployee = useDeleteEmployee();
   const { isHROrAbove } = useUserRole();
   const { can } = usePermission();
+  const queryClient = useQueryClient();
   
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<EmployeeFiltersState>({
@@ -52,6 +68,50 @@ export default function EmployeesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('list');
+  
+  // Pagination states
+  const [listCurrentPage, setListCurrentPage] = useState(1);
+  const [gridDisplayCount, setGridDisplayCount] = useState(GRID_LOAD_INCREMENT);
+  
+  // Status change states
+  const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ employeeId: string; status: string } | null>(null);
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ employeeId, newStatus }: { employeeId: string; newStatus: string }) => {
+      const { error } = await supabase
+        .from('employees')
+        .update({ employment_status: newStatus as 'active' | 'on_leave' | 'terminated' | 'suspended' })
+        .eq('id', employeeId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Employee status updated');
+    },
+    onError: (error) => {
+      toast.error('Failed to update status');
+      console.error(error);
+    },
+  });
+
+  const handleStatusChange = (employeeId: string, newStatus: string) => {
+    if (newStatus === 'terminated') {
+      setPendingStatusChange({ employeeId, status: newStatus });
+      setShowTerminateConfirm(true);
+    } else {
+      updateStatus.mutate({ employeeId, newStatus });
+    }
+  };
+
+  const confirmTerminate = () => {
+    if (pendingStatusChange) {
+      updateStatus.mutate({ employeeId: pendingStatusChange.employeeId, newStatus: pendingStatusChange.status });
+    }
+    setShowTerminateConfirm(false);
+    setPendingStatusChange(null);
+  };
 
   const handleExportEmployees = () => {
     if (employees && employees.length > 0) {
@@ -83,6 +143,24 @@ export default function EmployeesPage() {
       return matchesSearch && matchesDepartment && matchesStatus && matchesType;
     }) || [];
   }, [employees, search, filters]);
+
+  // Reset pagination when filters/search change
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setListCurrentPage(1);
+    setGridDisplayCount(GRID_LOAD_INCREMENT);
+  };
+
+  // Paginated list data
+  const paginatedListEmployees = useMemo(() => {
+    const startIndex = (listCurrentPage - 1) * LIST_PAGE_SIZE;
+    return filteredEmployees.slice(startIndex, startIndex + LIST_PAGE_SIZE);
+  }, [filteredEmployees, listCurrentPage]);
+
+  // Grid view data with load more
+  const gridEmployees = useMemo(() => {
+    return filteredEmployees.slice(0, gridDisplayCount);
+  }, [filteredEmployees, gridDisplayCount]);
 
   const handleView = (employee: Employee) => {
     setSelectedEmployee(employee);
@@ -203,7 +281,7 @@ export default function EmployeesPage() {
                     placeholder="Search by name, email, or ID..." 
                     className="pl-10"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                   />
                 </div>
                 <EmployeeFilters 
@@ -274,87 +352,122 @@ export default function EmployeesPage() {
                     <p>{search || activeFilterCount > 0 ? 'No employees match your search or filters.' : 'No employees found. Add your first employee to get started.'}</p>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Employee</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Job Title</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredEmployees.map((employee) => (
-                        <TableRow key={employee.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleView(employee)}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                <AvatarFallback>
-                                  {employee.first_name[0]}{employee.last_name[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="font-medium">{employee.first_name} {employee.last_name}</div>
-                                <div className="text-sm text-muted-foreground">{employee.email}</div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {(employee as any).department?.name || '-'}
-                          </TableCell>
-                          <TableCell>{employee.job_title || '-'}</TableCell>
-                          <TableCell>
-                            <Badge className={statusColors[employee.employment_status] || ''} variant="secondary">
-                              {employee.employment_status.replace('_', ' ')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {employee.employment_type.replace('_', ' ')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            {can('employees', 'read') && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleView(employee)}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View
-                                  </DropdownMenuItem>
-                                  <PermGate module="employees" action="update">
-                                    <WriteGate>
-                                      <DropdownMenuItem onClick={() => handleEdit(employee)}>
-                                        <Pencil className="h-4 w-4 mr-2" />
-                                        Edit
-                                      </DropdownMenuItem>
-                                    </WriteGate>
-                                  </PermGate>
-                                  <PermGate module="employees" action="delete">
-                                    <WriteGate>
-                                      <DropdownMenuItem 
-                                        onClick={() => setDeletingId(employee.id)}
-                                        className="text-destructive"
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </WriteGate>
-                                  </PermGate>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </TableCell>
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Department</TableHead>
+                          <TableHead>Job Title</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedListEmployees.map((employee) => (
+                          <TableRow key={employee.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleView(employee)}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                  <AvatarFallback>
+                                    {employee.first_name[0]}{employee.last_name[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">{employee.first_name} {employee.last_name}</div>
+                                  <div className="text-sm text-muted-foreground">{employee.email}</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {(employee as any).department?.name || '-'}
+                            </TableCell>
+                            <TableCell>{employee.job_title || '-'}</TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <PermGate module="employees" action="update">
+                                <WriteGate fallback={
+                                  <Badge className={statusColors[employee.employment_status] || ''} variant="secondary">
+                                    {employee.employment_status.replace('_', ' ')}
+                                  </Badge>
+                                }>
+                                  <Select 
+                                    value={employee.employment_status} 
+                                    onValueChange={(value) => handleStatusChange(employee.id, value)}
+                                    disabled={updateStatus.isPending}
+                                  >
+                                    <SelectTrigger className="h-7 w-[110px] text-xs">
+                                      {updateStatus.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <SelectValue />
+                                      )}
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {STATUS_OPTIONS.map(option => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                          <span className={option.value === 'terminated' ? 'text-destructive' : ''}>
+                                            {option.label}
+                                          </span>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </WriteGate>
+                              </PermGate>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {employee.employment_type.replace('_', ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              {can('employees', 'read') && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleView(employee)}>
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      View
+                                    </DropdownMenuItem>
+                                    <PermGate module="employees" action="update">
+                                      <WriteGate>
+                                        <DropdownMenuItem onClick={() => handleEdit(employee)}>
+                                          <Pencil className="h-4 w-4 mr-2" />
+                                          Edit
+                                        </DropdownMenuItem>
+                                      </WriteGate>
+                                    </PermGate>
+                                    <PermGate module="employees" action="delete">
+                                      <WriteGate>
+                                        <DropdownMenuItem 
+                                          onClick={() => setDeletingId(employee.id)}
+                                          className="text-destructive"
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      </WriteGate>
+                                    </PermGate>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <TablePagination
+                      currentPage={listCurrentPage}
+                      totalItems={filteredEmployees.length}
+                      pageSize={LIST_PAGE_SIZE}
+                      onPageChange={setListCurrentPage}
+                    />
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -380,17 +493,24 @@ export default function EmployeesPage() {
                     <p>{search || activeFilterCount > 0 ? 'No employees match your search or filters.' : 'No employees found. Add your first employee to get started.'}</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredEmployees.map((employee) => (
-                      <EmployeeCard
-                        key={employee.id}
-                        employee={employee}
-                        onView={() => handleView(employee)}
-                        onEdit={can('employees', 'update') ? () => handleEdit(employee) : undefined}
-                        onDelete={can('employees', 'delete') ? () => setDeletingId(employee.id) : undefined}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {gridEmployees.map((employee) => (
+                        <EmployeeCard
+                          key={employee.id}
+                          employee={employee}
+                          onView={() => handleView(employee)}
+                          onEdit={can('employees', 'update') ? () => handleEdit(employee) : undefined}
+                          onDelete={can('employees', 'delete') ? () => setDeletingId(employee.id) : undefined}
+                        />
+                      ))}
+                    </div>
+                    <LoadMoreButton
+                      currentCount={gridDisplayCount}
+                      totalCount={filteredEmployees.length}
+                      onLoadMore={() => setGridDisplayCount(prev => prev + GRID_LOAD_INCREMENT)}
+                    />
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -445,6 +565,24 @@ export default function EmployeesPage() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Terminate Confirmation */}
+        <AlertDialog open={showTerminateConfirm} onOpenChange={setShowTerminateConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Termination</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to mark this employee as terminated? This action can be reversed later if needed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setPendingStatusChange(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmTerminate} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Confirm Termination
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
