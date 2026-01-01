@@ -120,6 +120,9 @@ Deno.serve(async (req: Request) => {
             action: "update",
             record_id: companyId,
             company_id: companyId,
+            actor_role: "system",
+            target_type: "company",
+            severity: "warn",
             metadata: { action: "auto_freeze", reason: "subscription_past_due" },
             new_values: { is_active: false },
             old_values: { is_active: true },
@@ -129,7 +132,14 @@ Deno.serve(async (req: Request) => {
             event_type: "suspicious_activity",
             company_id: companyId,
             description: "Company automatically frozen due to past-due subscription",
-            severity: "warning",
+            severity: "high",
+            metadata: { reason: "subscription_past_due", auto_action: true },
+          });
+
+          // Log billing event
+          await supabaseAdmin.from("billing_logs").insert({
+            company_id: companyId,
+            event_type: "company_frozen",
             metadata: { reason: "subscription_past_due", auto_action: true },
           });
         }
@@ -152,9 +162,19 @@ Deno.serve(async (req: Request) => {
             action: "update",
             record_id: companyId,
             company_id: companyId,
+            actor_role: "system",
+            target_type: "company",
+            severity: "info",
             metadata: { action: "auto_unfreeze", reason: "subscription_restored" },
             new_values: { is_active: true },
             old_values: { is_active: false },
+          });
+
+          // Log billing event
+          await supabaseAdmin.from("billing_logs").insert({
+            company_id: companyId,
+            event_type: "company_unfrozen",
+            metadata: { reason: "subscription_restored", auto_action: true },
           });
         }
       }

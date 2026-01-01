@@ -157,6 +157,9 @@ serve(async (req: Request): Promise<Response> => {
       action: "update",
       table_name: "companies",
       record_id: body.company_id,
+      actor_role: userRole.role,
+      target_type: "company",
+      severity: body.action === "freeze" ? "warn" : "info",
       old_values: { is_active: wasActive },
       new_values: { is_active: newActiveState, reason: body.reason || null },
     });
@@ -166,8 +169,16 @@ serve(async (req: Request): Promise<Response> => {
       company_id: body.company_id,
       user_id: user.id,
       event_type: body.action === "freeze" ? "suspicious_activity" : "login_success",
-      severity: body.action === "freeze" ? "warn" : "info",
+      severity: body.action === "freeze" ? "high" : "low",
       description: `Company ${body.action === "freeze" ? "frozen" : "unfrozen"}${body.reason ? ": " + body.reason : ""}`,
+    });
+
+    // Log billing event
+    await supabaseAdmin.from("billing_logs").insert({
+      company_id: body.company_id,
+      event_type: body.action === "freeze" ? "company_frozen" : "company_unfrozen",
+      triggered_by: user.id,
+      metadata: { reason: body.reason || null, manual: true },
     });
 
     console.log(`Company ${body.company_id} ${body.action}d by ${user.id}`);

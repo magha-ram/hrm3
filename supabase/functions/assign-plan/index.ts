@@ -191,9 +191,27 @@ serve(async (req: Request): Promise<Response> => {
         action: "update",
         table_name: "company_subscriptions",
         record_id: currentSub.id,
+        actor_role: userRole.role,
+        target_type: "subscription",
+        severity: "info",
         old_values: { plan_id: currentSub.plan_id, status: currentSub.status, trial_ends_at: currentSub.trial_ends_at },
         new_values: { plan_id: body.plan_id, status: newStatus, trial_ends_at: newTrialEndsAt },
         metadata: { is_paid_upgrade: isPaidPlan, trial_ended: wasTrialing && isPaidPlan },
+      });
+
+      // Log billing event
+      const billingEventType = wasTrialing && isPaidPlan 
+        ? 'subscription_created' 
+        : (isPaidPlan ? 'subscription_upgraded' : 'subscription_downgraded');
+      
+      await supabaseAdmin.from("billing_logs").insert({
+        company_id: body.company_id,
+        event_type: billingEventType,
+        subscription_id: currentSub.id,
+        plan_id: body.plan_id,
+        previous_plan_id: currentSub.plan_id,
+        triggered_by: user.id,
+        metadata: { billing_interval: billingInterval, trial_ended: wasTrialing && isPaidPlan },
       });
 
       const trialEnded = wasTrialing && isPaidPlan;
@@ -250,7 +268,20 @@ serve(async (req: Request): Promise<Response> => {
         action: "create",
         table_name: "company_subscriptions",
         record_id: newSub.id,
+        actor_role: userRole.role,
+        target_type: "subscription",
+        severity: "info",
         new_values: { plan_id: body.plan_id, status: "active" },
+      });
+
+      // Log billing event
+      await supabaseAdmin.from("billing_logs").insert({
+        company_id: body.company_id,
+        event_type: "subscription_created",
+        subscription_id: newSub.id,
+        plan_id: body.plan_id,
+        triggered_by: user.id,
+        metadata: { billing_interval: billingInterval },
       });
 
       console.log(`New subscription created for company ${body.company_id}`);

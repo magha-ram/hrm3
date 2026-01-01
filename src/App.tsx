@@ -41,6 +41,7 @@ const PerformancePage = lazy(() => import("./pages/app/PerformancePage"));
 const DocumentsPage = lazy(() => import("./pages/app/DocumentsPage"));
 const SettingsPage = lazy(() => import("./pages/app/SettingsPage"));
 const AuditLogPage = lazy(() => import("./pages/app/AuditLogPage"));
+const SecurityEventsPage = lazy(() => import("./pages/app/SecurityEventsPage"));
 const CompliancePage = lazy(() => import("./pages/app/CompliancePage"));
 const IntegrationsPage = lazy(() => import("./pages/app/IntegrationsPage"));
 const ProfilePage = lazy(() => import("./pages/app/ProfilePage"));
@@ -73,6 +74,8 @@ const PlatformImpersonationLogsPage = lazy(() => import("./pages/platform/Platfo
 const PlatformWebhooksPage = lazy(() => import("./pages/platform/PlatformWebhooksPage"));
 const PlatformUsersPage = lazy(() => import("./pages/platform/PlatformUsersPage"));
 const PlatformEmailLogsPage = lazy(() => import("./pages/platform/PlatformEmailLogsPage"));
+const PlatformBillingLogsPage = lazy(() => import("./pages/platform/PlatformBillingLogsPage"));
+const PlatformApplicationLogsPage = lazy(() => import("./pages/platform/PlatformApplicationLogsPage"));
 const PlatformCompanyPermissionsPage = lazy(() => import("./pages/platform/PlatformCompanyPermissionsPage"));
 
 const queryClient = new QueryClient({
@@ -137,6 +140,8 @@ const App = () => (
                     <Route path="impersonation-logs" element={<PlatformImpersonationLogsPage />} />
                     <Route path="webhooks" element={<PlatformWebhooksPage />} />
                     <Route path="email-logs" element={<PlatformEmailLogsPage />} />
+                    <Route path="billing-logs" element={<PlatformBillingLogsPage />} />
+                    <Route path="application-logs" element={<PlatformApplicationLogsPage />} />
                     <Route path="settings" element={<PlatformSettingsPage />} />
                   </Route>
 
@@ -155,6 +160,7 @@ const App = () => (
                     <Route path="performance" element={<PerformancePage />} />
                     <Route path="documents" element={<DocumentsPage />} />
                     <Route path="audit" element={<AuditLogPage />} />
+                    <Route path="security-events" element={<SecurityEventsPage />} />
                     <Route path="compliance" element={<CompliancePage />} />
                     <Route path="integrations" element={<IntegrationsPage />} />
                     <Route path="settings" element={<SettingsPage />}>
