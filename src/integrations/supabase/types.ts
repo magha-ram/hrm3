@@ -554,6 +554,7 @@ export type Database = {
           created_at: string | null
           created_by: string
           email: string | null
+          enable_trial: boolean | null
           expires_at: string
           id: string
           max_uses: number | null
@@ -571,6 +572,7 @@ export type Database = {
           created_at?: string | null
           created_by: string
           email?: string | null
+          enable_trial?: boolean | null
           expires_at: string
           id?: string
           max_uses?: number | null
@@ -588,6 +590,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           email?: string | null
+          enable_trial?: boolean | null
           expires_at?: string
           id?: string
           max_uses?: number | null

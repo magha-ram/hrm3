@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,9 +20,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Building2, Plus, Link, Copy, Mail, Loader2, Check, ExternalLink } from 'lucide-react';
+import { Loader2, Copy, Check, ExternalLink } from 'lucide-react';
+
+interface Plan {
+  id: string;
+  name: string;
+  trial_enabled: boolean | null;
+  trial_default_days: number | null;
+}
 
 interface CreateCompanyFormData {
   company_name: string;
@@ -31,6 +36,7 @@ interface CreateCompanyFormData {
   admin_first_name: string;
   admin_last_name: string;
   plan_id: string;
+  enable_trial: boolean;
   trial_days: number;
   industry: string;
   send_credentials: boolean;
@@ -39,6 +45,7 @@ interface CreateCompanyFormData {
 interface CreateLinkFormData {
   plan_id: string;
   email: string;
+  enable_trial: boolean;
   trial_days: number;
   expires_in_hours: number;
   notes: string;
@@ -57,6 +64,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     admin_first_name: '',
     admin_last_name: '',
     plan_id: '',
+    enable_trial: true,
     trial_days: 14,
     industry: '',
     send_credentials: true,
@@ -64,17 +72,33 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
   const [createdCompany, setCreatedCompany] = useState<any>(null);
 
   const { data: plans } = useQuery({
-    queryKey: ['platform-plans-active'],
+    queryKey: ['platform-plans-with-trial'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('plans')
-        .select('id, name')
+        .select('id, name, trial_enabled, trial_default_days')
         .eq('is_active', true)
         .order('sort_order');
       if (error) throw error;
-      return data;
+      return data as Plan[];
     },
   });
+
+  // Update trial settings when plan changes
+  const selectedPlan = plans?.find(p => p.id === formData.plan_id);
+  
+  useEffect(() => {
+    if (selectedPlan) {
+      const planTrialEnabled = selectedPlan.trial_enabled !== false;
+      const planTrialDays = selectedPlan.trial_default_days ?? 14;
+      
+      setFormData(prev => ({
+        ...prev,
+        enable_trial: planTrialEnabled,
+        trial_days: planTrialDays,
+      }));
+    }
+  }, [formData.plan_id, selectedPlan?.id]);
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateCompanyFormData) => {
@@ -85,6 +109,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
           admin_first_name: data.admin_first_name,
           admin_last_name: data.admin_last_name,
           plan_id: data.plan_id || undefined,
+          enable_trial: data.enable_trial,
           trial_days: data.trial_days,
           industry: data.industry || undefined,
           send_credentials: data.send_credentials,
@@ -119,6 +144,7 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       admin_first_name: '',
       admin_last_name: '',
       plan_id: '',
+      enable_trial: true,
       trial_days: 14,
       industry: '',
       send_credentials: true,
@@ -133,6 +159,9 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
       toast.success('Password copied to clipboard');
     }
   };
+
+  // Determine if trial toggle should be shown (only if plan supports trials)
+  const planSupportsTrials = !formData.plan_id || selectedPlan?.trial_enabled !== false;
 
   if (createdCompany) {
     return (
@@ -249,35 +278,58 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Plan</Label>
-              <Select
-                value={formData.plan_id}
-                onValueChange={(value) => setFormData({ ...formData, plan_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans?.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Trial Days</Label>
-              <Input
-                type="number"
-                min={0}
-                value={formData.trial_days}
-                onChange={(e) => setFormData({ ...formData, trial_days: parseInt(e.target.value) || 0 })}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Plan</Label>
+            <Select
+              value={formData.plan_id}
+              onValueChange={(value) => setFormData({ ...formData, plan_id: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select plan" />
+              </SelectTrigger>
+              <SelectContent>
+                {plans?.map((plan) => (
+                  <SelectItem key={plan.id} value={plan.id}>
+                    {plan.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Trial Configuration */}
+          {planSupportsTrials ? (
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Enable Trial Period</Label>
+                  <p className="text-sm text-muted-foreground">Start with a trial before billing</p>
+                </div>
+                <Switch
+                  checked={formData.enable_trial}
+                  onCheckedChange={(checked) => setFormData({ ...formData, enable_trial: checked })}
+                />
+              </div>
+              
+              {formData.enable_trial && (
+                <div className="space-y-2">
+                  <Label>Trial Days</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={formData.trial_days}
+                    onChange={(e) => setFormData({ ...formData, trial_days: parseInt(e.target.value) || 14 })}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 border rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground">
+                This plan does not include a trial period. Company will start with an active subscription.
+              </p>
+            </div>
+          )}
           
           <div className="space-y-2">
             <Label>Industry</Label>
@@ -334,6 +386,7 @@ export function CreateLinkDialog({ open, onOpenChange }: CreateLinkDialogProps) 
   const [formData, setFormData] = useState<CreateLinkFormData>({
     plan_id: '',
     email: '',
+    enable_trial: true,
     trial_days: 14,
     expires_in_hours: 72,
     notes: '',
@@ -342,17 +395,33 @@ export function CreateLinkDialog({ open, onOpenChange }: CreateLinkDialogProps) 
   const [copied, setCopied] = useState(false);
 
   const { data: plans } = useQuery({
-    queryKey: ['platform-plans-active'],
+    queryKey: ['platform-plans-with-trial'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('plans')
-        .select('id, name')
+        .select('id, name, trial_enabled, trial_default_days')
         .eq('is_active', true)
         .order('sort_order');
       if (error) throw error;
-      return data;
+      return data as Plan[];
     },
   });
+
+  // Update trial settings when plan changes
+  const selectedPlan = plans?.find(p => p.id === formData.plan_id);
+  
+  useEffect(() => {
+    if (selectedPlan) {
+      const planTrialEnabled = selectedPlan.trial_enabled !== false;
+      const planTrialDays = selectedPlan.trial_default_days ?? 14;
+      
+      setFormData(prev => ({
+        ...prev,
+        enable_trial: planTrialEnabled,
+        trial_days: planTrialDays,
+      }));
+    }
+  }, [formData.plan_id, selectedPlan?.id]);
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateLinkFormData) => {
@@ -360,6 +429,7 @@ export function CreateLinkDialog({ open, onOpenChange }: CreateLinkDialogProps) 
         body: {
           plan_id: data.plan_id || undefined,
           email: data.email || undefined,
+          enable_trial: data.enable_trial,
           trial_days: data.trial_days,
           expires_in_hours: data.expires_in_hours,
           notes: data.notes || undefined,
@@ -387,6 +457,7 @@ export function CreateLinkDialog({ open, onOpenChange }: CreateLinkDialogProps) 
     setFormData({
       plan_id: '',
       email: '',
+      enable_trial: true,
       trial_days: 14,
       expires_in_hours: 72,
       notes: '',
@@ -404,6 +475,9 @@ export function CreateLinkDialog({ open, onOpenChange }: CreateLinkDialogProps) 
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  // Determine if trial toggle should be shown (only if plan supports trials)
+  const planSupportsTrials = !formData.plan_id || selectedPlan?.trial_enabled !== false;
 
   if (createdLink) {
     return (
@@ -500,34 +574,57 @@ export function CreateLinkDialog({ open, onOpenChange }: CreateLinkDialogProps) 
               If set, only this email can use the link
             </p>
           </div>
+
+          {/* Trial Configuration */}
+          {planSupportsTrials ? (
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Enable Trial Period</Label>
+                  <p className="text-sm text-muted-foreground">Start with a trial before billing</p>
+                </div>
+                <Switch
+                  checked={formData.enable_trial}
+                  onCheckedChange={(checked) => setFormData({ ...formData, enable_trial: checked })}
+                />
+              </div>
+              
+              {formData.enable_trial && (
+                <div className="space-y-2">
+                  <Label>Trial Days</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={formData.trial_days}
+                    onChange={(e) => setFormData({ ...formData, trial_days: parseInt(e.target.value) || 14 })}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 border rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground">
+                This plan does not include a trial period. Company will start with an active subscription.
+              </p>
+            </div>
+          )}
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Trial Days</Label>
-              <Input
-                type="number"
-                min={0}
-                value={formData.trial_days}
-                onChange={(e) => setFormData({ ...formData, trial_days: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Expires In (hours)</Label>
-              <Select
-                value={formData.expires_in_hours.toString()}
-                onValueChange={(value) => setFormData({ ...formData, expires_in_hours: parseInt(value) })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="24">24 hours (1 day)</SelectItem>
-                  <SelectItem value="72">72 hours (3 days)</SelectItem>
-                  <SelectItem value="168">168 hours (7 days)</SelectItem>
-                  <SelectItem value="720">720 hours (30 days)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Link Expires In</Label>
+            <Select
+              value={formData.expires_in_hours.toString()}
+              onValueChange={(value) => setFormData({ ...formData, expires_in_hours: parseInt(value) })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24">24 hours (1 day)</SelectItem>
+                <SelectItem value="72">72 hours (3 days)</SelectItem>
+                <SelectItem value="168">168 hours (7 days)</SelectItem>
+                <SelectItem value="720">720 hours (30 days)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
