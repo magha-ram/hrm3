@@ -76,7 +76,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-payslip]
-verify_jwt = true
+verify_jwt = false
 
 [functions.reactivate-user]
 verify_jwt = false
