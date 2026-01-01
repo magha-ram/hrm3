@@ -3,6 +3,7 @@ export type SubscriptionStatus =
   | 'past_due' 
   | 'canceled' 
   | 'trialing' 
+  | 'trial_expired'
   | 'paused';
 
 export interface CompanySubscription {
