@@ -64,6 +64,13 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // Get link details including enable_trial
+    const { data: linkDetails } = await supabaseAdmin
+      .from("company_creation_links")
+      .select("enable_trial, trial_days, plan_id, billing_interval")
+      .eq("id", validation.link_id)
+      .single();
+
     // Generate slug
     const slug = body.company_name
       .toLowerCase()
@@ -160,21 +167,46 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle subscription from link configuration
     const planId = validation.plan_id;
-    const trialDays = validation.trial_days || 14;
+    const enableTrial = linkDetails?.enable_trial !== false;
+    const trialDays = linkDetails?.trial_days ?? validation.trial_days ?? 14;
+    const billingInterval = linkDetails?.billing_interval ?? validation.billing_interval ?? "monthly";
 
     if (planId) {
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + trialDays);
+      if (enableTrial) {
+        // Start with trial
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + trialDays);
 
-      await supabaseAdmin.from("company_subscriptions").insert({
-        company_id: company.id,
-        plan_id: planId,
-        status: "trialing",
-        billing_interval: validation.billing_interval || "monthly",
-        current_period_start: new Date().toISOString(),
-        current_period_end: trialEnd.toISOString(),
-        trial_ends_at: trialEnd.toISOString(),
-      });
+        await supabaseAdmin.from("company_subscriptions").insert({
+          company_id: company.id,
+          plan_id: planId,
+          status: "trialing",
+          billing_interval: billingInterval,
+          current_period_start: new Date().toISOString(),
+          current_period_end: trialEnd.toISOString(),
+          trial_ends_at: trialEnd.toISOString(),
+          trial_total_days: trialDays,
+        });
+
+        console.log(`Company ${company.id} started with ${trialDays}-day trial via link`);
+      } else {
+        // Start as active (no trial)
+        const periodEnd = new Date();
+        periodEnd.setMonth(periodEnd.getMonth() + (billingInterval === 'yearly' ? 12 : 1));
+
+        await supabaseAdmin.from("company_subscriptions").insert({
+          company_id: company.id,
+          plan_id: planId,
+          status: "active",
+          billing_interval: billingInterval,
+          current_period_start: new Date().toISOString(),
+          current_period_end: periodEnd.toISOString(),
+          trial_ends_at: null,
+          trial_total_days: null,
+        });
+
+        console.log(`Company ${company.id} started with active subscription (no trial) via link`);
+      }
     }
 
     // Create subdomain
@@ -218,6 +250,8 @@ serve(async (req: Request): Promise<Response> => {
         company_name: body.company_name,
         admin_email: body.admin_email,
         is_new_user: isNewUser,
+        trial_enabled: enableTrial,
+        trial_days: enableTrial ? trialDays : null,
       },
     });
 
@@ -246,6 +280,10 @@ serve(async (req: Request): Promise<Response> => {
           full_url: `https://${slug}.${baseDomain}`,
         },
         is_new_user: isNewUser,
+        subscription: {
+          status: enableTrial ? "trialing" : "active",
+          trial_days: enableTrial ? trialDays : null,
+        },
       }),
       { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

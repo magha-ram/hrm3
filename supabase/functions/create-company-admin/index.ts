@@ -12,6 +12,7 @@ interface CreateCompanyRequest {
   admin_first_name?: string;
   admin_last_name?: string;
   plan_id?: string;
+  enable_trial?: boolean;
   trial_days?: number;
   billing_interval?: 'monthly' | 'yearly';
   industry?: string;
@@ -110,6 +111,17 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // Get plan configuration if plan_id is provided
+    let planConfig: { trial_enabled: boolean | null; trial_default_days: number | null; trial_restrictions: any } | null = null;
+    if (body.plan_id) {
+      const { data: plan } = await supabaseAdmin
+        .from("plans")
+        .select("trial_enabled, trial_default_days, trial_restrictions")
+        .eq("id", body.plan_id)
+        .single();
+      planConfig = plan;
+    }
+
     // Check if user already exists
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(u => u.email === body.admin_email.toLowerCase());
@@ -201,21 +213,53 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle subscription
     const planId = body.plan_id;
-    const trialDays = body.trial_days || 14;
+    
+    // Determine if trial should be enabled
+    // 1. If enable_trial is explicitly false, no trial
+    // 2. If plan has trial_enabled = false, no trial
+    // 3. Otherwise, trial is enabled
+    const planTrialEnabled = planConfig?.trial_enabled !== false;
+    const enableTrial = body.enable_trial !== false && planTrialEnabled;
+    
+    // Determine trial days (from request, or from plan, or default 14)
+    const trialDays = body.trial_days ?? planConfig?.trial_default_days ?? 14;
 
     if (planId) {
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + trialDays);
+      if (enableTrial) {
+        // Start with trial
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + trialDays);
 
-      await supabaseAdmin.from("company_subscriptions").insert({
-        company_id: company.id,
-        plan_id: planId,
-        status: "trialing",
-        billing_interval: body.billing_interval || "monthly",
-        current_period_start: new Date().toISOString(),
-        current_period_end: trialEnd.toISOString(),
-        trial_ends_at: trialEnd.toISOString(),
-      });
+        await supabaseAdmin.from("company_subscriptions").insert({
+          company_id: company.id,
+          plan_id: planId,
+          status: "trialing",
+          billing_interval: body.billing_interval || "monthly",
+          current_period_start: new Date().toISOString(),
+          current_period_end: trialEnd.toISOString(),
+          trial_ends_at: trialEnd.toISOString(),
+          trial_total_days: trialDays,
+        });
+
+        console.log(`Company ${company.id} started with ${trialDays}-day trial`);
+      } else {
+        // Start as active (no trial)
+        const periodEnd = new Date();
+        periodEnd.setMonth(periodEnd.getMonth() + (body.billing_interval === 'yearly' ? 12 : 1));
+
+        await supabaseAdmin.from("company_subscriptions").insert({
+          company_id: company.id,
+          plan_id: planId,
+          status: "active",
+          billing_interval: body.billing_interval || "monthly",
+          current_period_start: new Date().toISOString(),
+          current_period_end: periodEnd.toISOString(),
+          trial_ends_at: null,
+          trial_total_days: null,
+        });
+
+        console.log(`Company ${company.id} started with active subscription (no trial)`);
+      }
     }
 
     // Create subdomain
@@ -251,6 +295,8 @@ serve(async (req: Request): Promise<Response> => {
         plan_id: planId,
         is_new_user: isNewUser,
         created_by_platform_admin: true,
+        trial_enabled: enableTrial,
+        trial_days: enableTrial ? trialDays : null,
       },
     });
 
@@ -302,6 +348,7 @@ serve(async (req: Request): Promise<Response> => {
         slug: company.slug,
         admin_email: body.admin_email,
         created_by_platform_admin: true,
+        trial_enabled: enableTrial,
       },
     });
 
@@ -322,6 +369,10 @@ serve(async (req: Request): Promise<Response> => {
         domain: {
           subdomain: slug,
           full_url: `https://${slug}.${baseDomain}`,
+        },
+        subscription: {
+          status: enableTrial ? "trialing" : "active",
+          trial_days: enableTrial ? trialDays : null,
         },
       }),
       { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }

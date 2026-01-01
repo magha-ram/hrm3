@@ -10,6 +10,7 @@ interface CreateLinkRequest {
   plan_id?: string;
   email?: string;  // Optional: restrict to specific email
   modules?: string[];
+  enable_trial?: boolean;
   trial_days?: number;
   billing_interval?: 'monthly' | 'yearly';
   expires_in_hours?: number;
@@ -65,6 +66,22 @@ serve(async (req: Request): Promise<Response> => {
 
     const body: CreateLinkRequest = await req.json();
 
+    // Get plan configuration if plan_id is provided
+    let planConfig: { trial_enabled: boolean | null; trial_default_days: number | null } | null = null;
+    if (body.plan_id) {
+      const { data: plan } = await supabaseAdmin
+        .from("plans")
+        .select("trial_enabled, trial_default_days")
+        .eq("id", body.plan_id)
+        .single();
+      planConfig = plan;
+    }
+
+    // Determine trial settings
+    const planTrialEnabled = planConfig?.trial_enabled !== false;
+    const enableTrial = body.enable_trial !== false && planTrialEnabled;
+    const trialDays = body.trial_days ?? planConfig?.trial_default_days ?? 14;
+
     // Calculate expiry
     const expiresInHours = body.expires_in_hours || 72; // Default 3 days
     const expiresAt = new Date();
@@ -77,7 +94,8 @@ serve(async (req: Request): Promise<Response> => {
         plan_id: body.plan_id || null,
         email: body.email || null,
         modules: body.modules || [],
-        trial_days: body.trial_days || 14,
+        enable_trial: enableTrial,
+        trial_days: enableTrial ? trialDays : null,
         billing_interval: body.billing_interval || 'monthly',
         expires_at: expiresAt.toISOString(),
         max_uses: 1,
@@ -118,6 +136,8 @@ serve(async (req: Request): Promise<Response> => {
       metadata: {
         plan_id: body.plan_id,
         email: body.email,
+        enable_trial: enableTrial,
+        trial_days: enableTrial ? trialDays : null,
         expires_at: expiresAt.toISOString(),
         expires_in_hours: expiresInHours,
       },
@@ -151,6 +171,8 @@ serve(async (req: Request): Promise<Response> => {
           signup_url: signupUrl,
           expires_at: link.expires_at,
           email: link.email,
+          enable_trial: enableTrial,
+          trial_days: enableTrial ? trialDays : null,
         },
       }),
       { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
