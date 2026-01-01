@@ -6,13 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Loader2, Building2, Mail, Lock, User, Hash, IdCard } from 'lucide-react';
+import { Loader2, Building2, Mail, Lock, User, Hash, IdCard, Phone } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChange } from '@/components/security/ForcePasswordChange';
 import { useDomainCompany } from '@/hooks/useDomainCompany';
 import { getCompanyPrimaryDomainUrl } from '@/hooks/useCompanyPrimaryDomain';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(8, 'Password must be at least 8 characters');

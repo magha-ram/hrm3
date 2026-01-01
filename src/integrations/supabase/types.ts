@@ -548,6 +548,75 @@ export type Database = {
         }
         Relationships: []
       }
+      company_creation_links: {
+        Row: {
+          billing_interval: string | null
+          created_at: string | null
+          created_by: string
+          email: string | null
+          expires_at: string
+          id: string
+          max_uses: number | null
+          modules: Json | null
+          notes: string | null
+          plan_id: string | null
+          token: string
+          trial_days: number | null
+          used_at: string | null
+          used_by_company_id: string | null
+          uses: number | null
+        }
+        Insert: {
+          billing_interval?: string | null
+          created_at?: string | null
+          created_by: string
+          email?: string | null
+          expires_at: string
+          id?: string
+          max_uses?: number | null
+          modules?: Json | null
+          notes?: string | null
+          plan_id?: string | null
+          token?: string
+          trial_days?: number | null
+          used_at?: string | null
+          used_by_company_id?: string | null
+          uses?: number | null
+        }
+        Update: {
+          billing_interval?: string | null
+          created_at?: string | null
+          created_by?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          max_uses?: number | null
+          modules?: Json | null
+          notes?: string | null
+          plan_id?: string | null
+          token?: string
+          trial_days?: number | null
+          used_at?: string | null
+          used_by_company_id?: string | null
+          uses?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_creation_links_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_creation_links_used_by_company_id_fkey"
+            columns: ["used_by_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_domains: {
         Row: {
           company_id: string
@@ -2147,6 +2216,60 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_logs: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          event_type: string
+          id: string
+          ip_address: unknown
+          link_id: string | null
+          metadata: Json | null
+          target_user_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          event_type: string
+          id?: string
+          ip_address?: unknown
+          link_id?: string | null
+          metadata?: Json | null
+          target_user_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown
+          link_id?: string | null
+          metadata?: Json | null
+          target_user_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_logs_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "company_creation_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_entries: {
         Row: {
           allowances: Json | null
@@ -2488,11 +2611,13 @@ export type Database = {
       }
       plans: {
         Row: {
+          company_id: string | null
           created_at: string
           description: string | null
           features: Json | null
           id: string
           is_active: boolean | null
+          is_public: boolean | null
           max_employees: number | null
           max_storage_gb: number | null
           name: string
@@ -2502,11 +2627,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           description?: string | null
           features?: Json | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean | null
           max_employees?: number | null
           max_storage_gb?: number | null
           name: string
@@ -2516,11 +2643,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           description?: string | null
           features?: Json | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean | null
           max_employees?: number | null
           max_storage_gb?: number | null
           name?: string
@@ -2529,7 +2658,15 @@ export type Database = {
           sort_order?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "plans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_admins: {
         Row: {
@@ -3553,6 +3690,7 @@ export type Database = {
         }[]
       }
       get_platform_admin_role: { Args: { _user_id: string }; Returns: string }
+      get_registration_settings: { Args: never; Returns: Json }
       get_role_permissions: {
         Args: {
           _company_id: string
@@ -3754,6 +3892,20 @@ export type Database = {
         Returns: boolean
       }
       truncate_user_agent: { Args: { ua: string }; Returns: string }
+      validate_company_creation_link: {
+        Args: { _token: string }
+        Returns: {
+          billing_interval: string
+          email: string
+          error_message: string
+          is_valid: boolean
+          link_id: string
+          modules: Json
+          plan_id: string
+          plan_name: string
+          trial_days: number
+        }[]
+      }
       validate_tenant_access: {
         Args: { _company_id: string }
         Returns: boolean
