@@ -56,6 +56,7 @@ interface PlanFormData {
   api: boolean;
   audit: boolean;
   is_active: boolean;
+  is_public: boolean;
 }
 
 const defaultFormData: PlanFormData = {
@@ -70,6 +71,7 @@ const defaultFormData: PlanFormData = {
   api: false,
   audit: false,
   is_active: true,
+  is_public: true,
 };
 
 export default function PlatformPlansPage() {
@@ -111,6 +113,7 @@ export default function PlatformPlansPage() {
         max_storage_gb: data.max_storage_gb,
         features,
         is_active: data.is_active,
+        is_public: data.is_public,
         sort_order: maxSortOrder + 1,
       });
 
@@ -146,6 +149,7 @@ export default function PlatformPlansPage() {
           max_storage_gb: data.max_storage_gb,
           features,
           is_active: data.is_active,
+          is_public: data.is_public,
         }, { count: 'exact' })
         .eq('id', id);
 
@@ -246,6 +250,7 @@ export default function PlatformPlansPage() {
       api: features.api || false,
       audit: features.audit || false,
       is_active: plan.is_active,
+      is_public: plan.is_public ?? true,
     });
     setEditingPlan(plan);
     setIsDialogOpen(true);
@@ -321,6 +326,7 @@ export default function PlatformPlansPage() {
                   <TableHead>Yearly</TableHead>
                   <TableHead>Max Employees</TableHead>
                   <TableHead>Modules</TableHead>
+                  <TableHead>Visibility</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -383,6 +389,11 @@ export default function PlatformPlansPage() {
                             </Badge>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={plan.is_public !== false ? 'default' : 'secondary'}>
+                          {plan.is_public !== false ? 'Public' : 'Private'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Switch
@@ -563,14 +574,30 @@ export default function PlatformPlansPage() {
               </div>
             </div>
 
-            {/* Status */}
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="is_active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-              />
-              <Label htmlFor="is_active">Active (visible to customers)</Label>
+            {/* Status & Visibility */}
+            <div className="space-y-3">
+              <Label>Plan Visibility</Label>
+              <div className="flex flex-wrap gap-6">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_active"
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                  />
+                  <Label htmlFor="is_active">Active</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_public"
+                    checked={formData.is_public}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })}
+                  />
+                  <Label htmlFor="is_public">Public (visible to all companies)</Label>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Private plans are only visible to specifically assigned companies.
+              </p>
             </div>
 
             <DialogFooter>

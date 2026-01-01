@@ -23,12 +23,15 @@ export default function Auth() {
   const navigate = useNavigate();
   const { signIn, signUp, isAuthenticated, isLoading: authLoading, currentCompanyId, isPlatformAdmin, user, refreshUserContext } = useAuth();
   const { company: domainCompany, isLoading: domainLoading, isDomainBased } = useDomainCompany();
+  const { registrationSettings, isLoading: settingsLoading } = usePlatformSettings();
   
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'employee' | 'admin' | 'signup'>('admin');
   const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
   const [domainAuthTab, setDomainAuthTab] = useState<'employee' | 'admin'>('employee');
   
+  // Check if public signup is enabled
+  const isSignupEnabled = registrationSettings?.open_registration ?? false;
   // Admin login form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -277,7 +280,7 @@ export default function Auth() {
   };
 
   // Show loading while auth is loading OR when authenticated but user context is still loading
-  if (authLoading || domainLoading || (isAuthenticated && user === null && !showForcePasswordChange)) {
+  if (authLoading || domainLoading || settingsLoading || (isAuthenticated && user === null && !showForcePasswordChange)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -468,7 +471,7 @@ export default function Auth() {
           <Card className="border-border/50 shadow-xl">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'employee' | 'admin' | 'signup')}>
               <CardHeader className="pb-4">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className={`grid w-full ${isSignupEnabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
                   <TabsTrigger value="employee" className="text-xs sm:text-sm">
                     <IdCard className="h-4 w-4 mr-1 hidden sm:inline" />
                     Employee
@@ -477,10 +480,12 @@ export default function Auth() {
                     <Mail className="h-4 w-4 mr-1 hidden sm:inline" />
                     Admin
                   </TabsTrigger>
-                  <TabsTrigger value="signup" className="text-xs sm:text-sm">
-                    <User className="h-4 w-4 mr-1 hidden sm:inline" />
-                    Sign Up
-                  </TabsTrigger>
+                  {isSignupEnabled && (
+                    <TabsTrigger value="signup" className="text-xs sm:text-sm">
+                      <User className="h-4 w-4 mr-1 hidden sm:inline" />
+                      Sign Up
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </CardHeader>
 
@@ -603,84 +608,103 @@ export default function Auth() {
                 </form>
               </TabsContent>
 
-              {/* Sign Up Tab */}
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup}>
-                  <CardContent className="space-y-4">
-                    <CardDescription className="text-center">
-                      Create your account to get started.
-                    </CardDescription>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="first-name">First Name</Label>
-                        <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              {/* Sign Up Tab - Only shown if signup is enabled */}
+              {isSignupEnabled ? (
+                <TabsContent value="signup">
+                  <form onSubmit={handleSignup}>
+                    <CardContent className="space-y-4">
+                      <CardDescription className="text-center">
+                        Create your account to get started.
+                      </CardDescription>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="first-name">First Name</Label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="first-name"
+                              placeholder="John"
+                              value={firstName}
+                              onChange={(e) => setFirstName(e.target.value)}
+                              className="pl-10"
+                              disabled={isLoading}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="last-name">Last Name</Label>
                           <Input
-                            id="first-name"
-                            placeholder="John"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className="pl-10"
+                            id="last-name"
+                            placeholder="Doe"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
                             disabled={isLoading}
                           />
                         </div>
                       </div>
+                      
                       <div className="space-y-2">
-                        <Label htmlFor="last-name">Last Name</Label>
-                        <Input
-                          id="last-name"
-                          placeholder="Doe"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          disabled={isLoading}
-                        />
+                        <Label htmlFor="signup-email">Email</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="signup-email"
+                            type="email"
+                            placeholder="you@company.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="pl-10"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                       </div>
-                    </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-password">Password</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="signup-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="pl-10"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                      </div>
+                    </CardContent>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="signup-email"
-                          type="email"
-                          placeholder="you@company.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="pl-10"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                    <CardFooter>
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create Account
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </TabsContent>
+              ) : (
+                <TabsContent value="signup">
+                  <CardContent className="space-y-4 text-center py-8">
+                    <div className="p-4 rounded-full bg-muted w-fit mx-auto">
+                      <Building2 className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Password</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="signup-password"
-                          type="password"
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="pl-10"
-                          disabled={isLoading}
-                        />
-                      </div>
-                      {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                    <div>
+                      <h3 className="font-semibold text-lg">Contact Sales</h3>
+                      <p className="text-muted-foreground text-sm mt-2">
+                        Public signup is currently disabled. Please contact our sales team to get started with your company account.
+                      </p>
                     </div>
-                  </CardContent>
-                  
-                  <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Create Account
+                    <Button variant="outline" asChild className="mt-4">
+                      <a href="mailto:sales@example.com">Contact Sales</a>
                     </Button>
-                  </CardFooter>
-                </form>
-              </TabsContent>
+                  </CardContent>
+                </TabsContent>
+              )}
             </Tabs>
           </Card>
           

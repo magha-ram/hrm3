@@ -861,10 +861,17 @@ export default function PlatformSettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                When open registration is disabled, companies can only be created by platform admins or via secure signup links.
+              </AlertDescription>
+            </Alert>
+            
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="open_registration">Open Registration</Label>
-                <p className="text-sm text-muted-foreground">Allow anyone to create a company</p>
+                <Label htmlFor="open_registration">Public Signup</Label>
+                <p className="text-sm text-muted-foreground">Allow anyone to create a company via the signup form</p>
               </div>
               <Switch
                 id="open_registration"
