@@ -67,6 +67,90 @@ export type Database = {
           },
         ]
       }
+      attendance_summaries: {
+        Row: {
+          calculated_from: string | null
+          calculated_to: string | null
+          company_id: string
+          created_at: string
+          days_late: number
+          days_present: number
+          employee_id: string
+          full_day_absents: number
+          half_day_absents: number
+          id: string
+          is_locked: boolean
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          overtime_hours: number
+          period_end: string
+          period_start: string
+          total_working_days: number
+          total_working_hours: number
+          updated_at: string
+        }
+        Insert: {
+          calculated_from?: string | null
+          calculated_to?: string | null
+          company_id: string
+          created_at?: string
+          days_late?: number
+          days_present?: number
+          employee_id: string
+          full_day_absents?: number
+          half_day_absents?: number
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          overtime_hours?: number
+          period_end: string
+          period_start: string
+          total_working_days?: number
+          total_working_hours?: number
+          updated_at?: string
+        }
+        Update: {
+          calculated_from?: string | null
+          calculated_to?: string | null
+          company_id?: string
+          created_at?: string
+          days_late?: number
+          days_present?: number
+          employee_id?: string
+          full_day_absents?: number
+          half_day_absents?: number
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          overtime_hours?: number
+          period_end?: string
+          period_start?: string
+          total_working_days?: number
+          total_working_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_summaries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_summaries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: Database["public"]["Enums"]["audit_action"]
@@ -1452,6 +1536,70 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_shift_assignments: {
+        Row: {
+          assigned_by: string | null
+          company_id: string
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          employee_id: string
+          id: string
+          is_temporary: boolean
+          reason: string | null
+          shift_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          company_id: string
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          employee_id: string
+          id?: string
+          is_temporary?: boolean
+          reason?: string | null
+          shift_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          company_id?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          employee_id?: string
+          id?: string
+          is_temporary?: boolean
+          reason?: string | null
+          shift_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_shift_assignments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_shift_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_shift_assignments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -3242,6 +3390,71 @@ export type Database = {
           },
         ]
       }
+      shifts: {
+        Row: {
+          applicable_days: string[]
+          break_duration_minutes: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          end_time: string
+          grace_period_minutes: number
+          id: string
+          is_active: boolean
+          is_default: boolean
+          min_hours_full_day: number
+          min_hours_half_day: number
+          name: string
+          overtime_after_minutes: number | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          applicable_days?: string[]
+          break_duration_minutes?: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          end_time: string
+          grace_period_minutes?: number
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          min_hours_full_day?: number
+          min_hours_half_day?: number
+          name: string
+          overtime_after_minutes?: number | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          applicable_days?: string[]
+          break_duration_minutes?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          end_time?: string
+          grace_period_minutes?: number
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          min_hours_full_day?: number
+          min_hours_half_day?: number
+          name?: string
+          overtime_after_minutes?: number | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subdomain_change_requests: {
         Row: {
           company_id: string
@@ -4032,6 +4245,10 @@ export type Database = {
           email: string
           user_id: string
         }[]
+      }
+      get_employee_shift_for_date: {
+        Args: { _date: string; _employee_id: string }
+        Returns: string
       }
       get_platform_admin_role: { Args: { _user_id: string }; Returns: string }
       get_registration_settings: { Args: never; Returns: Json }

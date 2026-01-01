@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MoreHorizontal, Eye, Plus, Pencil, Trash2, CheckCircle, Play, ShieldCheck, Download, Settings } from 'lucide-react';
+import { MoreHorizontal, Eye, Plus, Pencil, Trash2, CheckCircle, Play, ShieldCheck, Download, Settings, Lock } from 'lucide-react';
 import { PermissionAction, ACTION_LABELS } from '@/types/permissions';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +22,7 @@ const ACTION_ICONS: Record<PermissionAction, React.ComponentType<{ className?: s
   verify: ShieldCheck,
   export: Download,
   manage: Settings,
+  lock: Lock,
 };
 
 interface SubPermissionDropdownProps {

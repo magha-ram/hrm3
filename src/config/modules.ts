@@ -25,6 +25,7 @@ export type ModuleId =
   | 'departments'
   | 'leave'
   | 'time_tracking'
+  | 'shifts'
   | 'documents'
   | 'recruitment'
   | 'performance'
@@ -89,6 +90,15 @@ export const HR_MODULES: ModuleConfig[] = [
     icon: Clock,
     path: '/app/time',
     minRole: 'employee',
+    planRequired: 'time_tracking',
+  },
+  {
+    id: 'shifts',
+    name: 'Shift Management',
+    description: 'Configure shifts and assignments',
+    icon: Clock,
+    path: '/app/shifts',
+    minRole: 'hr_manager',
     planRequired: 'time_tracking',
   },
   {
