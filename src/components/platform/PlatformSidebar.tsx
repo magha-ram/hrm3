@@ -149,18 +149,6 @@ export function PlatformSidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      {!collapsed && (
-        <div className="p-4 border-t border-border">
-          <NavLink
-            to="/app/dashboard"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Building2 className="h-4 w-4" />
-            <span>Back to App</span>
-          </NavLink>
-        </div>
-      )}
     </aside>
   );
 }

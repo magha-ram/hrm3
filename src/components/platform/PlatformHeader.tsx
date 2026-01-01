@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Building2 } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 
@@ -60,13 +60,9 @@ export function PlatformHeader() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/app/dashboard')}>
-              <Building2 className="mr-2 h-4 w-4" />
-              <span>Company Dashboard</span>
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/platform/settings')}>
               <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
