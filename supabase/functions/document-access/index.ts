@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
+import { encode as encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -247,8 +247,8 @@ Deno.serve(async (req) => {
       }
 
       const mimeType = document.mime_type || "application/octet-stream";
-      const bytes = new Uint8Array(await fileBlob.arrayBuffer());
-      const fileBase64 = encodeBase64(bytes);
+      const arrayBuffer = await fileBlob.arrayBuffer();
+      const fileBase64 = encodeBase64(arrayBuffer);
 
       return new Response(
         JSON.stringify({

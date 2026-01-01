@@ -29,13 +29,27 @@ export function DocumentVersionHistory({
   const { data: versions, isLoading } = useDocumentVersions(documentId);
   const documentAccess = useDocumentAccess();
 
+  const base64ToBlob = (base64: string, mimeType: string) => {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+  };
+
   const handleView = async (docId: string) => {
     try {
       const result = await documentAccess.mutateAsync({
         documentId: docId,
         accessType: 'view',
+        responseMode: 'base64',
       });
-      window.open(result.signedUrl, '_blank');
+
+      if (!('fileBase64' in result)) throw new Error('Preview not available');
+
+      const blob = base64ToBlob(result.fileBase64, result.mimeType);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
       // Error handled by hook
     }
@@ -46,13 +60,22 @@ export function DocumentVersionHistory({
       const result = await documentAccess.mutateAsync({
         documentId: docId,
         accessType: 'download',
+        responseMode: 'base64',
       });
+
+      if (!('fileBase64' in result)) throw new Error('Download not available');
+
+      const blob = base64ToBlob(result.fileBase64, result.mimeType);
+      const url = URL.createObjectURL(blob);
+
       const a = document.createElement('a');
-      a.href = result.signedUrl;
+      a.href = url;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+
+      URL.revokeObjectURL(url);
     } catch (error) {
       // Error handled by hook
     }
