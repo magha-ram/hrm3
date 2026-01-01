@@ -24,6 +24,7 @@ import {
   NextPaydayCard,
   PayslipsLinkCard,
 } from './PersonalStatsWidgets';
+import { TeamCalendarWidget } from './TeamCalendarWidget';
 
 interface ManagerPersonalStats {
   pendingLeaveRequests: number;
@@ -496,6 +497,9 @@ export function ManagerDashboardStats() {
               </CardContent>
             </Card>
           )}
+
+          {/* Team Calendar Widget */}
+          <TeamCalendarWidget />
         </div>
       )}
 
