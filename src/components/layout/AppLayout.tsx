@@ -25,16 +25,16 @@ export function AppLayout() {
   return (
     <PermissionProvider>
       <SidebarProvider>
-        <div className="min-h-screen flex w-full">
+        <div className="min-h-screen flex w-full overflow-hidden">
           <AppSidebar />
-          <SidebarInset className="flex-1 flex flex-col">
+          <SidebarInset className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <ImpersonationBanner />
             <SubdomainHealthBanner />
             <AppHeader />
             <FrozenBanner />
             <TrialExpiredBanner />
             <TrialBanner />
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1 overflow-auto min-w-0">
               <Outlet />
             </main>
           </SidebarInset>

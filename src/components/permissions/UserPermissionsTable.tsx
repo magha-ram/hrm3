@@ -216,7 +216,7 @@ export function UserPermissionsTable() {
   const isLoading = usersLoading || employeesLoading;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0 w-full">
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -229,69 +229,72 @@ export function UserPermissionsTable() {
       </div>
 
       {/* Table with contained scroll */}
-      <div className="border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto max-w-full">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="min-w-[180px] sticky left-0 bg-background z-10">Name</TableHead>
-                <TableHead className="min-w-[100px]">Employee ID</TableHead>
-                <TableHead className="min-w-[200px]">Email</TableHead>
-                <TableHead className="min-w-[120px]">Role</TableHead>
-                {DISPLAY_MODULES.map(module => (
-                  <TableHead key={module} className="min-w-[90px] text-center">
-                    <span className="text-xs">{MODULE_LABELS[module]}</span>
-                  </TableHead>
-                ))}
-                <TableHead className="min-w-[100px] sticky right-0 bg-background z-10">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                    {DISPLAY_MODULES.map((_, j) => (
-                      <TableCell key={j}><Skeleton className="h-5 w-12" /></TableCell>
-                    ))}
-                    <TableCell><Skeleton className="h-8 w-16" /></TableCell>
-                  </TableRow>
-                ))
-              ) : filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5 + DISPLAY_MODULES.length} className="h-24 text-center text-muted-foreground">
-                    {searchQuery ? 'No users found matching your search' : 'No users found'}
-                  </TableCell>
+      <div className="border rounded-lg min-w-0 w-full">
+        <ScrollArea className="w-full" type="always">
+          <div className="min-w-max">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="min-w-[180px] sticky left-0 bg-background z-10">Name</TableHead>
+                  <TableHead className="min-w-[100px]">Employee ID</TableHead>
+                  <TableHead className="min-w-[200px]">Email</TableHead>
+                  <TableHead className="min-w-[120px]">Role</TableHead>
+                  {DISPLAY_MODULES.map(module => (
+                    <TableHead key={module} className="min-w-[90px] text-center">
+                      <span className="text-xs">{MODULE_LABELS[module]}</span>
+                    </TableHead>
+                  ))}
+                  <TableHead className="min-w-[100px] sticky right-0 bg-background z-10">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredUsers.map((user) => (
-                  <UserPermissionRow
-                    key={user.user_id}
-                    userId={user.user_id}
-                    userName={`${user.profile?.first_name || ''} ${user.profile?.last_name || ''}`.trim() || 'Unknown'}
-                    employeeNumber={employeeByUserId.get(user.user_id)?.employee_number}
-                    email={user.profile?.email || employeeByUserId.get(user.user_id)?.email}
-                    role={user.role}
-                    pendingChanges={pendingChanges[user.user_id] || []}
-                    onTogglePermission={(module, action, value) => 
-                      handleTogglePermission(user.user_id, module, action, value)
-                    }
-                    onToggleAllModule={(module, enable) =>
-                      handleToggleAllModulePermissions(user.user_id, module, enable)
-                    }
-                    onSave={() => handleSaveUser(user.user_id)}
-                    onLoadDefaults={() => handleLoadDefaults(user.user_id)}
-                    isSaving={savingUserId === user.user_id}
-                    hasPendingChanges={(pendingChanges[user.user_id]?.length || 0) > 0}
-                  />
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      {DISPLAY_MODULES.map((_, j) => (
+                        <TableCell key={j}><Skeleton className="h-5 w-12" /></TableCell>
+                      ))}
+                      <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5 + DISPLAY_MODULES.length} className="h-24 text-center text-muted-foreground">
+                      {searchQuery ? 'No users found matching your search' : 'No users found'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <UserPermissionRow
+                      key={user.user_id}
+                      userId={user.user_id}
+                      userName={`${user.profile?.first_name || ''} ${user.profile?.last_name || ''}`.trim() || 'Unknown'}
+                      employeeNumber={employeeByUserId.get(user.user_id)?.employee_number}
+                      email={user.profile?.email || employeeByUserId.get(user.user_id)?.email}
+                      role={user.role}
+                      pendingChanges={pendingChanges[user.user_id] || []}
+                      onTogglePermission={(module, action, value) => 
+                        handleTogglePermission(user.user_id, module, action, value)
+                      }
+                      onToggleAllModule={(module, enable) =>
+                        handleToggleAllModulePermissions(user.user_id, module, enable)
+                      }
+                      onSave={() => handleSaveUser(user.user_id)}
+                      onLoadDefaults={() => handleLoadDefaults(user.user_id)}
+                      isSaving={savingUserId === user.user_id}
+                      hasPendingChanges={(pendingChanges[user.user_id]?.length || 0) > 0}
+                    />
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
     </div>
   );
