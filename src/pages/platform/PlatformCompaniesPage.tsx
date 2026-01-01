@@ -14,12 +14,15 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Search, Building2, Users, ExternalLink } from 'lucide-react';
+import { Search, Building2, Users, ExternalLink, Plus, Link } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
+import { CreateCompanyDialog, CreateLinkDialog } from '@/components/platform/CompanyOnboardingDialogs';
 
 export default function PlatformCompaniesPage() {
   const [search, setSearch] = useState('');
+  const [showCreateCompany, setShowCreateCompany] = useState(false);
+  const [showCreateLink, setShowCreateLink] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -118,10 +121,25 @@ export default function PlatformCompaniesPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Companies</h2>
-        <p className="text-muted-foreground">View and manage all companies on the platform</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Companies</h2>
+          <p className="text-muted-foreground">View and manage all companies on the platform</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowCreateLink(true)}>
+            <Link className="h-4 w-4 mr-2" />
+            Generate Link
+          </Button>
+          <Button onClick={() => setShowCreateCompany(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Company
+          </Button>
+        </div>
       </div>
+
+      <CreateCompanyDialog open={showCreateCompany} onOpenChange={setShowCreateCompany} />
+      <CreateLinkDialog open={showCreateLink} onOpenChange={setShowCreateLink} />
 
       <Card>
         <CardHeader>

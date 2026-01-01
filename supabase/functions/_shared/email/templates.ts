@@ -434,6 +434,62 @@ const templates: Record<EmailTemplateType, (data: any) => RenderedTemplate> = {
     `, `Account Reactivated - ${data.companyName}`),
     text: `Account Reactivated!\n\nHi ${data.userName},\n\nYour account at ${data.companyName} has been reactivated.\n\nCompany Code: ${data.companyCode}\nUser ID: ${data.userId}\nEmail: ${data.userEmail}\nTemporary Password: ${data.temporaryPassword}\n\nIMPORTANT: You will be required to change your password on first login.\n\nLogin at: ${data.loginUrl}\n\nSecurity Notice: Do not share your password with anyone.`
   }),
+
+  company_onboarding: (data: EmailTemplateData['company_onboarding']) => ({
+    subject: `Your ${data.companyName} Account is Ready`,
+    html: wrapTemplate(`
+      <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        <h1>Welcome to ${data.companyName}!</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${data.adminName},</p>
+        <p>Your company <strong>${data.companyName}</strong> has been created and is ready to use.</p>
+        <div class="highlight" style="border-left-color: #10b981;">
+          <p><strong>Company URL:</strong> <a href="${data.companyUrl}">${data.companyUrl}</a></p>
+          <p><strong>Email:</strong> ${data.adminEmail}</p>
+          <p><strong>Temporary Password:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 4px;">${data.temporaryPassword}</code></p>
+          <p><strong>Plan:</strong> ${data.planName}</p>
+          ${data.trialDays > 0 ? `<p><strong>Trial Period:</strong> ${data.trialDays} days</p>` : ''}
+        </div>
+        <p><strong>Important:</strong> You will be required to change your password on first login.</p>
+        <p style="text-align: center;">
+          <a href="${data.loginUrl}" class="button" style="background: #10b981;">Login Now</a>
+        </p>
+        <p style="color: #dc2626; font-size: 14px;"><strong>Security Notice:</strong> Do not share your password with anyone.</p>
+      </div>
+      <div class="footer">
+        <p>Welcome aboard! If you need help, contact our support team.</p>
+      </div>
+    `, `Your ${data.companyName} Account`),
+    text: `Welcome to ${data.companyName}!\n\nHi ${data.adminName},\n\nYour company has been created.\n\nCompany URL: ${data.companyUrl}\nEmail: ${data.adminEmail}\nTemporary Password: ${data.temporaryPassword}\nPlan: ${data.planName}${data.trialDays > 0 ? `\nTrial Period: ${data.trialDays} days` : ''}\n\nIMPORTANT: You will be required to change your password on first login.\n\nLogin at: ${data.loginUrl}`
+  }),
+
+  company_creation_link: (data: EmailTemplateData['company_creation_link']) => ({
+    subject: `You're Invited to Set Up Your Company Account`,
+    html: wrapTemplate(`
+      <div class="header">
+        <h1>Set Up Your Company</h1>
+      </div>
+      <div class="content">
+        <p>Hi there,</p>
+        <p>You've been invited by <strong>${data.senderName}</strong> to set up your company account.</p>
+        <div class="highlight">
+          <p><strong>Plan:</strong> ${data.planName}</p>
+          ${data.trialDays > 0 ? `<p><strong>Trial Period:</strong> ${data.trialDays} days</p>` : ''}
+          <p><strong>Link expires:</strong> ${data.expiresAt}</p>
+        </div>
+        <p>Click the button below to get started:</p>
+        <p style="text-align: center;">
+          <a href="${data.signupUrl}" class="button">Set Up Your Company</a>
+        </p>
+        <p style="color: #6b7280; font-size: 14px;">This link can only be used once and will expire on ${data.expiresAt}.</p>
+      </div>
+      <div class="footer">
+        <p>If you have questions, please contact the person who sent you this invitation.</p>
+      </div>
+    `, 'Company Setup Invitation'),
+    text: `You're Invited to Set Up Your Company Account\n\nHi there,\n\nYou've been invited by ${data.senderName} to set up your company account.\n\nPlan: ${data.planName}${data.trialDays > 0 ? `\nTrial Period: ${data.trialDays} days` : ''}\n\nSet up your company: ${data.signupUrl}\n\nThis link expires: ${data.expiresAt}`
+  }),
 };
 
 export function renderTemplate<T extends EmailTemplateType>(
