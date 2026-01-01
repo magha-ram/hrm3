@@ -83,3 +83,12 @@ verify_jwt = false
 
 [functions.send-recruitment-notification]
 verify_jwt = true
+
+[functions.document-upload]
+verify_jwt = true
+
+[functions.document-access]
+verify_jwt = true
+
+[functions.document-delete]
+verify_jwt = true
