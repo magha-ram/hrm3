@@ -171,31 +171,31 @@ export default function AuditLogPage() {
 
   return (
     <ModuleGuard moduleId="audit">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Audit Logs</h1>
-          <p className="text-muted-foreground">SOC2-compliant activity tracking and compliance monitoring</p>
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Audit Logs</h1>
+            <p className="text-muted-foreground">SOC2-compliant activity tracking and compliance monitoring</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Filters</span>
+            </Button>
+            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              <span className="hidden sm:inline">Export CSV</span>
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
-          <Button variant="outline" onClick={handleExport} disabled={isExporting}>
-            {isExporting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            Export CSV
-          </Button>
-        </div>
-      </div>
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Today's Events</CardTitle>
@@ -250,7 +250,7 @@ export default function AuditLogPage() {
             <CardTitle className="text-base">Filter Logs</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Action</label>
                 <Select 
@@ -331,7 +331,9 @@ export default function AuditLogPage() {
             </div>
           ) : data?.logs && data.logs.length > 0 ? (
             <>
-              <Table>
+              <div className="overflow-x-auto -mx-4 md:mx-0">
+                <div className="min-w-[800px] md:min-w-0">
+                  <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Timestamp</TableHead>
@@ -379,11 +381,11 @@ export default function AuditLogPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
-              </Table>
-
-              {/* Pagination */}
-              <div className="flex items-center justify-between mt-4">
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
                 <p className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </p>
@@ -395,7 +397,7 @@ export default function AuditLogPage() {
                     disabled={page === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Previous
+                    <span className="hidden sm:inline ml-1">Previous</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -403,7 +405,7 @@ export default function AuditLogPage() {
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
                   >
-                    Next
+                    <span className="hidden sm:inline mr-1">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

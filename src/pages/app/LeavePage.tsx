@@ -39,52 +39,52 @@ export default function LeavePage() {
 
   return (
     <ModuleGuard moduleId="leave">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Leave Management</h1>
-          <p className="text-muted-foreground">Request and manage time off</p>
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Leave Management</h1>
+            <p className="text-muted-foreground">Request and manage time off</p>
+          </div>
+          <PermGate module="leave" action="create">
+            <WriteGate>
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Request Leave
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>New Leave Request</DialogTitle>
+                  </DialogHeader>
+                  <LeaveRequestForm onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            </WriteGate>
+          </PermGate>
         </div>
-        <PermGate module="leave" action="create">
-          <WriteGate>
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Request Leave
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>New Leave Request</DialogTitle>
-                </DialogHeader>
-                <LeaveRequestForm onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
-              </DialogContent>
-            </Dialog>
-          </WriteGate>
-        </PermGate>
-      </div>
 
-      <Tabs defaultValue="my-leave" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="my-leave">My Leave</TabsTrigger>
-          <PermGate module="leave" action="approve">
-            <TabsTrigger value="team">
-              Team Requests
-              {pendingRequests && pendingRequests.length > 0 && (
-                <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
-              )}
-            </TabsTrigger>
-          </PermGate>
-          <PermGate module="leave" action="read">
-            <RoleGate role="hr_manager">
-              <TabsTrigger value="calendar">Calendar</TabsTrigger>
-              <TabsTrigger value="balances">All Balances</TabsTrigger>
-            </RoleGate>
-          </PermGate>
-        </TabsList>
+        <Tabs defaultValue="my-leave" className="space-y-4">
+          <TabsList className="flex flex-wrap h-auto">
+            <TabsTrigger value="my-leave">My Leave</TabsTrigger>
+            <PermGate module="leave" action="approve">
+              <TabsTrigger value="team">
+                Team Requests
+                {pendingRequests && pendingRequests.length > 0 && (
+                  <Badge variant="destructive" className="ml-2">{pendingRequests.length}</Badge>
+                )}
+              </TabsTrigger>
+            </PermGate>
+            <PermGate module="leave" action="read">
+              <RoleGate role="hr_manager">
+                <TabsTrigger value="calendar">Calendar</TabsTrigger>
+                <TabsTrigger value="balances">All Balances</TabsTrigger>
+              </RoleGate>
+            </PermGate>
+          </TabsList>
 
-        <TabsContent value="my-leave" className="space-y-4">
+          <TabsContent value="my-leave" className="space-y-4">
           {/* Leave Balance Card */}
           <LeaveBalanceCard balances={myBalances} isLoading={loadingBalances} />
 
@@ -102,8 +102,10 @@ export default function LeavePage() {
                   <p>No leave requests found.</p>
                 </div>
               ) : (
-                <TooltipProvider>
-                  <Table>
+                <div className="overflow-x-auto -mx-4 md:mx-0">
+                  <div className="min-w-[600px] md:min-w-0">
+                    <TooltipProvider>
+                      <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Type</TableHead>
@@ -155,8 +157,10 @@ export default function LeavePage() {
                         </TableRow>
                       ))}
                     </TableBody>
-                  </Table>
-                </TooltipProvider>
+                      </Table>
+                    </TooltipProvider>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

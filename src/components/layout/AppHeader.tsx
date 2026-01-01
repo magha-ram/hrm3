@@ -5,9 +5,7 @@ import {
   ChevronDown, 
   LogOut, 
   Settings, 
-  User,
-  Moon,
-  Sun 
+  User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {

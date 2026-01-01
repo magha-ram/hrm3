@@ -125,14 +125,14 @@ export default function PlatformDashboardPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-foreground">Platform Overview</h2>
         <p className="text-muted-foreground">Monitor and manage your SaaS platform</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Companies</CardTitle>

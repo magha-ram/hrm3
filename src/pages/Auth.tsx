@@ -288,8 +288,6 @@ export default function Auth() {
     );
   }
 
-
-  // Domain-based login - simplified UI for company subdomain/custom domain
   // Domain-based login - simplified UI for company subdomain/custom domain
   if (isDomainBased && domainCompany) {
     return (

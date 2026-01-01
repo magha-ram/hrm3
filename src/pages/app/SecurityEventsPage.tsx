@@ -232,16 +232,16 @@ export default function SecurityEventsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Security Events</h1>
           <p className="text-muted-foreground">Monitor login activity, access attempts, and security incidents</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="h-4 w-4 mr-2" />
-            Filters
+            <span className="hidden sm:inline">Filters</span>
           </Button>
           <Button variant="outline" onClick={handleExport} disabled={isExporting}>
             {isExporting ? (
@@ -249,14 +249,14 @@ export default function SecurityEventsPage() {
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            Export CSV
+            <span className="hidden sm:inline">Export CSV</span>
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Today's Events</CardTitle>
@@ -295,7 +295,7 @@ export default function SecurityEventsPage() {
             <CardTitle className="text-base">Filter Events</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Event Type</label>
                 <Select 
