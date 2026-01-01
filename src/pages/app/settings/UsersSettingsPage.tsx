@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useCompanyUsers, CompanyUser } from '@/hooks/useCompanyUsers';
 import { useUserManagement } from '@/hooks/useUserManagement';
@@ -42,11 +43,12 @@ export default function UsersSettingsPage() {
   const { isFrozen, companyId, isLoading: tenantLoading } = useTenant();
   const { user } = useAuth();
   const { data: users, isLoading, error, refetch } = useCompanyUsers();
-  const { canManageUsers, reactivateUser } = useUserManagement();
+  const { canManageUsers, reactivateUser, bulkReactivateUsers } = useUserManagement();
 
   const [changeRoleUser, setChangeRoleUser] = useState<CompanyUser | null>(null);
   const [removeUser, setRemoveUser] = useState<CompanyUser | null>(null);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [selectedInactiveUsers, setSelectedInactiveUsers] = useState<Set<string>>(new Set());
 
   const activeUsers = users?.filter(u => u.is_active) || [];
   const inactiveUsers = users?.filter(u => !u.is_active) || [];
@@ -56,6 +58,35 @@ export default function UsersSettingsPage() {
       companyUserId: companyUser.id,
       userId: companyUser.user_id,
     });
+  };
+
+  const handleBulkReactivate = async () => {
+    const usersToReactivate = inactiveUsers
+      .filter(u => selectedInactiveUsers.has(u.id))
+      .map(u => ({ companyUserId: u.id, userId: u.user_id }));
+    
+    await bulkReactivateUsers.mutateAsync(usersToReactivate);
+    setSelectedInactiveUsers(new Set());
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedInactiveUsers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllInactiveUsers = () => {
+    if (selectedInactiveUsers.size === inactiveUsers.length) {
+      setSelectedInactiveUsers(new Set());
+    } else {
+      setSelectedInactiveUsers(new Set(inactiveUsers.map(u => u.id)));
+    }
   };
 
   // Show loading while tenant context initializes
@@ -228,11 +259,48 @@ export default function UsersSettingsPage() {
           {/* Inactive Users Section */}
           {inactiveUsers.length > 0 && canManageUsers && (
             <div className="mt-8">
-              <h3 className="text-sm font-medium text-muted-foreground mb-3">Inactive Users</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Inactive Users ({inactiveUsers.length})
+                </h3>
+                {selectedInactiveUsers.size > 0 && (
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={handleBulkReactivate}
+                    disabled={isFrozen || bulkReactivateUsers.isPending}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reactivate Selected ({selectedInactiveUsers.size})
+                  </Button>
+                )}
+              </div>
               <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox 
+                        checked={selectedInactiveUsers.size === inactiveUsers.length && inactiveUsers.length > 0}
+                        onCheckedChange={toggleAllInactiveUsers}
+                        disabled={isFrozen}
+                      />
+                    </TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
                   {inactiveUsers.map((companyUser) => (
                     <TableRow key={companyUser.id} className="opacity-60">
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedInactiveUsers.has(companyUser.id)}
+                          onCheckedChange={() => toggleUserSelection(companyUser.id)}
+                          disabled={isFrozen}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">

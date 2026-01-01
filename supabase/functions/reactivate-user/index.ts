@@ -175,6 +175,9 @@ serve(async (req) => {
         data: {
           userName: profile.first_name || profile.email.split("@")[0],
           companyName: company.name,
+          companyCode: company.slug,
+          userId: user_id,
+          userEmail: profile.email,
           temporaryPassword,
           loginUrl,
           loginType: "email",
