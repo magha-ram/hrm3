@@ -13,6 +13,7 @@ import {
   Mail,
   Globe,
   LayoutDashboard,
+  Bell,
   type LucideIcon 
 } from 'lucide-react';
 import { AppRole } from '@/types/auth';
@@ -200,6 +201,12 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     name: 'Billing',
     path: '/app/settings/billing',
     icon: DollarSign,
+    minRole: 'company_admin',
+  },
+  {
+    name: 'Notifications',
+    path: '/app/settings/notifications',
+    icon: Bell,
     minRole: 'company_admin',
   },
   {
