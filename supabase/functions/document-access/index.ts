@@ -6,8 +6,10 @@ const corsHeaders = {
 };
 
 interface AccessRequest {
-  document_id: string;
-  access_type: "view" | "download";
+  documentId?: string;
+  document_id?: string;
+  accessType?: "view" | "download";
+  access_type?: "view" | "download";
 }
 
 Deno.serve(async (req) => {
@@ -47,16 +49,21 @@ Deno.serve(async (req) => {
     }
 
     const body: AccessRequest = await req.json();
-    console.log("[document-access] Request for document:", body.document_id, "type:", body.access_type);
+    
+    // Support both camelCase and snake_case field names
+    const documentId = body.documentId || body.document_id;
+    const accessType = body.accessType || body.access_type;
+    
+    console.log("[document-access] Request for document:", documentId, "type:", accessType);
 
-    if (!body.document_id || !body.access_type) {
+    if (!documentId || !accessType) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!["view", "download"].includes(body.access_type)) {
+    if (!["view", "download"].includes(accessType)) {
       return new Response(
         JSON.stringify({ error: "Invalid access type" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -76,7 +83,7 @@ Deno.serve(async (req) => {
         deleted_at,
         verification_status
       `)
-      .eq("id", body.document_id)
+      .eq("id", documentId)
       .single();
 
     if (docError || !document) {
@@ -112,10 +119,10 @@ Deno.serve(async (req) => {
     if (cuError || !companyUser) {
       // Log denied access
       await supabaseAdmin.from("document_access_logs").insert({
-        document_id: body.document_id,
+        document_id: documentId,
         company_id: companyId,
         accessed_by: user.id,
-        access_type: body.access_type,
+        access_type: accessType,
         ip_address_masked: maskIpAddress(ipAddress),
         user_agent: truncateUserAgent(userAgent),
         access_granted: false,
@@ -137,10 +144,10 @@ Deno.serve(async (req) => {
 
     if (!moduleAccess) {
       await supabaseAdmin.from("document_access_logs").insert({
-        document_id: body.document_id,
+        document_id: documentId,
         company_id: companyId,
         accessed_by: user.id,
-        access_type: body.access_type,
+        access_type: accessType,
         ip_address_masked: maskIpAddress(ipAddress),
         user_agent: truncateUserAgent(userAgent),
         access_granted: false,
@@ -157,16 +164,16 @@ Deno.serve(async (req) => {
     // Check if user can access this specific document
     const { data: canAccess } = await supabaseAdmin.rpc("can_access_document", {
       _user_id: user.id,
-      _document_id: body.document_id,
+      _document_id: documentId,
       _action: "read",
     });
 
     if (!canAccess) {
       await supabaseAdmin.from("document_access_logs").insert({
-        document_id: body.document_id,
+        document_id: documentId,
         company_id: companyId,
         accessed_by: user.id,
-        access_type: body.access_type,
+        access_type: accessType,
         ip_address_masked: maskIpAddress(ipAddress),
         user_agent: truncateUserAgent(userAgent),
         access_granted: false,
@@ -181,9 +188,9 @@ Deno.serve(async (req) => {
     }
 
     // Generate signed URL for access
-    const expiresIn = body.access_type === "download" ? 60 : 300; // 1 min for download, 5 min for view
+    const expiresIn = accessType === "download" ? 60 : 300; // 1 min for download, 5 min for view
     
-    const { data: signedUrl, error: signError } = await supabaseAdmin.storage
+    const { data: signedUrlData, error: signError } = await supabaseAdmin.storage
       .from("employee-documents")
       .createSignedUrl(document.file_url, expiresIn);
 
@@ -197,10 +204,10 @@ Deno.serve(async (req) => {
 
     // Log successful access
     await supabaseAdmin.from("document_access_logs").insert({
-      document_id: body.document_id,
+      document_id: documentId,
       company_id: companyId,
       accessed_by: user.id,
-      access_type: body.access_type,
+      access_type: accessType,
       ip_address_masked: maskIpAddress(ipAddress),
       user_agent: truncateUserAgent(userAgent),
       access_granted: true,
@@ -208,8 +215,8 @@ Deno.serve(async (req) => {
 
     // Update document access stats using RPC function
     await supabaseAdmin.rpc("log_document_access", {
-      _document_id: body.document_id,
-      _access_type: body.access_type,
+      _document_id: documentId,
+      _access_type: accessType,
       _ip_address: ipAddress,
       _user_agent: userAgent,
     });
@@ -219,24 +226,28 @@ Deno.serve(async (req) => {
       _company_id: companyId,
       _user_id: user.id,
       _event_type: "data_access",
-      _description: `Document ${body.access_type}: ${document.title}`,
+      _description: `Document ${accessType}: ${document.title}`,
       _severity: "low",
       _ip_address: ipAddress,
       _user_agent: userAgent,
       _metadata: {
-        document_id: body.document_id,
-        access_type: body.access_type,
+        document_id: documentId,
+        access_type: accessType,
         document_title: document.title,
       },
     });
 
-    console.log("[document-access] Access granted for document:", body.document_id);
+    console.log("[document-access] Access granted for document:", documentId);
 
+    // Return response with both camelCase (for frontend) and snake_case (for backwards compat)
     return new Response(
       JSON.stringify({
         success: true,
-        signed_url: signedUrl.signedUrl,
+        signedUrl: signedUrlData.signedUrl,
+        signed_url: signedUrlData.signedUrl,
+        fileName: document.file_name,
         file_name: document.file_name,
+        expiresIn: expiresIn,
         expires_in: expiresIn,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
