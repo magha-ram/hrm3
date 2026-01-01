@@ -2,9 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
-import type { Tables, TablesInsert } from '@/integrations/supabase/types';
+import type { Tables } from '@/integrations/supabase/types';
 
 export type TimeEntry = Tables<'time_entries'>;
+
+// Clock status enum for clear state management
+export type ClockStatus = 'not_started' | 'clocked_in' | 'clocked_out';
 
 export function useMyTimeEntries(startDate?: string, endDate?: string) {
   const { companyId, employeeId } = useTenant();
@@ -84,6 +87,13 @@ export function useTodayEntry() {
   });
 }
 
+// Helper to determine current clock status
+export function getClockStatus(entry: TimeEntry | null | undefined): ClockStatus {
+  if (!entry || !entry.clock_in) return 'not_started';
+  if (entry.clock_in && !entry.clock_out) return 'clocked_in';
+  return 'clocked_out';
+}
+
 export function useClockIn() {
   const queryClient = useQueryClient();
   const { companyId, employeeId } = useTenant();
@@ -93,22 +103,47 @@ export function useClockIn() {
     mutationFn: async () => {
       if (!companyId || !employeeId) throw new Error('No company or employee selected');
 
+      // Check if already clocked in today
+      const { data: existingEntry } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .eq('date', today)
+        .maybeSingle();
+
+      const status = getClockStatus(existingEntry);
+
+      // Prevent re-clocking if already clocked in
+      if (status === 'clocked_in') {
+        throw new Error('You are already clocked in. Please clock out first.');
+      }
+
+      // Prevent clocking in again after clocking out (day is complete)
+      if (status === 'clocked_out') {
+        throw new Error('You have already completed your shift for today. Contact your manager if you need to make corrections.');
+      }
+
       const now = new Date().toISOString();
 
+      // Create new entry (only if not_started)
       const { data, error } = await supabase
         .from('time_entries')
-        .upsert({
+        .insert({
           company_id: companyId,
           employee_id: employeeId,
           date: today,
           clock_in: now,
-        }, {
-          onConflict: 'employee_id,date',
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Handle unique constraint violation
+        if (error.code === '23505') {
+          throw new Error('You have already clocked in today.');
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -136,14 +171,26 @@ export function useClockOut() {
         .select('*')
         .eq('employee_id', employeeId)
         .eq('date', today)
-        .single();
+        .maybeSingle();
 
-      if (!entry || !entry.clock_in) {
-        throw new Error('You must clock in first');
+      const status = getClockStatus(entry);
+
+      // Prevent clock out without clock in
+      if (status === 'not_started') {
+        throw new Error('You must clock in first before clocking out.');
+      }
+
+      // Prevent double clock out
+      if (status === 'clocked_out') {
+        throw new Error('You have already clocked out for today.');
+      }
+
+      if (!entry) {
+        throw new Error('No time entry found for today.');
       }
 
       const now = new Date();
-      const clockIn = new Date(entry.clock_in);
+      const clockIn = new Date(entry.clock_in!);
       const totalMinutes = Math.round((now.getTime() - clockIn.getTime()) / (1000 * 60));
       const breakMinutes = entry.break_minutes || 0;
       const workMinutes = totalMinutes - breakMinutes;
@@ -202,10 +249,60 @@ export function useApproveTimeEntry() {
   });
 }
 
+// Update break minutes for today's entry
+export function useUpdateBreakMinutes() {
+  const queryClient = useQueryClient();
+  const { employeeId } = useTenant();
+  const today = new Date().toISOString().split('T')[0];
+
+  return useMutation({
+    mutationFn: async (breakMinutes: number) => {
+      if (!employeeId) throw new Error('No employee selected');
+
+      const { data: entry } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (!entry) {
+        throw new Error('No time entry found for today. Clock in first.');
+      }
+
+      // If already clocked out, recalculate total hours
+      let updateData: Record<string, unknown> = { break_minutes: breakMinutes };
+      
+      if (entry.clock_out && entry.clock_in) {
+        const clockIn = new Date(entry.clock_in);
+        const clockOut = new Date(entry.clock_out);
+        const totalMinutes = Math.round((clockOut.getTime() - clockIn.getTime()) / (1000 * 60));
+        const workMinutes = totalMinutes - breakMinutes;
+        updateData.total_hours = Math.max(0, Math.round((workMinutes / 60) * 100) / 100);
+      }
+
+      const { data, error } = await supabase
+        .from('time_entries')
+        .update(updateData)
+        .eq('id', entry.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
+      toast.success('Break time updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update break time');
+    },
+  });
+}
+
 // Calculate time summaries
 export function useTimeSummary() {
-  const { employeeId } = useTenant();
-  
   const now = new Date();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay());
