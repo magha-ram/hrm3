@@ -800,6 +800,21 @@ export function useCreateOffer() {
         metadata: { offer_id: data.id },
       });
       
+      // Send notification email to candidate (only if offer is sent, not draft)
+      if (offer.status === 'sent') {
+        try {
+          await supabase.functions.invoke('send-recruitment-notification', {
+            body: { 
+              type: 'offer_sent', 
+              candidateId: offer.candidate_id,
+              offerId: data.id,
+            },
+          });
+        } catch (e) {
+          console.error('Failed to send offer notification:', e);
+        }
+      }
+      
       return data;
     },
     onSuccess: () => {
@@ -859,6 +874,21 @@ export function useUpdateOfferStatus() {
         created_by: employeeId,
         metadata: { offer_id: id, new_status: status },
       });
+      
+      // Send notification email when offer is sent
+      if (status === 'sent') {
+        try {
+          await supabase.functions.invoke('send-recruitment-notification', {
+            body: { 
+              type: 'offer_sent', 
+              candidateId,
+              offerId: id,
+            },
+          });
+        } catch (e) {
+          console.error('Failed to send offer notification:', e);
+        }
+      }
       
       return data;
     },
