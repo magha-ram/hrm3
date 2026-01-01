@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/table';
 import { 
   useUserPermissions, 
-  useSetUserPermission 
+  useSetUserPermission,
+  useUsersWithOverrides,
 } from '@/hooks/usePermissions';
 import { useCompanyUsers } from '@/hooks/useCompanyUsers';
 import { useEmployees } from '@/hooks/useEmployees';
@@ -40,19 +41,21 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
-  User,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function UserPermissionsEditor() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(true);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const { isAdmin } = useTenant();
   
   const { data: users, isLoading: usersLoading } = useCompanyUsers();
   const { data: employees } = useEmployees();
   const { data: userPermissions, isLoading: permissionsLoading } = useUserPermissions(selectedUserId);
+  const { data: usersWithOverrides, isLoading: overridesLoading } = useUsersWithOverrides();
   const setPermission = useSetUserPermission();
 
   const isLoading = usersLoading || permissionsLoading;
@@ -96,6 +99,19 @@ export function UserPermissionsEditor() {
       );
     });
   }, [users, searchQuery, employeeByUserId]);
+
+  // Handle user selection - hide search after selection
+  const handleSelectUser = (userId: string) => {
+    setSelectedUserId(userId);
+    setShowSearch(false);
+    setSearchQuery('');
+  };
+
+  // Handle changing user - show search again
+  const handleChangeUser = () => {
+    setSelectedUserId(null);
+    setShowSearch(true);
+  };
 
   // Group permissions by module
   const permissionsByModule = userPermissions?.reduce((acc, perm) => {
@@ -173,24 +189,64 @@ export function UserPermissionsEditor() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Search bar */}
-        <div className="space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or employee ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+        {/* Users with Overrides Section */}
+        {usersWithOverrides && usersWithOverrides.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              <span>Users with custom permissions:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {overridesLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-7 w-24" />
+                ))
+              ) : (
+                usersWithOverrides.map((user) => {
+                  const isSelected = selectedUserId === user.user_id;
+                  const empData = employeeByUserId.get(user.user_id);
+                  const displayName = user.first_name && user.last_name 
+                    ? `${user.first_name} ${user.last_name}`
+                    : empData?.employee_number || user.email || 'Unknown';
+                  
+                  return (
+                    <Badge
+                      key={user.user_id}
+                      variant={isSelected ? "default" : "secondary"}
+                      className="cursor-pointer hover:bg-primary/80 transition-colors"
+                      onClick={() => handleSelectUser(user.user_id)}
+                    >
+                      {displayName}
+                    </Badge>
+                  );
+                })
+              )}
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Showing {filteredUsers.length} of {totalUsers} users
-          </p>
-        </div>
+        )}
+
+        {/* Search Section - only show when showSearch is true and no user selected */}
+        {showSearch && (
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or employee ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {searchQuery.trim() && (
+              <p className="text-xs text-muted-foreground">
+                Showing {filteredUsers.length} of {totalUsers} users
+              </p>
+            )}
+          </div>
+        )}
 
         {/* User table - only show when searching */}
-        {searchQuery.trim() && (
+        {showSearch && searchQuery.trim() && (
           <div className="border rounded-lg">
             <ScrollArea className="h-[280px]">
               <Table>
@@ -215,22 +271,18 @@ export function UserPermissionsEditor() {
                 ) : filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                      {searchQuery ? 'No users found matching your search' : 'No users available'}
+                      No users found matching your search
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredUsers.map((user) => {
                     const empData = employeeByUserId.get(user.user_id);
-                    const isSelected = selectedUserId === user.user_id;
                     
                     return (
                       <TableRow
                         key={user.user_id}
-                        className={cn(
-                          "cursor-pointer transition-colors",
-                          isSelected && "bg-primary/10"
-                        )}
-                        onClick={() => setSelectedUserId(user.user_id)}
+                        className="cursor-pointer transition-colors hover:bg-muted/50"
+                        onClick={() => handleSelectUser(user.user_id)}
                       >
                         <TableCell className="font-medium">
                           {user.profile?.first_name} {user.profile?.last_name}
@@ -256,22 +308,25 @@ export function UserPermissionsEditor() {
         </div>
         )}
 
-        {/* Permissions Panel */}
-        {!selectedUserId ? (
+        {/* Empty state - only show when no user selected and search is active */}
+        {!selectedUserId && showSearch && (
           <div className="flex items-center justify-center py-8 border rounded-lg bg-muted/20">
             <div className="text-center text-muted-foreground">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Search for a user above and click to select</p>
             </div>
           </div>
-        ) : selectedUser?.role === 'super_admin' ? (
+        )}
+
+        {/* Selected user - Permissions Panel */}
+        {selectedUserId && selectedUser?.role === 'super_admin' ? (
           <Alert>
             <Shield className="h-4 w-4" />
             <AlertDescription>
               Super admins have all permissions and cannot be modified.
             </AlertDescription>
           </Alert>
-        ) : (
+        ) : selectedUserId && (
           <div className="border rounded-lg">
             {/* Selected user header */}
             <div className="p-3 border-b bg-muted/30 flex items-center justify-between">
@@ -291,20 +346,30 @@ export function UserPermissionsEditor() {
                 </Badge>
               </div>
               
-              {/* Legend */}
-              <div className="hidden sm:flex gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <div className="h-3 w-3 rounded bg-green-500/20 border border-green-300" />
-                  <span>Allowed</span>
+              <div className="flex items-center gap-4">
+                {/* Legend */}
+                <div className="hidden sm:flex gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <div className="h-3 w-3 rounded bg-green-500/20 border border-green-300" />
+                    <span>Allowed</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="h-3 w-3 rounded bg-red-500/20 border border-red-300" />
+                    <span>Denied</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="h-3 w-3 rounded bg-muted border" />
+                    <span>Inherited</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-3 w-3 rounded bg-red-500/20 border border-red-300" />
-                  <span>Denied</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-3 w-3 rounded bg-muted border" />
-                  <span>Inherited</span>
-                </div>
+                {/* Change User button */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleChangeUser}
+                >
+                  Change User
+                </Button>
               </div>
             </div>
 

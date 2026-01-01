@@ -238,6 +238,7 @@ export function useSetUserPermission() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['user-permissions', companyId, variables.userId] });
       queryClient.invalidateQueries({ queryKey: ['my-permissions', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['users-with-overrides', companyId] });
       
       if (variables.granted === null) {
         toast.success('Permission override removed');
@@ -248,6 +249,49 @@ export function useSetUserPermission() {
     onError: (error) => {
       toast.error(error.message);
     },
+  });
+}
+
+// =====================================================
+// FETCH USERS WITH PERMISSION OVERRIDES
+// =====================================================
+export function useUsersWithOverrides() {
+  const { companyId } = useTenant();
+
+  return useQuery({
+    queryKey: ['users-with-overrides', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      
+      // Get distinct users who have explicit permission overrides
+      const { data: overrides, error: overridesError } = await supabase
+        .from('user_permissions')
+        .select('user_id')
+        .eq('company_id', companyId);
+      
+      if (overridesError) throw overridesError;
+      
+      // Get unique user IDs
+      const uniqueUserIds = [...new Set(overrides?.map(o => o.user_id) || [])];
+      
+      if (uniqueUserIds.length === 0) return [];
+      
+      // Fetch profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', uniqueUserIds);
+      
+      if (profilesError) throw profilesError;
+      
+      return profiles?.map(p => ({
+        user_id: p.id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        email: p.email,
+      })) || [];
+    },
+    enabled: !!companyId,
   });
 }
 
