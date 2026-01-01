@@ -305,13 +305,14 @@ export default function RecruitmentPage() {
                         })}
                       </TableBody>
                     </Table>
-                  </div>
-                  <TablePagination
-                    currentPage={jobsPage}
-                    totalItems={jobs.length}
-                    pageSize={PAGE_SIZE}
-                    onPageChange={setJobsPage}
-                  />
+                    </div>
+                    <TablePagination
+                      currentPage={jobsPage}
+                      totalItems={jobs.length}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setJobsPage}
+                    />
+                  </>
                 )}
               </CardContent>
             </Card>
