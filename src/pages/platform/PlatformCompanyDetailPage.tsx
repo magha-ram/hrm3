@@ -225,11 +225,16 @@ export default function PlatformCompanyDetailPage() {
                                   subscription?.plans?.name?.toLowerCase().includes('business');
   
   // Logic:
-  // - If enabled_for_all is true, allow for all companies
-  // - If enterprise_only is true, only allow for Enterprise/Business plans
-  // - If enterprise_only is false/undefined, allow for all
-  const canImpersonate = platformSettings?.enabled_for_all === true || 
-                         (platformSettings?.enterprise_only === true ? isEnterpriseOrBusiness : true);
+  // - If enabled_for_all is explicitly true, allow for all companies
+  // - If enterprise_only is explicitly true, only allow for Enterprise/Business plans
+  // - Otherwise (no settings or enterprise_only is false/undefined), allow for all
+  const canImpersonate = platformSettings === undefined 
+    ? true // Allow by default while loading
+    : platformSettings?.enabled_for_all === true 
+      ? true 
+      : platformSettings?.enterprise_only === true 
+        ? isEnterpriseOrBusiness 
+        : true;
 
   // Toggle company active status
   const toggleActiveMutation = useMutation({
