@@ -45,7 +45,7 @@ serve(async (req: Request) => {
         employee:employees(
           id, first_name, last_name, employee_number, email, job_title, 
           hire_date, department_id, salary, salary_currency,
-          department:departments(name)
+          department:departments!employees_department_id_fkey(name)
         ),
         payroll_run:payroll_runs(
           id, name, period_start, period_end, pay_date, currency, status,
