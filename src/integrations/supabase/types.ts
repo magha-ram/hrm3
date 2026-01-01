@@ -4390,6 +4390,7 @@ export type Database = {
         | "verify"
         | "export"
         | "manage"
+        | "lock"
       permission_module:
         | "dashboard"
         | "employees"
@@ -4406,6 +4407,8 @@ export type Database = {
         | "integrations"
         | "settings"
         | "users"
+        | "shifts"
+        | "attendance"
       plan_interval: "monthly" | "yearly"
       review_status: "draft" | "in_progress" | "completed" | "acknowledged"
       screening_status:
@@ -4641,6 +4644,7 @@ export const Constants = {
         "verify",
         "export",
         "manage",
+        "lock",
       ],
       permission_module: [
         "dashboard",
@@ -4658,6 +4662,8 @@ export const Constants = {
         "integrations",
         "settings",
         "users",
+        "shifts",
+        "attendance",
       ],
       plan_interval: ["monthly", "yearly"],
       review_status: ["draft", "in_progress", "completed", "acknowledged"],
