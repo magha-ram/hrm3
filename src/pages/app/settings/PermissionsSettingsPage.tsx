@@ -15,13 +15,6 @@ export function PermissionsSettingsPage() {
           </p>
         </div>
 
-        <div>
-          <h1 className="text-2xl font-bold">Permission Management</h1>
-          <p className="text-muted-foreground">
-            Configure role-based permissions and user-specific overrides
-          </p>
-        </div>
-
         <Tabs defaultValue="roles" className="space-y-6">
           <TabsList>
             <TabsTrigger value="roles" className="gap-2">

@@ -13,8 +13,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { X, Eye, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { X, Eye, Clock, Shield } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function formatDuration(startedAt: Date | null): string {
   if (!startedAt) return '';
@@ -35,6 +35,7 @@ export function ImpersonationBanner() {
   const { isImpersonating, impersonatedCompany, stopImpersonation, impersonationStartedAt } = useImpersonation();
   const { isPlatformAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [duration, setDuration] = useState('');
 
   // Update duration every second
@@ -73,33 +74,46 @@ export function ImpersonationBanner() {
           </span>
         )}
       </div>
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
+      <div className="flex items-center gap-2">
+        {!location.pathname.includes('/permissions') && (
           <Button
             variant="ghost"
             size="sm"
             className="text-amber-950 hover:bg-amber-600 hover:text-amber-950 h-7 px-2"
+            onClick={() => navigate(`/platform/companies/${impersonatedCompany.id}/permissions`)}
           >
-            <X className="h-4 w-4 mr-1" />
-            Exit
+            <Shield className="h-4 w-4 mr-1" />
+            Permissions
           </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Exit Impersonation?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You are currently viewing as <strong>{impersonatedCompany.name}</strong>.
-              {duration && <> Session duration: {duration}.</>}
-              <br /><br />
-              Are you sure you want to exit impersonation mode?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleStop}>Exit Impersonation</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        )}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-amber-950 hover:bg-amber-600 hover:text-amber-950 h-7 px-2"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Exit
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Exit Impersonation?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You are currently viewing as <strong>{impersonatedCompany.name}</strong>.
+                {duration && <> Session duration: {duration}.</>}
+                <br /><br />
+                Are you sure you want to exit impersonation mode?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleStop}>Exit Impersonation</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }

@@ -37,7 +37,8 @@ import {
   AlertTriangle,
   Gift,
   Check,
-  X
+  X,
+  Shield
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
@@ -473,6 +474,13 @@ export default function PlatformCompanyDetailPage() {
           </Badge>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/platform/companies/${companyId}/permissions`)}
+          >
+            <Shield className="h-4 w-4 mr-2" />
+            Permissions
+          </Button>
           {canImpersonate && (
             <Button
               variant="default"
