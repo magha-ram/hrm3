@@ -5,12 +5,15 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Lock, Crown, Eye } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { PermissionModule, PermissionAction } from '@/types/permissions';
 
 export interface PermissionGateProps {
   /** Required minimum role to access content */
   requiredRole?: AppRole;
   /** Required module in plan to access content */
   requiredModule?: ModuleId;
+  /** Fine-grained permission check (module + action) */
+  permission?: { module: PermissionModule; action: PermissionAction };
   /** What to render when access is denied */
   fallback?: 'hide' | 'disable' | 'lock-icon' | React.ReactNode;
   /** For 'disable' mode - what element type to disable */
@@ -23,7 +26,7 @@ export interface PermissionGateProps {
   children: React.ReactNode;
 }
 
-export type DenialReason = 'role' | 'module' | 'frozen' | 'impersonating' | null;
+export type DenialReason = 'role' | 'module' | 'frozen' | 'impersonating' | 'permission' | null;
 
 export interface PermissionCheckResult {
   hasAccess: boolean;
