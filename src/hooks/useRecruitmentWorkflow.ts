@@ -358,6 +358,13 @@ export function useAssignScreening() {
       
       if (error) throw error;
       
+      // Update candidate status to screening if currently applied
+      await supabase
+        .from('candidates')
+        .update({ status: 'screening' as const, current_stage_started_at: new Date().toISOString() })
+        .eq('id', candidateId)
+        .eq('status', 'applied');
+      
       // Add timeline event
       await supabase.from('candidate_timeline').insert({
         company_id: companyId!,
@@ -366,14 +373,29 @@ export function useAssignScreening() {
         title: 'Screening Test Assigned',
         description: 'A screening test has been assigned',
         created_by: employeeId,
-        metadata: { screening_id: data.id },
+        metadata: { screening_id: data.id, access_token: data.access_token },
       });
+      
+      // Send notification email
+      try {
+        await supabase.functions.invoke('send-recruitment-notification', {
+          body: { 
+            type: 'screening_assigned', 
+            candidateId,
+            screeningId: data.id,
+            accessToken: data.access_token,
+          },
+        });
+      } catch (e) {
+        console.error('Failed to send notification email:', e);
+      }
       
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidate-screenings'] });
       queryClient.invalidateQueries({ queryKey: ['candidate-timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
       toast.success('Screening assigned successfully');
     },
     onError: (error) => {
@@ -549,6 +571,13 @@ export function useScheduleInterview() {
         if (panelistError) throw panelistError;
       }
       
+      // Update candidate status to interviewing if in screening or applied
+      await supabase
+        .from('candidates')
+        .update({ status: 'interviewing' as const, current_stage_started_at: new Date().toISOString() })
+        .eq('id', candidateId)
+        .in('status', ['applied', 'screening']);
+      
       // Add timeline event
       await supabase.from('candidate_timeline').insert({
         company_id: companyId!,
@@ -560,11 +589,26 @@ export function useScheduleInterview() {
         metadata: { interview_id: interview.id },
       });
       
+      // Send notification emails
+      try {
+        await supabase.functions.invoke('send-recruitment-notification', {
+          body: { 
+            type: 'interview_scheduled', 
+            candidateId,
+            interviewId: interview.id,
+            panelistIds: panelists.map(p => p.employeeId),
+          },
+        });
+      } catch (e) {
+        console.error('Failed to send notification emails:', e);
+      }
+      
       return interview;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['interviews'] });
       queryClient.invalidateQueries({ queryKey: ['candidate-timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
       toast.success('Interview scheduled successfully');
     },
     onError: (error) => {
@@ -739,6 +783,12 @@ export function useCreateOffer() {
       
       if (error) throw error;
       
+      // Update candidate status to offered
+      await supabase
+        .from('candidates')
+        .update({ status: 'offered' as const, current_stage_started_at: new Date().toISOString() })
+        .eq('id', offer.candidate_id);
+      
       // Add timeline event
       await supabase.from('candidate_timeline').insert({
         company_id: companyId!,
@@ -755,6 +805,7 @@ export function useCreateOffer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job-offers'] });
       queryClient.invalidateQueries({ queryKey: ['candidate-timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
       toast.success('Offer created successfully');
     },
     onError: (error) => {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plus, Briefcase, Users, ExternalLink, MoreHorizontal, MapPin, ClipboardList, Calendar, FileText, Eye } from 'lucide-react';
+import { Plus, Briefcase, Users, ExternalLink, MoreHorizontal, MapPin, ClipboardList, Calendar, FileText, Eye, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ import { CandidateStatusBadge } from '@/components/recruitment/CandidateStatusBa
 import { AssignScreeningDialog } from '@/components/recruitment/AssignScreeningDialog';
 import { ScheduleInterviewDialog } from '@/components/recruitment/ScheduleInterviewDialog';
 import { CreateOfferDialog } from '@/components/recruitment/CreateOfferDialog';
+import { ScreeningTestsManager } from '@/components/recruitment/ScreeningTestsManager';
 
 export default function RecruitmentPage() {
   const navigate = useNavigate();
@@ -175,6 +176,10 @@ export default function RecruitmentPage() {
             <TabsTrigger value="jobs">Job Postings</TabsTrigger>
             <TabsTrigger value="candidates">Candidates</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+            <TabsTrigger value="tests" className="flex items-center gap-1">
+              <Settings className="h-3 w-3" />
+              Screening Tests
+            </TabsTrigger>
             <TabsTrigger value="screenings" className="flex items-center gap-1">
               Screenings
               {pendingScreenings > 0 && (
@@ -451,6 +456,10 @@ export default function RecruitmentPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="tests" className="mt-4">
+            <ScreeningTestsManager />
           </TabsContent>
 
           <TabsContent value="screenings" className="mt-4">
