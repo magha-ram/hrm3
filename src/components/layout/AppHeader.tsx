@@ -129,9 +129,9 @@ export function AppHeader() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/app/settings">
+            <Link to="/app/my-security">
               <Settings className="mr-2 h-4 w-4" />
-              Settings
+              Security Settings
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

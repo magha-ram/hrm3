@@ -8,19 +8,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Mail, Lock, Shield } from 'lucide-react';
+import { User, Mail, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function ProfilePage() {
   const { user, refreshUserContext } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
   
   const [firstName, setFirstName] = useState(user?.first_name || '');
   const [lastName, setLastName] = useState(user?.last_name || '');
-  
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
 
   const getInitials = () => {
     const first = user?.first_name?.[0] || '';
@@ -51,40 +47,11 @@ export default function ProfilePage() {
     }
   };
 
-  const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-
-    setIsChangingPassword(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) throw error;
-
-      setNewPassword('');
-      setConfirmPassword('');
-      toast.success('Password changed successfully');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to change password');
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">My Profile</h1>
-        <p className="text-muted-foreground">Manage your personal information and security settings</p>
+        <p className="text-muted-foreground">Manage your personal information</p>
       </div>
 
       {/* Profile Information */}
@@ -151,45 +118,6 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Change Password */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5" />
-            Change Password
-          </CardTitle>
-          <CardDescription>Update your password to keep your account secure</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-            />
-          </div>
-          <Button 
-            onClick={handleChangePassword} 
-            disabled={isChangingPassword || !newPassword || !confirmPassword}
-          >
-            {isChangingPassword ? 'Changing...' : 'Change Password'}
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Security Settings Link */}
       <Card>
         <CardHeader>
@@ -197,11 +125,11 @@ export default function ProfilePage() {
             <Shield className="h-5 w-5" />
             Security Settings
           </CardTitle>
-          <CardDescription>Manage MFA, trusted devices, and other security options</CardDescription>
+          <CardDescription>Manage your password and account security</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="outline" asChild>
-            <Link to="/app/settings/security">
+            <Link to="/app/my-security">
               Go to Security Settings
             </Link>
           </Button>

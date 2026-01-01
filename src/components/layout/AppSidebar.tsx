@@ -3,10 +3,10 @@ import { useLocation } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
-import { HR_MODULES, UTILITY_NAV, SETTINGS_NAV } from '@/config/modules';
+import { HR_MODULES, SETTINGS_NAV } from '@/config/modules';
 import { hasMinimumRole } from '@/types/auth';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Mail, Receipt, User, Users } from 'lucide-react';
+import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Mail, Receipt, User, Users, Shield } from 'lucide-react';
 import { usePendingApprovalsCount } from '@/hooks/useMyTeam';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
@@ -41,7 +41,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 
 function formatDuration(startedAt: Date | null): string {
   if (!startedAt) return '';
@@ -63,9 +62,9 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { role, isAdmin, planName, isTrialing } = useTenant();
-  const { accessibleModules, moduleAccess, isFrozen } = useModuleAccess();
+  const { accessibleModules, isFrozen } = useModuleAccess();
   const { isImpersonating, impersonatedCompany, stopImpersonation, impersonationStartedAt } = useImpersonation();
-  const { isManager } = useUserRole();
+  const { isManager, isHROrAbove, isCompanyAdmin } = useUserRole();
   const { data: pendingApprovals } = usePendingApprovalsCount();
   const [duration, setDuration] = useState('');
 
@@ -84,7 +83,11 @@ export function AppSidebar() {
   }, [impersonationStartedAt]);
 
   const isActive = (path: string) => location.pathname.startsWith(path);
-  const isSettingsActive = location.pathname.startsWith('/settings');
+  const isSettingsActive = location.pathname.startsWith('/app/settings');
+
+  // Filter modules to show only those the user can actually access
+  // This prevents "clickable but blocked" UX
+  const visibleModules = accessibleModules.filter(({ hasAccess }) => hasAccess);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
@@ -170,22 +173,19 @@ export function AppSidebar() {
       )}
       
       <SidebarContent className="py-2">
-        {/* Main HR Modules */}
-        <SidebarGroup>
-          <SidebarGroupLabel>HR Modules</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {moduleAccess.map(({ module, hasAccess, reason }) => (
-                <SidebarMenuItem key={module.id}>
-                  <SidebarMenuButton
-                    asChild={hasAccess}
-                    isActive={isActive(module.path)}
-                    tooltip={module.name}
-                    className={cn(
-                      !hasAccess && 'opacity-50 cursor-not-allowed'
-                    )}
-                  >
-                    {hasAccess ? (
+        {/* HR Modules - Only show if user has accessible modules */}
+        {visibleModules.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{isHROrAbove ? 'HR Modules' : 'Modules'}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleModules.map(({ module }) => (
+                  <SidebarMenuItem key={module.id}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(module.path)}
+                      tooltip={module.name}
+                    >
                       <NavLink 
                         to={module.path} 
                         className="flex items-center gap-2"
@@ -199,31 +199,16 @@ export function AppSidebar() {
                           </>
                         )}
                       </NavLink>
-                    ) : (
-                      <div className="flex items-center gap-2 px-2 py-1.5">
-                        <module.icon className="h-4 w-4" />
-                        {!collapsed && (
-                          <>
-                            <span className="flex-1">{module.name}</span>
-                            {reason === 'no_plan' && (
-                              <Crown className="h-3 w-3 text-amber-500" />
-                            )}
-                            {reason === 'no_role' && (
-                              <Lock className="h-3 w-3 text-muted-foreground" />
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        {/* Settings (Admin Only) */}
-        {isAdmin && (
+        {/* Company Settings (Admin Only) */}
+        {isCompanyAdmin && (
           <SidebarGroup>
             <Collapsible defaultOpen={isSettingsActive}>
               <CollapsibleTrigger asChild>
@@ -232,7 +217,7 @@ export function AppSidebar() {
                     <Settings className="h-4 w-4" />
                     {!collapsed && (
                       <>
-                        <span className="flex-1">Settings</span>
+                        <span className="flex-1">Company Settings</span>
                         <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
                       </>
                     )}
@@ -263,7 +248,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Utility Links */}
+        {/* Personal Section - Always visible */}
         <SidebarGroup>
           <SidebarGroupLabel>Personal</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -289,6 +274,18 @@ export function AppSidebar() {
                   >
                     <Receipt className="h-4 w-4" />
                     {!collapsed && <span>My Payslips</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive('/app/my-security')} tooltip="Security">
+                  <NavLink 
+                    to="/app/my-security" 
+                    className="flex items-center gap-2"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                  >
+                    <Shield className="h-4 w-4" />
+                    {!collapsed && <span>Security</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -319,11 +316,12 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin Links */}
+        {/* Utility Links */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {isAdmin && (
+              {/* Email Logs - Admin only */}
+              {isCompanyAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive('/app/email-logs')} tooltip="Email Logs">
                     <NavLink 
