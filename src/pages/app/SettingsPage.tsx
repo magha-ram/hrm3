@@ -28,7 +28,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex gap-6">
-        <div className="w-48 space-y-1">
+        <div className="w-48 shrink-0 space-y-1">
           {visibleSettings.map((item) => (
             <NavLink
               key={item.path}
@@ -42,7 +42,7 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <Outlet />
         </div>
       </div>

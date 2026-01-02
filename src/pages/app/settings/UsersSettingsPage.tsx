@@ -264,6 +264,17 @@ export default function UsersSettingsPage() {
             </div>
           )}
 
+          {activeUsers.length > USERS_PAGE_SIZE && (
+            <div className="mt-4">
+              <TablePagination
+                currentPage={usersPage}
+                totalItems={activeUsers.length}
+                pageSize={USERS_PAGE_SIZE}
+                onPageChange={setUsersPage}
+              />
+            </div>
+          )}
+
           {/* Inactive Users Section */}
           {inactiveUsers.length > 0 && canManageUsers && (
             <div className="mt-8">

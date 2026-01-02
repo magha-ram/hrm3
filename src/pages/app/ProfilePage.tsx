@@ -12,12 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { 
   User, Mail, Phone, MapPin, Building2, Calendar, Users, 
-  AlertTriangle, CreditCard, Contact, Pencil, Shield, Receipt,
-  Clock, FileText
+  AlertTriangle, CreditCard, Contact, Pencil, Shield, UserCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -26,6 +24,13 @@ import { SalarySection } from '@/components/employees/SalarySection';
 import { ProfilePayslips } from '@/components/profile/ProfilePayslips';
 import { ProfileShiftAttendance } from '@/components/profile/ProfileShiftAttendance';
 import { ProfileDocuments } from '@/components/profile/ProfileDocuments';
+
+interface ProfileData {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+}
 
 interface EmployeeRecord {
   id: string;
@@ -243,13 +248,31 @@ function EditEmergencyContactDialog({ employee, onSuccess }: EditContactDialogPr
 }
 
 export default function ProfilePage() {
-  const { companyId } = useTenant();
+  const { companyId, role } = useTenant();
   const { user, refreshUserContext } = useAuth();
   const userRoleInfo = useUserRole();
   const userId = user?.user_id;
   const queryClient = useQueryClient();
 
   const isHROrAdmin = userRoleInfo.role === 'super_admin' || userRoleInfo.role === 'company_admin' || userRoleInfo.role === 'hr_manager';
+
+  // Fetch profile data as fallback for users without employee records
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ['my-profile', userId],
+    queryFn: async () => {
+      if (!userId) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as ProfileData | null;
+    },
+    enabled: !!userId,
+  });
 
   const { data: employee, isLoading, refetch } = useQuery({
     queryKey: ['my-employee-record', companyId, userId],
@@ -298,7 +321,7 @@ export default function ProfilePage() {
     enabled: !!companyId && !!userId,
   });
 
-  if (isLoading) {
+  if (isLoading || profileLoading) {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -311,14 +334,72 @@ export default function ProfilePage() {
     );
   }
 
+  // Fallback view for users without employee records
   if (!employee) {
+    const displayName = profile?.first_name && profile?.last_name
+      ? `${profile.first_name} ${profile.last_name}`
+      : profile?.email || 'User';
+
+    const formatRoleName = (r: string | null) => {
+      if (!r) return 'Member';
+      return r.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    };
+
     return (
-      <div className="p-6">
-        <div className="text-center py-12 text-muted-foreground">
-          <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p className="font-medium">No employee record found</p>
-          <p className="text-sm">Please contact HR if you believe this is an error.</p>
+      <div className="p-6 space-y-6 max-w-4xl mx-auto">
+        <div>
+          <h1 className="text-2xl font-bold">My Profile</h1>
+          <p className="text-muted-foreground">Your account information</p>
         </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <UserCircle className="h-10 w-10 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold">{displayName}</h2>
+                <p className="text-muted-foreground">{profile?.email}</p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Badge variant="default">{formatRoleName(role)}</Badge>
+                </div>
+              </div>
+              <Button variant="outline" asChild>
+                <Link to="/app/my-security">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Security Settings
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Account Information
+            </CardTitle>
+            <CardDescription>Your user account details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InfoRow icon={Mail} label="Email" value={profile?.email} />
+              <InfoRow icon={User} label="Role" value={formatRoleName(role)} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-dashed">
+          <CardContent className="py-8 text-center">
+            <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="font-medium text-lg mb-1">No Employee Record Linked</h3>
+            <p className="text-muted-foreground text-sm max-w-md mx-auto">
+              Your user account is not linked to an employee record. Contact HR to link your account to an employee profile to access additional features like payslips, salary info, and documents.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
