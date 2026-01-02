@@ -592,9 +592,6 @@ export default function CompanySettingsPage() {
           <MultiCompanyRequestDialog />
         </CardContent>
       </Card>
-
-      {/* Domain Settings Section */}
-      <DomainSettingsSection />
     </div>
   );
 }

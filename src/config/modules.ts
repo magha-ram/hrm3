@@ -14,6 +14,12 @@ import {
   Globe,
   LayoutDashboard,
   Bell,
+  Hash,
+  CreditCard,
+  Lock,
+  Palette,
+  Plug,
+  ClipboardCheck,
   type LucideIcon 
 } from 'lucide-react';
 import { AppRole } from '@/types/auth';
@@ -161,9 +167,9 @@ export const HR_MODULES: ModuleConfig[] = [
 export interface SettingsNavItem {
   name: string;
   path: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   description?: string;
-  minRole?: Role;
+  minRole?: AppRole;
 }
 
 export const SETTINGS_NAV: SettingsNavItem[] = [
