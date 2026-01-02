@@ -17,7 +17,8 @@ export type PermissionModule =
   | 'settings'
   | 'users'
   | 'shifts'
-  | 'attendance';
+  | 'attendance'
+  | 'my_team';
 
 export type PermissionAction = 
   | 'read'
@@ -75,6 +76,7 @@ export const MODULE_LABELS: Record<PermissionModule, string> = {
   users: 'Users',
   shifts: 'Shift Management',
   attendance: 'Attendance',
+  my_team: 'My Team',
 };
 
 // Action display names for UI

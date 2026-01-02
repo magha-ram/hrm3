@@ -183,7 +183,7 @@ export function useSetRolePermission() {
       const { data, error } = await supabase.rpc('set_role_permission', {
         _company_id: companyId,
         _role: role,
-        _module: module,
+        _module: module as any, // Cast needed as DB enum may not include all app modules
         _action: action,
         _grant: grant,
       });
@@ -227,7 +227,7 @@ export function useSetUserPermission() {
       const { data, error } = await supabase.rpc('set_user_permission', {
         _company_id: companyId,
         _target_user_id: userId,
-        _module: module,
+        _module: module as any, // Cast needed as DB enum may not include all app modules
         _action: action,
         _granted: granted,
       });

@@ -33,7 +33,8 @@ export type ModuleId =
   | 'compliance'
   | 'audit'
   | 'integrations'
-  | 'expenses';
+  | 'expenses'
+  | 'my_team';
 
 export interface ModuleConfig {
   id: ModuleId;
@@ -172,6 +173,15 @@ export const HR_MODULES: ModuleConfig[] = [
     path: '/app/integrations',
     minRole: 'company_admin',
     planRequired: 'integrations',
+  },
+  {
+    id: 'my_team',
+    name: 'My Team',
+    description: 'Manage your direct reports, approvals, and team calendar',
+    icon: Users,
+    path: '/app/my-team',
+    minRole: 'manager',
+    planRequired: null, // Always available for managers
   },
 ];
 

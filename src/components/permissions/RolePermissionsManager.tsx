@@ -90,6 +90,7 @@ const DISPLAY_MODULES: PermissionModule[] = [
   'recruitment',
   'documents',
   'expenses',
+  'my_team',
   'compliance',
   'audit',
   'settings',
