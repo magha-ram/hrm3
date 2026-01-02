@@ -161,75 +161,99 @@ export const HR_MODULES: ModuleConfig[] = [
 export interface SettingsNavItem {
   name: string;
   path: string;
-  icon: LucideIcon;
-  minRole: AppRole;
+  icon: React.ElementType;
+  description?: string;
+  minRole?: Role;
 }
 
 export const SETTINGS_NAV: SettingsNavItem[] = [
   {
-    name: 'Company Settings',
+    name: 'Company',
     path: '/app/settings/company',
     icon: Building2,
+    description: 'Company profile and preferences',
     minRole: 'company_admin',
   },
   {
-    name: 'Users & Roles',
+    name: 'Domain',
+    path: '/app/settings/domain',
+    icon: Globe,
+    description: 'Subdomain and custom domain settings',
+    minRole: 'company_admin',
+  },
+  {
+    name: 'Employee ID Format',
+    path: '/app/settings/employee-id',
+    icon: Hash,
+    description: 'Configure employee number format',
+    minRole: 'company_admin',
+  },
+  {
+    name: 'Users',
     path: '/app/settings/users',
     icon: Users,
+    description: 'Manage users and access',
     minRole: 'company_admin',
   },
   {
     name: 'Permissions',
     path: '/app/settings/permissions',
     icon: Shield,
+    description: 'Roles and permissions',
+    minRole: 'company_admin',
+  },
+  {
+    name: 'Billing',
+    path: '/app/settings/billing',
+    icon: CreditCard,
+    description: 'Subscription and payments',
     minRole: 'company_admin',
   },
   {
     name: 'Email',
     path: '/app/settings/email',
     icon: Mail,
-    minRole: 'company_admin',
-  },
-  {
-    name: 'Billing',
-    path: '/app/settings/billing',
-    icon: DollarSign,
+    description: 'Email configuration and templates',
     minRole: 'company_admin',
   },
   {
     name: 'Notifications',
     path: '/app/settings/notifications',
     icon: Bell,
+    description: 'Notification preferences',
     minRole: 'company_admin',
   },
   {
     name: 'Security',
     path: '/app/settings/security',
-    icon: Shield,
+    icon: Lock,
+    description: 'Security settings and policies',
     minRole: 'company_admin',
   },
   {
     name: 'Appearance',
     path: '/app/settings/appearance',
-    icon: Settings,
-    minRole: 'employee',
+    icon: Palette,
+    description: 'Theme and display options',
   },
   {
     name: 'Localization',
     path: '/app/settings/localization',
     icon: Globe,
-    minRole: 'employee',
+    description: 'Language and regional settings',
   },
   {
     name: 'Integrations',
     path: '/app/settings/integrations',
-    icon: Settings,
+    icon: Plug,
+    description: 'Third-party integrations',
     minRole: 'company_admin',
   },
   {
     name: 'Compliance',
     path: '/app/settings/compliance',
-    icon: Shield,
+    icon: ClipboardCheck,
+    description: 'Compliance and policies',
     minRole: 'company_admin',
   },
 ];
