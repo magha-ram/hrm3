@@ -316,7 +316,8 @@ serve(async (req: Request): Promise<Response> => {
 
         const { data: emailResult, error: emailInvokeError } = await supabaseAdmin.functions.invoke('send-email', {
           headers: {
-            Authorization: authHeader, // Forward the auth header
+            // Use service role so send-email can treat this as an internal call (no user JWT dependency)
+            Authorization: `Bearer ${supabaseServiceKey}`,
           },
           body: {
             template: 'company_onboarding',
