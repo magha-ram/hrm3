@@ -573,6 +573,7 @@ export type Database = {
           id: string
           industry: string | null
           is_active: boolean | null
+          is_test_company: boolean | null
           logo_url: string | null
           name: string
           pf_employee_rate: number | null
@@ -595,6 +596,7 @@ export type Database = {
           id?: string
           industry?: string | null
           is_active?: boolean | null
+          is_test_company?: boolean | null
           logo_url?: string | null
           name: string
           pf_employee_rate?: number | null
@@ -617,6 +619,7 @@ export type Database = {
           id?: string
           industry?: string | null
           is_active?: boolean | null
+          is_test_company?: boolean | null
           logo_url?: string | null
           name?: string
           pf_employee_rate?: number | null
@@ -4475,6 +4478,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      delete_test_company: { Args: { _company_id: string }; Returns: boolean }
       generate_employee_number: {
         Args: { _company_id: string }
         Returns: string
