@@ -253,6 +253,43 @@ export function useSetUserPermission() {
 }
 
 // =====================================================
+// BATCH SET USER PERMISSIONS (PERFORMANCE OPTIMIZED)
+// =====================================================
+export function useBatchSetUserPermissions() {
+  const { companyId } = useTenant();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      userId, 
+      permissions 
+    }: { 
+      userId: string; 
+      permissions: { module: PermissionModule; action: PermissionAction; granted: boolean }[];
+    }) => {
+      if (!companyId) throw new Error('No company selected');
+      
+      const { data, error } = await supabase.rpc('set_user_permissions_batch', {
+        _company_id: companyId,
+        _target_user_id: userId,
+        _permissions: permissions,
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['user-permissions', companyId, variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ['my-permissions', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['users-with-overrides', companyId] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// =====================================================
 // FETCH USERS WITH PERMISSION OVERRIDES
 // =====================================================
 export function useUsersWithOverrides() {

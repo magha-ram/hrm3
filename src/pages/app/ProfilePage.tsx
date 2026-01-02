@@ -33,6 +33,7 @@ interface ProfileData {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  avatar_url: string | null;
 }
 
 interface EmployeeRecord {
@@ -267,7 +268,7 @@ export default function ProfilePage() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, first_name, last_name')
+        .select('id, email, first_name, last_name, avatar_url')
         .eq('id', userId)
         .maybeSingle();
 
@@ -357,7 +358,7 @@ export default function ProfilePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <ProfilePhotoUpload
                 userId={userId || ''}
-                currentAvatarUrl={null}
+                currentAvatarUrl={profile?.avatar_url || null}
                 name={displayName}
               />
               <div className="flex-1">
@@ -400,7 +401,7 @@ export default function ProfilePage() {
             <p className="text-muted-foreground text-sm max-w-md mx-auto mb-4">
               Your user account is not linked to an employee record. Link to an existing employee profile to access additional features like payslips, salary info, and documents.
             </p>
-            {isHROrAdmin && userId && (
+            {userId && (
               <LinkEmployeeDialog 
                 userId={userId} 
                 onSuccess={() => {
@@ -429,7 +430,7 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <ProfilePhotoUpload
               userId={userId || ''}
-              currentAvatarUrl={null}
+              currentAvatarUrl={profile?.avatar_url || null}
               name={`${employee.first_name} ${employee.last_name}`}
             />
             <div className="flex-1">

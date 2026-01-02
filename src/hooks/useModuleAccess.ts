@@ -1,18 +1,37 @@
 import { useMemo } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useCurrentCompany } from './useCompany';
+import { useMyPermissions } from './usePermissions';
 import { HR_MODULES, ModuleConfig, ModuleId } from '@/config/modules';
 import { hasMinimumRole, AppRole } from '@/types/auth';
+import { PermissionModule } from '@/types/permissions';
 
 export interface ModuleAccess {
   module: ModuleConfig;
   hasAccess: boolean;
-  reason: 'ok' | 'no_role' | 'no_plan' | 'frozen';
+  reason: 'ok' | 'no_role' | 'no_plan' | 'frozen' | 'permission_granted';
 }
+
+// Map module IDs to permission modules (where they differ)
+const MODULE_TO_PERMISSION: Record<string, PermissionModule> = {
+  'dashboard': 'dashboard',
+  'employees': 'employees',
+  'departments': 'departments',
+  'leave': 'leave',
+  'time': 'time_tracking',
+  'payroll': 'payroll',
+  'performance': 'performance',
+  'recruitment': 'recruitment',
+  'documents': 'documents',
+  'expenses': 'expenses',
+  'compliance': 'compliance',
+  'shifts': 'time_tracking',
+};
 
 export function useModuleAccess() {
   const { role, companyId } = useTenant();
   const { data: company, isLoading } = useCurrentCompany();
+  const { canAccessModule: hasPermissionForModule, isLoading: permissionsLoading } = useMyPermissions();
 
   const isFrozen = company ? !company.is_active : false;
   const planModules = company?.subscription?.features?.modules;
@@ -39,7 +58,18 @@ export function useModuleAccess() {
         return { module, hasAccess: false, reason: 'frozen' as const };
       }
 
-      // Check role access first
+      // Check if user has explicit permission override for this module
+      const permissionModule = MODULE_TO_PERMISSION[module.id];
+      if (permissionModule && hasPermissionForModule(permissionModule)) {
+        // User has explicit permission - grant access regardless of role
+        // Still need to check plan access
+        if (module.planRequired && !hasModuleInPlan(module.planRequired)) {
+          return { module, hasAccess: false, reason: 'no_plan' as const };
+        }
+        return { module, hasAccess: true, reason: 'permission_granted' as const };
+      }
+
+      // Check role access
       if (!hasMinimumRole(role, module.minRole)) {
         return { module, hasAccess: false, reason: 'no_role' as const };
       }
@@ -51,7 +81,7 @@ export function useModuleAccess() {
 
       return { module, hasAccess: true, reason: 'ok' as const };
     });
-  }, [role, isFrozen, planModules]);
+  }, [role, isFrozen, planModules, hasPermissionForModule]);
 
   const accessibleModules = moduleAccess.filter((m) => m.hasAccess);
   const restrictedModules = moduleAccess.filter((m) => !m.hasAccess);
@@ -68,6 +98,6 @@ export function useModuleAccess() {
     canAccessModule,
     isFrozen,
     planModules,
-    isLoading,
+    isLoading: isLoading || permissionsLoading,
   };
 }

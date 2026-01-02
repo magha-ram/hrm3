@@ -17,7 +17,7 @@ export default function SettingsPage() {
     return <Navigate to="/app/my-security" replace />;
   }
 
-  const visibleSettings = SETTINGS_NAV.filter(item => hasMinimumRole(role, item.minRole));
+  const visibleSettings = SETTINGS_NAV.filter(item => !item.minRole || hasMinimumRole(role, item.minRole));
 
   return (
     <div className="p-4 md:p-6 space-y-6">

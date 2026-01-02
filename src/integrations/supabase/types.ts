@@ -4786,6 +4786,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_user_permissions_batch: {
+        Args: {
+          _company_id: string
+          _permissions: Json
+          _target_user_id: string
+        }
+        Returns: boolean
+      }
       soft_delete_document: {
         Args: { _document_id: string; _employee_id: string }
         Returns: boolean
