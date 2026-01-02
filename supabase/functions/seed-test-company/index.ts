@@ -90,15 +90,20 @@ function generateSalary(): number {
 }
 
 serve(async (req: Request): Promise<Response> => {
+  console.log("[seed-test-company] Request received:", req.method);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const authHeader = req.headers.get("Authorization");
+    console.log("[seed-test-company] Auth header present:", !!authHeader);
+    
     if (!authHeader) {
+      console.error("[seed-test-company] No authorization header");
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Session expired", message: "Please log in again" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -112,9 +117,12 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    console.log("[seed-test-company] User auth result:", user?.id ? "valid" : "invalid", authError?.message);
+    
     if (authError || !user) {
+      console.error("[seed-test-company] Auth validation failed:", authError?.message);
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({ error: "Session expired", message: "Your session has expired. Please log in again." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -129,7 +137,10 @@ serve(async (req: Request): Promise<Response> => {
       .eq("is_active", true)
       .maybeSingle();
 
+    console.log("[seed-test-company] Platform admin check:", platformAdmin ? "is admin" : "not admin");
+
     if (!platformAdmin) {
+      console.error("[seed-test-company] User is not a platform admin:", user.id);
       return new Response(
         JSON.stringify({ error: "Forbidden", message: "Only platform admins can seed test data" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -137,6 +148,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const body: SeedTestCompanyRequest = await req.json();
+    console.log("[seed-test-company] Seeding company:", body.company_name);
     console.log("Seeding test company:", body.company_name);
 
     // Get plan ID
