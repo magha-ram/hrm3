@@ -49,17 +49,30 @@ serve(async (req: Request): Promise<Response> => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Extract the token from the header
+    const token = authHeader.replace("Bearer ", "");
+    
+    // Check if this is a service role call (internal edge function to edge function)
+    const isServiceRole = token === supabaseServiceKey;
+    
+    let senderId = "service-role";
+    
+    if (!isServiceRole) {
+      // Verify user token
+      const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
 
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized", message: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized", message: "Invalid token" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      senderId = user.id;
     }
 
     const body = await req.json();
@@ -87,7 +100,7 @@ serve(async (req: Request): Promise<Response> => {
         bcc: request.bcc,
         tags: {
           ...request.tags,
-          sent_by: user.id,
+          sent_by: senderId,
         },
       });
 
@@ -131,7 +144,7 @@ serve(async (req: Request): Promise<Response> => {
         bcc: request.bcc,
         tags: {
           ...request.tags,
-          sent_by: user.id,
+          sent_by: senderId,
         },
       });
 
