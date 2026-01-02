@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -325,16 +326,21 @@ export default function ProfilePage() {
 
   if (isLoading || profileLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <PageContainer className="max-w-4xl mx-auto">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-32 w-full" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
-      </div>
+      </PageContainer>
     );
   }
+
+  const formatRoleName = (r: string | null) => {
+    if (!r) return 'Member';
+    return r.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  };
 
   // Fallback view for users without employee records
   if (!employee) {
@@ -342,17 +348,9 @@ export default function ProfilePage() {
       ? `${profile.first_name} ${profile.last_name}`
       : profile?.email || 'User';
 
-    const formatRoleName = (r: string | null) => {
-      if (!r) return 'Member';
-      return r.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    };
-
     return (
-      <div className="p-6 space-y-6 max-w-4xl mx-auto">
-        <div>
-          <h1 className="text-2xl font-bold">My Profile</h1>
-          <p className="text-muted-foreground">Your account information</p>
-        </div>
+      <PageContainer className="max-w-4xl mx-auto">
+        <PageHeader title="My Profile" description="Your account information" />
 
         <Card>
           <CardContent className="pt-6">
@@ -413,7 +411,7 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -422,11 +420,8 @@ export default function ProfilePage() {
   const bank = employee.bank_details as Record<string, string> | null;
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">My Profile</h1>
-        <p className="text-muted-foreground">View and manage your employee information</p>
-      </div>
+    <PageContainer className="max-w-6xl mx-auto">
+      <PageHeader title="My Profile" description="View and manage your employee information" />
 
       {/* Header Card */}
       <Card>
@@ -489,17 +484,6 @@ export default function ProfilePage() {
                 <InfoRow icon={Mail} label="Work Email" value={employee.email} />
                 <InfoRow icon={Mail} label="Personal Email" value={employee.personal_email} />
                 <InfoRow icon={Phone} label="Phone" value={employee.phone} />
-                {address && (
-                  <InfoRow 
-                    icon={MapPin} 
-                    label="Address" 
-                    value={
-                      [address.line1, address.line2, address.city, address.state, address.postal_code, address.country]
-                        .filter(Boolean)
-                        .join(', ') || null
-                    } 
-                  />
-                )}
               </CardContent>
             </Card>
 
@@ -515,10 +499,33 @@ export default function ProfilePage() {
                 <InfoRow 
                   icon={Calendar} 
                   label="Date of Birth" 
-                  value={employee.date_of_birth ? format(new Date(employee.date_of_birth), 'MMM d, yyyy') : null} 
+                  value={employee.date_of_birth ? format(new Date(employee.date_of_birth), 'MMMM d, yyyy') : null} 
                 />
                 <InfoRow icon={User} label="Gender" value={employee.gender} />
                 <InfoRow icon={CreditCard} label="National ID" value={employee.national_id} />
+              </CardContent>
+            </Card>
+
+            {/* Address */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {address && (address.street || address.city) ? (
+                  <div className="text-sm">
+                    {address.street && <p>{address.street}</p>}
+                    {(address.city || address.state || address.zip) && (
+                      <p>{[address.city, address.state, address.zip].filter(Boolean).join(', ')}</p>
+                    )}
+                    {address.country && <p>{address.country}</p>}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No address on file</p>
+                )}
               </CardContent>
             </Card>
 
@@ -526,94 +533,112 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      Emergency Contact
-                    </CardTitle>
-                    <CardDescription>Contact in case of emergency</CardDescription>
-                  </div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Contact className="h-4 w-4" />
+                    Emergency Contact
+                  </CardTitle>
                   <WriteGate>
                     <EditEmergencyContactDialog employee={employee} onSuccess={() => refetch()} />
                   </WriteGate>
                 </div>
               </CardHeader>
               <CardContent>
-                {emergency && (emergency.name || emergency.phone) ? (
+                {emergency && emergency.name ? (
                   <div className="space-y-1">
-                    <InfoRow icon={Contact} label="Name" value={emergency.name} />
-                    <InfoRow icon={User} label="Relationship" value={emergency.relationship} />
+                    <InfoRow icon={User} label="Name" value={emergency.name} />
+                    <InfoRow icon={Users} label="Relationship" value={emergency.relationship} />
                     <InfoRow icon={Phone} label="Phone" value={emergency.phone} />
                     {emergency.email && <InfoRow icon={Mail} label="Email" value={emergency.email} />}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No emergency contact on file. Click Edit to add one.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Bank Details (Masked) */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  Bank Details
-                </CardTitle>
-                <CardDescription>Your payment information (masked for security)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {bank && (bank.bank_name || bank.account_number) ? (
-                  <div className="space-y-1">
-                    <InfoRow icon={Building2} label="Bank Name" value={bank.bank_name} />
-                    <InfoRow icon={CreditCard} label="Account Number" value={maskAccountNumber(bank.account_number)} />
-                    <InfoRow icon={CreditCard} label="Account Holder" value={bank.account_holder} />
-                    {bank.ifsc_code && <InfoRow icon={CreditCard} label="IFSC / Branch" value={bank.ifsc_code} />}
+                  <div className="text-center py-4">
+                    <AlertTriangle className="h-8 w-8 mx-auto text-amber-500 mb-2" />
+                    <p className="text-sm text-muted-foreground">No emergency contact on file</p>
+                    <p className="text-xs text-muted-foreground mt-1">Please add an emergency contact</p>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No bank details on file. Please contact HR.</p>
                 )}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        {/* Employment Information Tab */}
-        <TabsContent value="employment">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Employment Details
-              </CardTitle>
-              <CardDescription>Your employment information and history</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Employment Tab */}
+        <TabsContent value="employment" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Employment Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <InfoRow icon={CreditCard} label="Employee ID" value={employee.employee_number} />
                 <InfoRow icon={Building2} label="Department" value={employee.department?.name} />
+                <InfoRow icon={User} label="Job Title" value={employee.job_title} />
                 <InfoRow 
                   icon={Users} 
                   label="Manager" 
                   value={employee.manager ? `${employee.manager.first_name} ${employee.manager.last_name}` : null} 
                 />
+                <InfoRow icon={MapPin} label="Work Location" value={employee.work_location} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Employment Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
                 <InfoRow 
                   icon={Calendar} 
                   label="Hire Date" 
-                  value={employee.hire_date ? format(new Date(employee.hire_date), 'MMM d, yyyy') : null} 
+                  value={format(new Date(employee.hire_date), 'MMMM d, yyyy')} 
                 />
-                <InfoRow icon={User} label="Employment Type" value={employee.employment_type?.replace('_', ' ')} />
-                <InfoRow icon={MapPin} label="Work Location" value={employee.work_location} />
-              </div>
-            </CardContent>
-          </Card>
+                <InfoRow 
+                  icon={User} 
+                  label="Employment Type" 
+                  value={employee.employment_type?.replace('_', ' ')} 
+                />
+                <InfoRow icon={User} label="Status" value={employee.employment_status} />
+              </CardContent>
+            </Card>
+
+            {/* Bank Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Bank Details
+                </CardTitle>
+                <CardDescription>Your bank account information (masked for security)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {bank && (bank.bank_name || bank.account_number) ? (
+                  <div className="space-y-1">
+                    <InfoRow icon={Building2} label="Bank Name" value={bank.bank_name} />
+                    <InfoRow icon={CreditCard} label="Account Number" value={maskAccountNumber(bank.account_number)} />
+                    {bank.routing_number && (
+                      <InfoRow icon={CreditCard} label="Routing Number" value={maskAccountNumber(bank.routing_number)} />
+                    )}
+                    {bank.account_type && (
+                      <InfoRow icon={CreditCard} label="Account Type" value={bank.account_type} />
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No bank details on file</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
-        {/* Salary Tab */}
+        {/* Salary Tab - Read only for employees */}
         <TabsContent value="salary">
-          <SalarySection 
-            employeeId={employee.id} 
-            canEdit={false} 
-            readOnly={true} 
-          />
+          <SalarySection employeeId={employee.id} readOnly={true} />
         </TabsContent>
 
         {/* Shift & Attendance Tab */}
@@ -631,6 +656,6 @@ export default function ProfilePage() {
           <ProfilePayslips employeeId={employee.id} />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

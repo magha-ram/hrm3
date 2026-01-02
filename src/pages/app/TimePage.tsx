@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -210,55 +211,57 @@ export default function TimePage() {
 
   const pendingApprovals = teamEntries.filter(e => !e.is_approved && e.total_hours);
 
+  const actions = (
+    <div className="flex items-center gap-2">
+      <WriteGate>
+        <TimeCorrectionDialog />
+      </WriteGate>
+      
+      {/* Break Button - Only show when clocked in */}
+      {(clockStatus === 'clocked_in' || clockStatus === 'on_break') && (
+        <WriteGate>
+          <Button
+            onClick={handleBreakAction}
+            disabled={isBreakDisabled}
+            variant={clockStatus === 'on_break' ? 'default' : 'outline'}
+            size="lg"
+          >
+            {(startBreak.isPending || endBreak.isPending) ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Coffee className="h-4 w-4 mr-2" />
+            )}
+            {clockStatus === 'on_break' ? 'End Break' : 'Start Break'}
+          </Button>
+        </WriteGate>
+      )}
+
+      <WriteGate>
+        <Button 
+          onClick={handleClockAction}
+          disabled={isActionDisabled || clockStatus === 'clocked_out'}
+          variant={statusConfig.buttonVariant}
+          size="lg"
+        >
+          {(clockIn.isPending || clockOut.isPending) ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <statusConfig.buttonIcon className="h-4 w-4 mr-2" />
+          )}
+          {statusConfig.buttonLabel}
+        </Button>
+      </WriteGate>
+    </div>
+  );
+
   return (
     <ModuleGuard moduleId="time_tracking">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Time Tracking</h1>
-            <p className="text-muted-foreground">Track your work hours and attendance</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <WriteGate>
-              <TimeCorrectionDialog />
-            </WriteGate>
-            
-            {/* Break Button - Only show when clocked in */}
-            {(clockStatus === 'clocked_in' || clockStatus === 'on_break') && (
-              <WriteGate>
-                <Button
-                  onClick={handleBreakAction}
-                  disabled={isBreakDisabled}
-                  variant={clockStatus === 'on_break' ? 'default' : 'outline'}
-                  size="lg"
-                >
-                  {(startBreak.isPending || endBreak.isPending) ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Coffee className="h-4 w-4 mr-2" />
-                  )}
-                  {clockStatus === 'on_break' ? 'End Break' : 'Start Break'}
-                </Button>
-              </WriteGate>
-            )}
-
-            <WriteGate>
-              <Button 
-                onClick={handleClockAction}
-                disabled={isActionDisabled || clockStatus === 'clocked_out'}
-                variant={statusConfig.buttonVariant}
-                size="lg"
-              >
-                {(clockIn.isPending || clockOut.isPending) ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <statusConfig.buttonIcon className="h-4 w-4 mr-2" />
-                )}
-                {statusConfig.buttonLabel}
-              </Button>
-            </WriteGate>
-          </div>
-        </div>
+      <PageContainer>
+        <PageHeader 
+          title="Time Tracking" 
+          description="Track your work hours and attendance"
+          actions={actions}
+        />
 
         {/* No Employee Record Warning */}
         {!hasEmployeeRecord && (
@@ -396,6 +399,7 @@ export default function TimePage() {
                   <div className="text-center py-12 text-muted-foreground">
                     <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No time entries recorded yet.</p>
+                    <p className="text-sm mt-1">Clock in to start tracking your time.</p>
                   </div>
                 ) : (
                   <>
@@ -442,17 +446,12 @@ export default function TimePage() {
                               </TableCell>
                               <TableCell>
                                 {entry.overtime_hours && entry.overtime_hours > 0 ? (
-                                  <Badge variant="outline" className="text-orange-600 border-orange-500/50">
-                                    +{formatHours(entry.overtime_hours)}
-                                  </Badge>
+                                  <span className="text-orange-600">{formatHours(entry.overtime_hours)}</span>
                                 ) : '-'}
                               </TableCell>
                               <TableCell>
                                 {entry.is_approved ? (
-                                  <Badge variant="default" className="bg-green-500/10 text-green-600">
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    Approved
-                                  </Badge>
+                                  <Badge variant="default">Approved</Badge>
                                 ) : entry.total_hours ? (
                                   <Badge variant="secondary">Pending</Badge>
                                 ) : (
@@ -464,122 +463,96 @@ export default function TimePage() {
                         </TableBody>
                       </Table>
                     </div>
-                    <LoadMoreButton
-                      currentCount={Math.min(entriesDisplayCount, myEntries.length)}
-                      totalCount={myEntries.length}
-                      onLoadMore={() => setEntriesDisplayCount(prev => prev + 20)}
-                    />
+                    {myEntries.length > entriesDisplayCount && (
+                      <LoadMoreButton
+                        onLoadMore={() => setEntriesDisplayCount(prev => prev + 20)}
+                        currentCount={entriesDisplayCount}
+                        totalCount={myEntries.length}
+                      />
+                    )}
                   </>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {(isHROrAbove || isManager) && (
-            <TabsContent value="team" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Team Time Entries</CardTitle>
-                  <CardDescription>Review and approve team time entries</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {teamLoading ? (
-                    <div className="text-center py-8 text-muted-foreground">Loading...</div>
-                  ) : teamEntries.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No team time entries found.</p>
-                    </div>
-                  ) : (
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Employee</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Clock In</TableHead>
-                            <TableHead>Hours</TableHead>
-                            <TableHead>Overtime</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="w-[100px]"></TableHead>
+          <TabsContent value="team" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Team Time Entries</CardTitle>
+                <CardDescription>Review and approve team time entries</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {teamLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                ) : teamEntries.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No team entries found.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Clock In/Out</TableHead>
+                          <TableHead>Hours</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {teamEntries.map((entry) => (
+                          <TableRow key={entry.id}>
+                            <TableCell className="font-medium">
+                              {(entry as any).employee?.first_name} {(entry as any).employee?.last_name}
+                            </TableCell>
+                            <TableCell>{format(new Date(entry.date), 'MMM d, yyyy')}</TableCell>
+                            <TableCell>
+                              {entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}
+                              {' - '}
+                              {entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}
+                            </TableCell>
+                            <TableCell>{entry.total_hours ? formatHours(entry.total_hours) : '-'}</TableCell>
+                            <TableCell>
+                              {entry.is_approved ? (
+                                <Badge variant="default">Approved</Badge>
+                              ) : (
+                                <Badge variant="secondary">Pending</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {!entry.is_approved && entry.total_hours && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => approveEntry.mutate(entry.id)}
+                                  disabled={approveEntry.isPending}
+                                >
+                                  Approve
+                                </Button>
+                              )}
+                            </TableCell>
                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {teamEntries.slice(0, 30).map((entry) => (
-                            <TableRow key={entry.id}>
-                              <TableCell className="font-medium">
-                                {(entry.employee as any)?.first_name} {(entry.employee as any)?.last_name}
-                              </TableCell>
-                              <TableCell>
-                                {format(new Date(entry.date), 'MMM d, yyyy')}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  <span>{entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}</span>
-                                  {entry.clock_in_location && (
-                                    <LocationBadge location={entry.clock_in_location as unknown as GeoLocation} />
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {entry.total_hours ? formatHours(entry.total_hours) : '-'}
-                              </TableCell>
-                              <TableCell>
-                                {entry.overtime_hours && entry.overtime_hours > 0 ? (
-                                  <Badge variant="outline" className="text-orange-600 border-orange-500/50">
-                                    +{formatHours(entry.overtime_hours)}
-                                  </Badge>
-                                ) : '-'}
-                              </TableCell>
-                              <TableCell>
-                                {entry.is_approved ? (
-                                  <Badge variant="default" className="bg-green-500/10 text-green-600">
-                                    Approved
-                                  </Badge>
-                                ) : entry.total_hours ? (
-                                  <Badge variant="secondary">Pending</Badge>
-                                ) : (
-                                  <Badge variant="outline">In Progress</Badge>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {!entry.is_approved && entry.total_hours && (
-                                  <WriteGate>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => approveEntry.mutate(entry.id)}
-                                      disabled={approveEntry.isPending}
-                                    >
-                                      Approve
-                                    </Button>
-                                  </WriteGate>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {isHROrAbove && (
-            <TabsContent value="reports" className="mt-4">
-              <AttendanceReportCard />
-            </TabsContent>
-          )}
+          <TabsContent value="reports" className="mt-4">
+            <AttendanceReportCard />
+          </TabsContent>
 
-          {isHROrAbove && (
-            <TabsContent value="settings" className="mt-4">
-              <WorkScheduleConfiguration />
-            </TabsContent>
-          )}
+          <TabsContent value="settings" className="mt-4">
+            <WorkScheduleConfiguration />
+          </TabsContent>
         </Tabs>
-      </div>
+      </PageContainer>
     </ModuleGuard>
   );
 }

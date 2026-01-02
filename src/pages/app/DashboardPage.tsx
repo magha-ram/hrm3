@@ -1,4 +1,5 @@
 import { useTenant } from '@/contexts/TenantContext';
+import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Calendar, Building2, Briefcase, BarChart3 } from 'lucide-react';
@@ -55,28 +56,13 @@ export default function DashboardPage() {
     },
   ];
 
+  const descriptionText = `Welcome to ${companyName || 'your'}'s HR Portal${isTrialing && trialDaysRemaining !== null ? ` • ${trialDaysRemaining} days left in trial` : ''}${planName ? ` • ${planName} Plan` : ''}`;
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Read-only mode banner for impersonation */}
+    <PageContainer>
       <ReadOnlyPageBanner />
       
-      {/* Welcome Section */}
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome to {companyName || 'your'}'s HR Portal
-          {isTrialing && trialDaysRemaining !== null && (
-            <span className="ml-2 text-primary">
-              • {trialDaysRemaining} days left in trial
-            </span>
-          )}
-          {planName && (
-            <span className="ml-2 text-muted-foreground">
-              • {planName} Plan
-            </span>
-          )}
-        </p>
-      </div>
+      <PageHeader title="Dashboard" description={descriptionText} />
 
       {/* Frozen Notice */}
       {isFrozen && (
@@ -183,6 +169,6 @@ export default function DashboardPage() {
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

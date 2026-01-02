@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,33 +47,35 @@ export default function LeavePage() {
     return myRequests.slice(start, start + PAGE_SIZE);
   }, [myRequests, myLeavePage]);
 
+  const actions = (
+    <PermGate module="leave" action="create">
+      <WriteGate>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Request Leave
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>New Leave Request</DialogTitle>
+            </DialogHeader>
+            <LeaveRequestForm onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
+          </DialogContent>
+        </Dialog>
+      </WriteGate>
+    </PermGate>
+  );
+
   return (
     <ModuleGuard moduleId="leave">
-      <div className="p-4 md:p-6 space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Leave Management</h1>
-            <p className="text-muted-foreground">Request and manage time off</p>
-          </div>
-          <PermGate module="leave" action="create">
-            <WriteGate>
-              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Request Leave
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>New Leave Request</DialogTitle>
-                  </DialogHeader>
-                  <LeaveRequestForm onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
-                </DialogContent>
-              </Dialog>
-            </WriteGate>
-          </PermGate>
-        </div>
+      <PageContainer>
+        <PageHeader 
+          title="Leave Management" 
+          description="Request and manage time off"
+          actions={actions}
+        />
 
         <Tabs defaultValue="my-leave" className="space-y-4">
           <TabsList className="flex flex-wrap h-auto">
@@ -94,158 +97,162 @@ export default function LeavePage() {
           </TabsList>
 
           <TabsContent value="my-leave" className="space-y-4">
-          {/* Leave Balance Card */}
-          <LeaveBalanceCard balances={myBalances} isLoading={loadingBalances} />
+            {/* Leave Balance Card */}
+            <LeaveBalanceCard balances={myBalances} isLoading={loadingBalances} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>My Leave Requests</CardTitle>
-              <CardDescription>View and manage your leave requests</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingMy ? (
-                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
-              ) : !myRequests?.length ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No leave requests found.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto -mx-4 md:mx-0">
-                  <div className="min-w-[600px] md:min-w-0">
-                    <TooltipProvider>
-                      <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Dates</TableHead>
-                        <TableHead>Days</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Response</TableHead>
-                        <TableHead></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedMyRequests.map((req) => (
-                        <TableRow key={req.id}>
-                          <TableCell>
-                            <Badge style={{ backgroundColor: (req as any).leave_type?.color }} variant="secondary">
-                              {(req as any).leave_type?.name}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d, yyyy')}</TableCell>
-                          <TableCell>{req.total_days}</TableCell>
-                          <TableCell><Badge className={statusColors[req.status]}>{req.status}</Badge></TableCell>
-                          <TableCell className="max-w-[200px]">
-                            {req.status === 'rejected' && req.review_notes ? (
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-destructive">Rejection reason:</p>
-                                <p className="text-sm text-muted-foreground line-clamp-2">{req.review_notes}</p>
-                              </div>
-                            ) : req.status === 'approved' && req.review_notes ? (
-                              <Tooltip>
-                                <TooltipTrigger className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <MessageSquare className="h-3 w-3" />
-                                  Manager note
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs">
-                                  <p className="text-sm">{req.review_notes}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {req.status === 'pending' && (
-                              <WriteGate>
-                                <Button variant="ghost" size="sm" onClick={() => cancelRequest.mutate(req.id)}>Cancel</Button>
-                              </WriteGate>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                      </Table>
-                    </TooltipProvider>
-                  </div>
-                  <TablePagination
-                    currentPage={myLeavePage}
-                    totalItems={myRequests?.length || 0}
-                    pageSize={PAGE_SIZE}
-                    onPageChange={setMyLeavePage}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="team">
-          <PermGate module="leave" action="approve">
             <Card>
               <CardHeader>
-                <CardTitle>Pending Approvals</CardTitle>
-                <CardDescription>Review and approve team leave requests</CardDescription>
+                <CardTitle>My Leave Requests</CardTitle>
+                <CardDescription>View and manage your leave requests</CardDescription>
               </CardHeader>
               <CardContent>
-                {loadingPending ? (
+                {loadingMy ? (
                   <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                ) : !pendingRequests?.length ? (
-                  <div className="text-center py-12 text-muted-foreground"><p>No pending requests.</p></div>
+                ) : !myRequests?.length ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No leave requests found.</p>
+                    <p className="text-sm mt-1">Click "Request Leave" to submit your first request.</p>
+                  </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Employee</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Dates</TableHead>
-                        <TableHead>Days</TableHead>
-                        <TableHead>Balance</TableHead>
-                        <TableHead>Reason</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendingRequests.map((req) => (
-                        <TeamLeaveRequestRow
-                          key={req.id}
-                          request={{
-                            id: req.id,
-                            start_date: req.start_date,
-                            end_date: req.end_date,
-                            total_days: req.total_days,
-                            reason: req.reason,
-                            employee: (req as any).employee,
-                            leave_type: (req as any).leave_type,
-                          }}
-                          onApprove={(id) => approveRequest.mutate({ id })}
-                          onReject={(id, reason) => rejectRequest.mutate({ id, review_notes: reason })}
-                          isApproving={approveRequest.isPending}
-                          isRejecting={rejectRequest.isPending}
-                        />
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="overflow-x-auto -mx-4 md:mx-0">
+                    <div className="min-w-[600px] md:min-w-0">
+                      <TooltipProvider>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Dates</TableHead>
+                              <TableHead>Days</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Response</TableHead>
+                              <TableHead></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedMyRequests.map((req) => (
+                              <TableRow key={req.id}>
+                                <TableCell>
+                                  <Badge style={{ backgroundColor: (req as any).leave_type?.color }} variant="secondary">
+                                    {(req as any).leave_type?.name}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{format(new Date(req.start_date), 'MMM d')} - {format(new Date(req.end_date), 'MMM d, yyyy')}</TableCell>
+                                <TableCell>{req.total_days}</TableCell>
+                                <TableCell><Badge className={statusColors[req.status]}>{req.status}</Badge></TableCell>
+                                <TableCell className="max-w-[200px]">
+                                  {req.status === 'rejected' && req.review_notes ? (
+                                    <div className="space-y-1">
+                                      <p className="text-xs font-medium text-destructive">Rejection reason:</p>
+                                      <p className="text-sm text-muted-foreground line-clamp-2">{req.review_notes}</p>
+                                    </div>
+                                  ) : req.status === 'approved' && req.review_notes ? (
+                                    <Tooltip>
+                                      <TooltipTrigger className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <MessageSquare className="h-3 w-3" />
+                                        Manager note
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-xs">
+                                        <p className="text-sm">{req.review_notes}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {req.status === 'pending' && (
+                                    <WriteGate>
+                                      <Button variant="ghost" size="sm" onClick={() => cancelRequest.mutate(req.id)}>Cancel</Button>
+                                    </WriteGate>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TooltipProvider>
+                    </div>
+                    <TablePagination
+                      currentPage={myLeavePage}
+                      totalItems={myRequests?.length || 0}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setMyLeavePage}
+                    />
+                  </div>
                 )}
               </CardContent>
             </Card>
-          </PermGate>
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="calendar">
-          <PermGate module="leave" action="read">
-            <LeaveCalendarView />
-          </PermGate>
-        </TabsContent>
+          <TabsContent value="team">
+            <PermGate module="leave" action="approve">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pending Approvals</CardTitle>
+                  <CardDescription>Review and approve team leave requests</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingPending ? (
+                    <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                  ) : !pendingRequests?.length ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>No pending requests.</p>
+                      <p className="text-sm mt-1">All leave requests have been reviewed.</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Dates</TableHead>
+                          <TableHead>Days</TableHead>
+                          <TableHead>Balance</TableHead>
+                          <TableHead>Reason</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingRequests.map((req) => (
+                          <TeamLeaveRequestRow
+                            key={req.id}
+                            request={{
+                              id: req.id,
+                              start_date: req.start_date,
+                              end_date: req.end_date,
+                              total_days: req.total_days,
+                              reason: req.reason,
+                              employee: (req as any).employee,
+                              leave_type: (req as any).leave_type,
+                            }}
+                            onApprove={(id) => approveRequest.mutate({ id })}
+                            onReject={(id, reason) => rejectRequest.mutate({ id, review_notes: reason })}
+                            isApproving={approveRequest.isPending}
+                            isRejecting={rejectRequest.isPending}
+                          />
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </PermGate>
+          </TabsContent>
 
-        <TabsContent value="balances">
-          <PermGate module="leave" action="read">
-            <LeaveBalanceTable data={allBalances} isLoading={loadingAllBalances} />
-          </PermGate>
-        </TabsContent>
-      </Tabs>
-      </div>
+          <TabsContent value="calendar">
+            <PermGate module="leave" action="read">
+              <LeaveCalendarView />
+            </PermGate>
+          </TabsContent>
+
+          <TabsContent value="balances">
+            <PermGate module="leave" action="read">
+              <LeaveBalanceTable data={allBalances} isLoading={loadingAllBalances} />
+            </PermGate>
+          </TabsContent>
+        </Tabs>
+      </PageContainer>
     </ModuleGuard>
   );
 }
