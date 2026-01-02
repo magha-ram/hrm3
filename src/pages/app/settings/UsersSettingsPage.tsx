@@ -8,11 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useCompanyUsers, CompanyUser } from '@/hooks/useCompanyUsers';
 import { useUserManagement } from '@/hooks/useUserManagement';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, UserPlus, MoreHorizontal, Shield, UserMinus, RotateCcw, Upload } from 'lucide-react';
+import { Users, UserPlus, MoreHorizontal, Shield, UserMinus, RotateCcw, Upload, Search } from 'lucide-react';
 import { ChangeRoleDialog } from '@/components/users/ChangeRoleDialog';
 import { RemoveUserDialog } from '@/components/users/RemoveUserDialog';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
@@ -51,10 +52,32 @@ export default function UsersSettingsPage() {
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectedInactiveUsers, setSelectedInactiveUsers] = useState<Set<string>>(new Set());
   const [usersPage, setUsersPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const USERS_PAGE_SIZE = 10;
 
-  const activeUsers = users?.filter(u => u.is_active) || [];
-  const inactiveUsers = users?.filter(u => !u.is_active) || [];
+  // Filter users based on search query
+  const filterUsers = (userList: CompanyUser[]) => {
+    if (!searchQuery.trim()) return userList;
+    const query = searchQuery.toLowerCase();
+    return userList.filter(u => {
+      const firstName = u.profile?.first_name?.toLowerCase() || '';
+      const lastName = u.profile?.last_name?.toLowerCase() || '';
+      const email = u.profile?.email?.toLowerCase() || '';
+      const role = u.role?.toLowerCase() || '';
+      return firstName.includes(query) || lastName.includes(query) || 
+             email.includes(query) || role.includes(query) ||
+             `${firstName} ${lastName}`.includes(query);
+    });
+  };
+
+  const activeUsers = filterUsers(users?.filter(u => u.is_active) || []);
+  const inactiveUsers = filterUsers(users?.filter(u => !u.is_active) || []);
+  
+  // Reset page when search changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setUsersPage(1);
+  };
 
   const paginatedActiveUsers = useMemo(() => {
     const start = (usersPage - 1) * USERS_PAGE_SIZE;
@@ -178,7 +201,18 @@ export default function UsersSettingsPage() {
             </div>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Search Bar */}
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search users by name, email, or role..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
           {activeUsers.length > 0 ? (
             <div className="max-h-[400px] overflow-auto border rounded-md">
               <Table>

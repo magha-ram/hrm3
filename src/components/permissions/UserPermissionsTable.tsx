@@ -18,6 +18,7 @@ import {
   useUserPermissions, 
   useSetUserPermission,
   useAllPermissions,
+  useBatchSetUserPermissions,
 } from '@/hooks/usePermissions';
 import { useCompanyUsers } from '@/hooks/useCompanyUsers';
 import { useEmployees } from '@/hooks/useEmployees';
@@ -90,6 +91,7 @@ export function UserPermissionsTable() {
   const { data: employees, isLoading: employeesLoading } = useEmployees();
   const { data: allPermissions } = useAllPermissions();
   const setPermission = useSetUserPermission();
+  const batchSetPermissions = useBatchSetUserPermissions();
 
   // Create a map of user_id to employee data
   const employeeByUserId = useMemo(() => {
@@ -195,14 +197,11 @@ export function UserPermissionsTable() {
     setSavingUserId(userId);
     
     try {
-      for (const change of changes) {
-        await setPermission.mutateAsync({
-          userId,
-          module: change.module,
-          action: change.action,
-          granted: change.granted,
-        });
-      }
+      // Use batch mutation for better performance
+      await batchSetPermissions.mutateAsync({
+        userId,
+        permissions: changes,
+      });
       
       setPendingChanges(prev => {
         const next = { ...prev };

@@ -59,13 +59,29 @@ export function useNextEmployeeNumber() {
 
       if (employees && employees.length > 0) {
         for (const emp of employees) {
-          // Extract numbers from the employee_number
-          const matches = emp.employee_number.match(/\d+/g);
-          if (matches) {
-            // Get the last number group (most likely the sequential part)
-            const num = parseInt(matches[matches.length - 1], 10);
-            if (!isNaN(num) && num > maxNumber) {
-              maxNumber = num;
+          if (!emp.employee_number) continue;
+          
+          // If prefix is set, check if employee number matches the pattern
+          if (settings.prefix) {
+            const escapedPrefix = settings.prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escapedSeparator = settings.separator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = new RegExp(`^${escapedPrefix}${escapedSeparator}(\\d+)$`);
+            const match = emp.employee_number.match(pattern);
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (!isNaN(num) && num > maxNumber) {
+                maxNumber = num;
+              }
+            }
+          } else {
+            // No prefix - just extract numbers
+            const matches = emp.employee_number.match(/\d+/g);
+            if (matches) {
+              // Get the last number group (most likely the sequential part)
+              const num = parseInt(matches[matches.length - 1], 10);
+              if (!isNaN(num) && num > maxNumber) {
+                maxNumber = num;
+              }
             }
           }
         }
@@ -79,6 +95,8 @@ export function useNextEmployeeNumber() {
     },
     enabled: !!companyId,
     staleTime: 0, // Always refetch to get latest number
+    refetchOnMount: 'always',
+    gcTime: 0, // Don't cache at all
   });
 }
 
