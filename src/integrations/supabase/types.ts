@@ -1871,6 +1871,76 @@ export type Database = {
           },
         ]
       }
+      employment_history: {
+        Row: {
+          change_type: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          effective_from: string
+          effective_to: string | null
+          employee_id: string
+          id: string
+          job_title: string
+          notes: string | null
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          change_type?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          effective_from: string
+          effective_to?: string | null
+          employee_id: string
+          id?: string
+          job_title: string
+          notes?: string | null
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          change_type?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          employee_id?: string
+          id?: string
+          job_title?: string
+          notes?: string | null
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employment_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employment_history_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employment_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_categories: {
         Row: {
           budget_limit: number | null
