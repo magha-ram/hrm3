@@ -92,3 +92,15 @@ verify_jwt = false
 
 [functions.document-delete]
 verify_jwt = false
+
+[functions.seed-test-company]
+verify_jwt = true
+
+[functions.create-company-admin]
+verify_jwt = true
+
+[functions.create-company-link]
+verify_jwt = true
+
+[functions.use-company-link]
+verify_jwt = false
