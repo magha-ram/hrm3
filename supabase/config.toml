@@ -16,7 +16,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.send-email]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-notification]
 verify_jwt = false
@@ -94,13 +94,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.seed-test-company]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-company-admin]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-company-link]
-verify_jwt = true
+verify_jwt = false
 
 [functions.use-company-link]
 verify_jwt = false

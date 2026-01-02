@@ -107,8 +107,18 @@ export function TestDataSeeder() {
       const { data, error } = await supabase.functions.invoke('seed-test-company', {
         body: config,
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.message || data.error);
+      
+      // Handle edge function errors
+      if (error) {
+        // Check if it's a 401 session error
+        if (error.message?.includes('401') || error.message?.includes('JWT') || error.message?.includes('session')) {
+          throw new Error('Session expired. Please log out and log back in.');
+        }
+        throw error;
+      }
+      if (data?.error) {
+        throw new Error(data.message || data.error);
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -117,7 +127,15 @@ export function TestDataSeeder() {
       setSeedingCompany(null);
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      const isSessionError = error.message?.toLowerCase().includes('session') || 
+                             error.message?.toLowerCase().includes('log in');
+      toast.error(error.message, {
+        duration: isSessionError ? 8000 : 4000,
+        action: isSessionError ? {
+          label: 'Reload',
+          onClick: () => window.location.reload(),
+        } : undefined,
+      });
       setSeedingCompany(null);
     },
   });
