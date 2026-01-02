@@ -51,8 +51,8 @@ export default function PerformancePage() {
 
   return (
     <ModuleGuard moduleId="performance">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Performance Reviews</h1>
             <p className="text-muted-foreground">Track and manage performance reviews</p>
