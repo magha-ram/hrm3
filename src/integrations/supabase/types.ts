@@ -4626,6 +4626,7 @@ export type Database = {
         | "users"
         | "shifts"
         | "attendance"
+        | "my_team"
       plan_interval: "monthly" | "yearly"
       review_status: "draft" | "in_progress" | "completed" | "acknowledged"
       screening_status:
@@ -4881,6 +4882,7 @@ export const Constants = {
         "users",
         "shifts",
         "attendance",
+        "my_team",
       ],
       plan_interval: ["monthly", "yearly"],
       review_status: ["draft", "in_progress", "completed", "acknowledged"],

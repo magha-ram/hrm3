@@ -5,7 +5,7 @@ import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES } from '@/config/modules';
 import { NavLink } from '@/components/NavLink';
-import { Settings, Lock, HelpCircle, Eye, X, Clock, Users, Activity } from 'lucide-react';
+import { Settings, Lock, HelpCircle, Eye, X, Clock, Activity } from 'lucide-react';
 import { usePendingApprovalsCount } from '@/hooks/useMyTeam';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
@@ -58,7 +58,7 @@ export function AppSidebar() {
   const { role, isAdmin, planName, isTrialing } = useTenant();
   const { accessibleModules, isFrozen } = useModuleAccess();
   const { isImpersonating, impersonatedCompany, stopImpersonation, impersonationStartedAt } = useImpersonation();
-  const { isManager, isHROrAbove, isCompanyAdmin } = useUserRole();
+  const { isHROrAbove, isCompanyAdmin } = useUserRole();
   const { data: pendingApprovals } = usePendingApprovalsCount();
   const [duration, setDuration] = useState('');
 
@@ -189,6 +189,11 @@ export function AppSidebar() {
                         {!collapsed && (
                           <>
                             <span className="flex-1">{module.name}</span>
+                            {module.id === 'my_team' && (pendingApprovals ?? 0) > 0 && (
+                              <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-600">
+                                {pendingApprovals}
+                              </Badge>
+                            )}
                             {isFrozen && <Lock className="h-3 w-3 text-muted-foreground" />}
                           </>
                         )}
@@ -196,37 +201,6 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* My Team - Only for managers, synced with modules above */}
-        {isManager && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive('/app/my-team')} tooltip="My Team">
-                    <NavLink 
-                      to="/app/my-team" 
-                      className="flex items-center gap-2"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <Users className="h-4 w-4" />
-                      {!collapsed && (
-                        <>
-                          <span className="flex-1">My Team</span>
-                          {(pendingApprovals ?? 0) > 0 && (
-                            <Badge variant="secondary" className="ml-auto text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-600">
-                              {pendingApprovals}
-                            </Badge>
-                          )}
-                        </>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
