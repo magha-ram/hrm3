@@ -46,9 +46,26 @@ const CURRENCY_FORMATS = [
   { value: 'EUR', label: 'Euro (€)' },
   { value: 'GBP', label: 'British Pound (£)' },
   { value: 'INR', label: 'Indian Rupee (₹)' },
+  { value: 'PKR', label: 'Pakistani Rupee (₨)' },
   { value: 'JPY', label: 'Japanese Yen (¥)' },
   { value: 'AUD', label: 'Australian Dollar (A$)' },
   { value: 'CAD', label: 'Canadian Dollar (C$)' },
+  { value: 'SAR', label: 'Saudi Riyal (﷼)' },
+  { value: 'AED', label: 'UAE Dirham (د.إ)' },
+  { value: 'BDT', label: 'Bangladeshi Taka (৳)' },
+  { value: 'NGN', label: 'Nigerian Naira (₦)' },
+  { value: 'ZAR', label: 'South African Rand (R)' },
+  { value: 'BRL', label: 'Brazilian Real (R$)' },
+  { value: 'MXN', label: 'Mexican Peso ($)' },
+  { value: 'SGD', label: 'Singapore Dollar (S$)' },
+  { value: 'MYR', label: 'Malaysian Ringgit (RM)' },
+  { value: 'THB', label: 'Thai Baht (฿)' },
+  { value: 'PHP', label: 'Philippine Peso (₱)' },
+  { value: 'IDR', label: 'Indonesian Rupiah (Rp)' },
+  { value: 'CNY', label: 'Chinese Yuan (¥)' },
+  { value: 'KRW', label: 'Korean Won (₩)' },
+  { value: 'CHF', label: 'Swiss Franc (CHF)' },
+  { value: 'TRY', label: 'Turkish Lira (₺)' },
 ];
 
 const TIMEZONES = [
@@ -63,7 +80,15 @@ const TIMEZONES = [
   { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
   { value: 'Asia/Dubai', label: 'Dubai (GST)' },
   { value: 'Asia/Kolkata', label: 'India (IST)' },
+  { value: 'Asia/Karachi', label: 'Pakistan (PKT)' },
+  { value: 'Asia/Dhaka', label: 'Bangladesh (BST)' },
+  { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+  { value: 'Asia/Kuala_Lumpur', label: 'Malaysia (MYT)' },
+  { value: 'Asia/Jakarta', label: 'Indonesia (WIB)' },
+  { value: 'Asia/Manila', label: 'Philippines (PHT)' },
   { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
+  { value: 'Africa/Lagos', label: 'Nigeria (WAT)' },
+  { value: 'Africa/Johannesburg', label: 'South Africa (SAST)' },
 ];
 
 export function LocalizationSettingsPage() {

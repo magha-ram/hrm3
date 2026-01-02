@@ -849,6 +849,116 @@ export type Database = {
           },
         ]
       }
+      company_email_templates: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          description: string | null
+          display_name: string
+          html_template: string | null
+          id: string
+          is_enabled: boolean | null
+          plain_text_template: string | null
+          sender_email: string | null
+          sender_name: string | null
+          subject_template: string | null
+          template_type: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          html_template?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          plain_text_template?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          subject_template?: string | null
+          template_type: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          html_template?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          plain_text_template?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          subject_template?: string | null
+          template_type?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_email_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_roles: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          custom_name: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          permission_overrides: Json | null
+          template_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          custom_name?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          permission_overrides?: Json | null
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          custom_name?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          permission_overrides?: Json | null
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_roles_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "role_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           company_id: string
@@ -3249,6 +3359,45 @@ export type Database = {
           },
         ]
       }
+      role_templates: {
+        Row: {
+          base_role: Database["public"]["Enums"]["app_role"]
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_system: boolean | null
+          name: string
+          permissions_config: Json | null
+          plan_tier: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          base_role: Database["public"]["Enums"]["app_role"]
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_system?: boolean | null
+          name: string
+          permissions_config?: Json | null
+          plan_tier?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          base_role?: Database["public"]["Enums"]["app_role"]
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          permissions_config?: Json | null
+          plan_tier?: string | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       salary_history: {
         Row: {
           base_salary: number
@@ -4451,6 +4600,10 @@ export type Database = {
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_platform_owner: { Args: { _user_id: string }; Returns: boolean }
       is_trial_expired: { Args: { _company_id: string }; Returns: boolean }
+      link_user_to_employee: {
+        Args: { _company_id: string; _employee_id: string; _user_id: string }
+        Returns: boolean
+      }
       log_application_event: {
         Args: {
           _company_id?: string
