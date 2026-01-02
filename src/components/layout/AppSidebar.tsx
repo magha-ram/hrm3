@@ -201,28 +201,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Company Settings (Admin Only) - Single button, sub-pages inside */}
-        {isCompanyAdmin && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isSettingsActive} tooltip="Settings">
-                    <NavLink 
-                      to="/app/settings" 
-                      className="flex items-center gap-2"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <Settings className="h-4 w-4" />
-                      {!collapsed && <span>Settings</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
         {/* Personal Section - Always visible */}
         <SidebarGroup>
           <SidebarGroupLabel>Personal</SidebarGroupLabel>
@@ -291,11 +269,26 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Utility Links */}
-        <SidebarGroup>
+        {/* Utility Links - Bottom section */}
+        <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Logs - Admin/HR only */}
+              {/* Settings - Admin only */}
+              {isCompanyAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isSettingsActive} tooltip="Settings">
+                    <NavLink 
+                      to="/app/settings" 
+                      className="flex items-center gap-2"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <Settings className="h-4 w-4" />
+                      {!collapsed && <span>Settings</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {/* Logs - Admin only */}
               {isCompanyAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive('/app/logs')} tooltip="Logs">
