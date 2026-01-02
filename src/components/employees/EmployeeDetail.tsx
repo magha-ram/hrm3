@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Edit2 } from 'lucide-react';
+import { Clock, Edit2, TrendingUp, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Employee } from '@/hooks/useEmployees';
 import { EducationSection } from './EducationSection';
@@ -17,7 +17,10 @@ import { useCurrentEmployeeShift, useEmployeeShiftAssignments } from '@/hooks/us
 import { EmergencyContactSection, type EmergencyContact } from './EmergencyContactSection';
 import { BankDetailsSection, type BankDetails } from './BankDetailsSection';
 import { ShiftAssignmentDialog } from './ShiftAssignmentDialog';
+import { PromotionDialog } from './PromotionDialog';
 import { DAY_LABELS, type DayOfWeek } from '@/types/shifts';
+import { useLatestEmploymentHistory } from '@/hooks/useEmploymentHistory';
+import { useSalaryHistory } from '@/hooks/useSalaryHistory';
 
 interface EmployeeDetailProps {
   employee: Employee & {
@@ -32,6 +35,16 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
   const { data: currentShift } = useCurrentEmployeeShift(employee.id);
   const { data: shiftHistory } = useEmployeeShiftAssignments(employee.id);
   const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
+  const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
+  
+  // Get employment and salary history for promotion/increment dates
+  const { lastPromotion } = useLatestEmploymentHistory(employee.id);
+  const { data: salaryHistory } = useSalaryHistory(employee.id);
+  
+  // Find last increment from salary history
+  const lastIncrement = salaryHistory?.find(s => 
+    s.reason === 'Annual Increment' || s.reason === 'Promotion' || s.reason === 'Salary Adjustment'
+  );
   
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-800',
@@ -43,26 +56,71 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Avatar className="h-16 w-16">
-          <AvatarFallback className="text-lg">
-            {employee.first_name[0]}{employee.last_name[0]}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h3 className="text-xl font-semibold">
-            {employee.first_name} {employee.last_name}
-          </h3>
-          <p className="text-muted-foreground">{employee.job_title || 'No title'}</p>
-          <div className="flex gap-2 mt-1">
-            <Badge className={statusColors[employee.employment_status]} variant="secondary">
-              {employee.employment_status.replace('_', ' ')}
-            </Badge>
-            <Badge variant="outline">
-              {employee.employment_type.replace('_', ' ')}
-            </Badge>
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-16 w-16">
+            <AvatarFallback className="text-lg">
+              {employee.first_name[0]}{employee.last_name[0]}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h3 className="text-xl font-semibold">
+              {employee.first_name} {employee.last_name}
+            </h3>
+            <p className="text-muted-foreground">{employee.job_title || 'No title'}</p>
+            <div className="flex gap-2 mt-1">
+              <Badge className={statusColors[employee.employment_status]} variant="secondary">
+                {employee.employment_status.replace('_', ' ')}
+              </Badge>
+              <Badge variant="outline">
+                {employee.employment_type.replace('_', ' ')}
+              </Badge>
+            </div>
           </div>
         </div>
+        
+        {canEdit && (
+          <Button variant="outline" onClick={() => setPromotionDialogOpen(true)}>
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Promote
+          </Button>
+        )}
+      </div>
+      
+      {/* Quick Info Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <Calendar className="h-3 w-3" />
+            Hire Date
+          </div>
+          <p className="font-medium text-sm">{format(new Date(employee.hire_date), 'MMM d, yyyy')}</p>
+        </Card>
+        <Card className="p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <TrendingUp className="h-3 w-3" />
+            Last Promotion
+          </div>
+          <p className="font-medium text-sm">
+            {lastPromotion ? format(new Date(lastPromotion.effective_from), 'MMM d, yyyy') : 'N/A'}
+          </p>
+        </Card>
+        <Card className="p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <Clock className="h-3 w-3" />
+            Last Increment
+          </div>
+          <p className="font-medium text-sm">
+            {lastIncrement ? format(new Date(lastIncrement.effective_from), 'MMM d, yyyy') : 'N/A'}
+          </p>
+        </Card>
+        <Card className="p-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <Clock className="h-3 w-3" />
+            Current Shift
+          </div>
+          <p className="font-medium text-sm">{currentShift?.shift?.name || 'Not assigned'}</p>
+        </Card>
       </div>
 
       <Tabs defaultValue="details" className="w-full">
@@ -255,6 +313,12 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
           <ExperienceSection employeeId={employee.id} canEdit={canEdit} />
         </TabsContent>
       </Tabs>
+      
+      <PromotionDialog
+        open={promotionDialogOpen}
+        onOpenChange={setPromotionDialogOpen}
+        employee={employee}
+      />
     </div>
   );
 }

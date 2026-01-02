@@ -40,7 +40,7 @@ export default function MyTeamPage() {
 
   if (teamLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
@@ -52,7 +52,7 @@ export default function MyTeamPage() {
 
   if (!team || team.length === 0) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <h1 className="text-2xl font-bold mb-6">My Team</h1>
         <Card>
           <CardContent className="py-12 text-center">
@@ -68,10 +68,12 @@ export default function MyTeamPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">My Team</h1>
-        <p className="text-muted-foreground">Manage your direct reports</p>
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">My Team</h1>
+          <p className="text-muted-foreground">Manage your direct reports</p>
+        </div>
       </div>
 
       {/* Stats Grid */}

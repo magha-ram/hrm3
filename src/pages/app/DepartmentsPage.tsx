@@ -45,14 +45,14 @@ export default function DepartmentsPage() {
 
   return (
     <ModuleGuard moduleId="departments">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Departments</h1>
-          <p className="text-muted-foreground">
-            {isHROrAbove ? 'Organize your company structure' : 'View company departments'}
-          </p>
-        </div>
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Departments</h1>
+            <p className="text-muted-foreground">
+              {isHROrAbove ? 'Organize your company structure' : 'View company departments'}
+            </p>
+          </div>
         <WriteGate>
           <RoleGate role="hr_manager">
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

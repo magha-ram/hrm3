@@ -294,7 +294,7 @@ export default function MyInfoPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Skeleton className="h-64" />
@@ -306,7 +306,7 @@ export default function MyInfoPage() {
 
   if (!employee) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <div className="text-center py-12 text-muted-foreground">
           <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p>No employee record found.</p>
@@ -321,10 +321,12 @@ export default function MyInfoPage() {
   const bank = employee.bank_details as Record<string, string> | null;
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">My Information</h1>
-        <p className="text-muted-foreground">View and update your employee record</p>
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">My Information</h1>
+          <p className="text-muted-foreground">View and update your employee record</p>
+        </div>
       </div>
 
       {/* Header Card */}
