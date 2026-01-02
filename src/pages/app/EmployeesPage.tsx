@@ -190,7 +190,7 @@ export default function EmployeesPage() {
     <ModuleGuard moduleId="employees">
       <div className="p-4 md:p-6 space-y-6">
         <ReadOnlyPageBanner />
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{isHROrAbove ? 'Employees' : 'Company Directory'}</h1>
             <p className="text-muted-foreground">

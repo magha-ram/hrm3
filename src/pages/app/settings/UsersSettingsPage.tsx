@@ -195,15 +195,16 @@ export default function UsersSettingsPage() {
                   {paginatedActiveUsers.map((companyUser) => {
                     const isCurrentUser = companyUser.user_id === user?.user_id;
                     const isSuperAdmin = companyUser.role === 'super_admin';
+                    const displayName = companyUser.profile?.first_name || companyUser.profile?.last_name 
+                      ? `${companyUser.profile?.first_name || ''} ${companyUser.profile?.last_name || ''}`.trim()
+                      : companyUser.profile?.email || 'Pending User';
                     
                     return (
                       <TableRow key={companyUser.id}>
                         <TableCell>
                           <div>
                             <div className="font-medium">
-                              {companyUser.profile?.first_name || companyUser.profile?.last_name 
-                                ? `${companyUser.profile?.first_name || ''} ${companyUser.profile?.last_name || ''}`.trim()
-                                : 'Unknown User'}
+                              {displayName}
                               {isCurrentUser && <span className="text-muted-foreground ml-2">(You)</span>}
                             </div>
                             <div className="text-sm text-muted-foreground">
@@ -327,7 +328,7 @@ export default function UsersSettingsPage() {
                           <div className="font-medium">
                             {companyUser.profile?.first_name || companyUser.profile?.last_name 
                               ? `${companyUser.profile?.first_name || ''} ${companyUser.profile?.last_name || ''}`.trim()
-                              : 'Unknown User'}
+                              : companyUser.profile?.email || 'Pending User'}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {companyUser.profile?.email || 'No email'}

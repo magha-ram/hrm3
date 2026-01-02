@@ -6,11 +6,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Scan, Clock } from 'lucide-react';
+import { Loader2, Scan, Clock, DollarSign } from 'lucide-react';
 import { useCreateEmployee, useUpdateEmployee, type Employee } from '@/hooks/useEmployees';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useNextEmployeeNumber } from '@/hooks/useEmployeeNumber';
 import { useActiveShifts, useAssignShift, useDefaultShift, useEnsureDefaultShift } from '@/hooks/useShifts';
+import { useAddSalary } from '@/hooks/useSalaryHistory';
 import { DocumentScanDialog } from './DocumentScanDialog';
 import { EmergencyContactSection, type EmergencyContact } from './EmergencyContactSection';
 import { BankDetailsSection, type BankDetails } from './BankDetailsSection';
@@ -34,6 +35,9 @@ const employeeSchema = z.object({
   national_id: z.string().optional(),
   date_of_birth: z.string().optional(),
   gender: z.string().optional(),
+  // Salary fields for new employees
+  initial_salary: z.coerce.number().optional(),
+  salary_currency: z.string().optional(),
 });
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>;
@@ -52,6 +56,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
   const { data: defaultShift } = useDefaultShift();
   const ensureDefaultShift = useEnsureDefaultShift();
   const assignShift = useAssignShift();
+  const addSalary = useAddSalary();
   const { data: nextEmployeeNumber, isLoading: isLoadingNumber } = useNextEmployeeNumber();
   const [scanDialogOpen, setScanDialogOpen] = useState(false);
   const [emergencyContact, setEmergencyContact] = useState<EmergencyContact>(
@@ -62,7 +67,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
   );
   
   const isEditing = !!employee;
-  const isLoading = createEmployee.isPending || updateEmployee.isPending || assignShift.isPending;
+  const isLoading = createEmployee.isPending || updateEmployee.isPending || assignShift.isPending || addSalary.isPending;
 
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
@@ -83,6 +88,9 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
       national_id: employee?.national_id || '',
       date_of_birth: employee?.date_of_birth || '',
       gender: employee?.gender || '',
+      // Salary defaults
+      initial_salary: undefined,
+      salary_currency: 'USD',
     },
   });
 
@@ -119,8 +127,8 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
 
   const onSubmit = async (values: EmployeeFormValues) => {
     try {
-      // Extract shift_id separately - it's not stored on employee
-      const { shift_id, ...employeeValues } = values;
+      // Extract fields not stored directly on employee
+      const { shift_id, initial_salary, salary_currency, ...employeeValues } = values;
       
       if (isEditing && employee) {
         await updateEmployee.mutateAsync({ 
@@ -156,6 +164,17 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
             shift_id: shift_id,
             effective_from: employeeValues.hire_date,
             is_temporary: false,
+          });
+        }
+        
+        // Create initial salary record if provided
+        if (initial_salary && initial_salary > 0 && newEmployee?.id) {
+          await addSalary.mutateAsync({
+            employee_id: newEmployee.id,
+            base_salary: initial_salary,
+            salary_currency: salary_currency || 'USD',
+            effective_from: employeeValues.hire_date,
+            reason: 'Initial Salary',
           });
         }
       }
@@ -363,6 +382,64 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
                 </FormItem>
               )}
             />
+          )}
+
+          {/* Initial Salary Section - Only for new employees */}
+          {!isEditing && (
+            <div className="space-y-4 border-t pt-4 mt-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <DollarSign className="h-4 w-4" />
+                Initial Salary (Optional)
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="initial_salary"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Base Salary</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 50000"
+                          {...field}
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Monthly or annual base salary
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="salary_currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Currency</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || 'USD'}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="GBP">GBP</SelectItem>
+                          <SelectItem value="PKR">PKR</SelectItem>
+                          <SelectItem value="INR">INR</SelectItem>
+                          <SelectItem value="AED">AED</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
