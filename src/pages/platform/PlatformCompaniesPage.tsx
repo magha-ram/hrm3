@@ -13,16 +13,19 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Search, Building2, Users, ExternalLink, Plus, Link } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { CreateCompanyDialog, CreateLinkDialog } from '@/components/platform/CompanyOnboardingDialogs';
+import { CompanyLinksManager } from '@/components/platform/CompanyLinksManager';
 
 export default function PlatformCompaniesPage() {
   const [search, setSearch] = useState('');
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [showCreateLink, setShowCreateLink] = useState(false);
+  const [activeTab, setActiveTab] = useState('companies');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -127,7 +130,7 @@ export default function PlatformCompaniesPage() {
           <p className="text-muted-foreground">View and manage all companies on the platform</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowCreateLink(true)}>
+          <Button variant="outline" onClick={() => { setActiveTab('links'); setShowCreateLink(true); }}>
             <Link className="h-4 w-4 mr-2" />
             Generate Link
           </Button>
@@ -141,7 +144,20 @@ export default function PlatformCompaniesPage() {
       <CreateCompanyDialog open={showCreateCompany} onOpenChange={setShowCreateCompany} />
       <CreateLinkDialog open={showCreateLink} onOpenChange={setShowCreateLink} />
 
-      <Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="companies">
+            <Building2 className="h-4 w-4 mr-2" />
+            Companies
+          </TabsTrigger>
+          <TabsTrigger value="links">
+            <Link className="h-4 w-4 mr-2" />
+            Signup Links
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="companies" className="mt-6">
+          <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -244,6 +260,12 @@ export default function PlatformCompaniesPage() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="links" className="mt-6">
+          <CompanyLinksManager onCreateNew={() => setShowCreateLink(true)} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
