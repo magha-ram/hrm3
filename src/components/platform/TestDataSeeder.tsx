@@ -122,7 +122,7 @@ export function TestDataSeeder() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Created ${data.company.name} with ${data.stats.employees_created} employees`);
+      toast.success(`Created ${data.company_name} with ${data.employees_created} employees`);
       queryClient.invalidateQueries({ queryKey: ['test-companies'] });
       setSeedingCompany(null);
     },
