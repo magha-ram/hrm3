@@ -3,10 +3,9 @@ import { useLocation } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
-import { HR_MODULES, SETTINGS_NAV } from '@/config/modules';
-import { hasMinimumRole } from '@/types/auth';
+import { HR_MODULES } from '@/config/modules';
 import { NavLink } from '@/components/NavLink';
-import { Settings, ChevronDown, Lock, Crown, HelpCircle, Eye, X, Clock, Receipt, User, Users, Shield, Activity } from 'lucide-react';
+import { Settings, Lock, Crown, HelpCircle, Eye, X, Clock, Receipt, User, Users, Shield, Activity } from 'lucide-react';
 import { usePendingApprovalsCount } from '@/hooks/useMyTeam';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
@@ -22,11 +21,6 @@ import {
   SidebarHeader,
   useSidebar,
 } from '@/components/ui/sidebar';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -207,44 +201,25 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Company Settings (Admin Only) */}
+        {/* Company Settings (Admin Only) - Single button, sub-pages inside */}
         {isCompanyAdmin && (
           <SidebarGroup>
-            <Collapsible defaultOpen={isSettingsActive}>
-              <CollapsibleTrigger asChild>
-                <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent/50 rounded-md transition-colors">
-                  <div className="flex items-center gap-2 flex-1">
-                    <Settings className="h-4 w-4" />
-                    {!collapsed && (
-                      <>
-                        <span className="flex-1">Company Settings</span>
-                        <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
-                      </>
-                    )}
-                  </div>
-                </SidebarGroupLabel>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {SETTINGS_NAV.filter(item => hasMinimumRole(role, item.minRole)).map((item) => (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton asChild isActive={isActive(item.path)} tooltip={item.name}>
-                          <NavLink 
-                            to={item.path} 
-                            className="flex items-center gap-2"
-                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                          >
-                            <item.icon className="h-4 w-4" />
-                            {!collapsed && <span>{item.name}</span>}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </CollapsibleContent>
-            </Collapsible>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isSettingsActive} tooltip="Settings">
+                    <NavLink 
+                      to="/app/settings" 
+                      className="flex items-center gap-2"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <Settings className="h-4 w-4" />
+                      {!collapsed && <span>Settings</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
         )}
 
