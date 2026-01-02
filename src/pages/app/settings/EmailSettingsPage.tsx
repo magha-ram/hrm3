@@ -152,11 +152,25 @@ export default function EmailSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Email Configuration</h2>
+        <h2 className="text-xl font-semibold">Email Settings</h2>
         <p className="text-sm text-muted-foreground">
-          Configure how your company sends email notifications
+          Configure email providers and manage email templates
         </p>
       </div>
+
+      <Tabs defaultValue="configuration" className="w-full">
+        <TabsList>
+          <TabsTrigger value="configuration">
+            <Mail className="h-4 w-4 mr-2" />
+            Configuration
+          </TabsTrigger>
+          <TabsTrigger value="templates">
+            <FileText className="h-4 w-4 mr-2" />
+            Templates
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="configuration" className="space-y-6 mt-6">
 
       {/* Configuration Mode */}
       <Card>
@@ -504,6 +518,12 @@ export default function EmailSettingsPage() {
           </Collapsible>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="templates" className="mt-6">
+          <EmailTemplatesSection />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
