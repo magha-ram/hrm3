@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,8 +21,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Link2, Loader2, UserPlus } from 'lucide-react';
+import { Link2, Loader2, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface LinkEmployeeDialogProps {
   userId: string;
@@ -31,11 +33,15 @@ interface LinkEmployeeDialogProps {
 export function LinkEmployeeDialog({ userId, onSuccess }: LinkEmployeeDialogProps) {
   const [open, setOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
-  const { companyId } = useTenant();
+  const { companyId, role } = useTenant();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  const isHROrAdmin = role && ['super_admin', 'company_admin', 'hr_manager'].includes(role);
+  const isSelfLinking = userId === user?.user_id;
+
   // Fetch unlinked employees
-  const { data: unlinkedEmployees, isLoading } = useQuery({
+  const { data: unlinkedEmployees, isLoading, error } = useQuery({
     queryKey: ['unlinked-employees', companyId],
     queryFn: async () => {
       if (!companyId) return [];
@@ -54,15 +60,36 @@ export function LinkEmployeeDialog({ userId, onSuccess }: LinkEmployeeDialogProp
     enabled: !!companyId && open,
   });
 
+  // Check for matching employee by email (for self-linking)
+  const { data: matchingEmployee } = useQuery({
+    queryKey: ['matching-employee', companyId, user?.email],
+    queryFn: async () => {
+      if (!companyId || !user?.email) return null;
+
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, email, employee_number')
+        .eq('company_id', companyId)
+        .eq('email', user.email)
+        .is('user_id', null)
+        .eq('employment_status', 'active')
+        .maybeSingle();
+
+      if (error) return null;
+      return data;
+    },
+    enabled: !!companyId && isSelfLinking && open,
+  });
+
   const linkMutation = useMutation({
-    mutationFn: async () => {
-      if (!companyId || !selectedEmployeeId) {
-        throw new Error('Missing required data');
+    mutationFn: async (employeeId: string) => {
+      if (!companyId) {
+        throw new Error('No company context');
       }
 
       const { data, error } = await supabase.rpc('link_user_to_employee', {
         _user_id: userId,
-        _employee_id: selectedEmployeeId,
+        _employee_id: employeeId,
         _company_id: companyId,
       });
 
@@ -72,15 +99,27 @@ export function LinkEmployeeDialog({ userId, onSuccess }: LinkEmployeeDialogProp
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
       queryClient.invalidateQueries({ queryKey: ['unlinked-employees'] });
-      toast.success('Account linked to employee record');
+      queryClient.invalidateQueries({ queryKey: ['company-users'] });
+      toast.success('Account successfully linked to employee record');
       setOpen(false);
       setSelectedEmployeeId('');
       onSuccess?.();
     },
     onError: (error: Error) => {
+      console.error('Link error:', error);
       toast.error(error.message || 'Failed to link account');
     },
   });
+
+  const handleLink = () => {
+    const employeeToLink = selectedEmployeeId || (matchingEmployee?.id);
+    if (employeeToLink) {
+      linkMutation.mutate(employeeToLink);
+    }
+  };
+
+  // Auto-select matching employee for self-linking
+  const effectiveSelectedEmployee = selectedEmployeeId || matchingEmployee?.id;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -97,13 +136,43 @@ export function LinkEmployeeDialog({ userId, onSuccess }: LinkEmployeeDialogProp
             Link to Employee Record
           </DialogTitle>
           <DialogDescription>
-            Select an existing employee record to link to your user account. This will give you access to your salary information, payslips, and attendance data.
+            {isSelfLinking 
+              ? 'Link your user account to an existing employee record to access salary information, payslips, and attendance data.'
+              : 'Select an employee record to link to this user account.'
+            }
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Failed to load employees: {(error as Error).message}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Self-linking: Show matching employee first */}
+          {isSelfLinking && matchingEmployee && (
+            <Alert className="border-green-200 bg-green-50 dark:bg-green-950/30">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                Found a matching employee record with your email:
+                <div className="mt-2 font-medium">
+                  {matchingEmployee.first_name} {matchingEmployee.last_name} 
+                  <span className="ml-2 text-sm font-normal opacity-75">
+                    ({matchingEmployee.employee_number})
+                  </span>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-2">
-            <Label>Select Employee</Label>
+            <Label>
+              {matchingEmployee && isSelfLinking ? 'Or select a different employee' : 'Select Employee'}
+            </Label>
             {isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -127,12 +196,28 @@ export function LinkEmployeeDialog({ userId, onSuccess }: LinkEmployeeDialogProp
                   ))}
                 </SelectContent>
               </Select>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No unlinked employee records found. Contact your HR administrator.
-              </p>
-            )}
+            ) : !matchingEmployee ? (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  No unlinked employee records found. 
+                  {isSelfLinking 
+                    ? ' Please contact your HR administrator to create or link your employee record.'
+                    : ' All employees are already linked to user accounts.'
+                  }
+                </AlertDescription>
+              </Alert>
+            ) : null}
           </div>
+
+          {!isHROrAdmin && isSelfLinking && !matchingEmployee && unlinkedEmployees && unlinkedEmployees.length > 0 && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                If you're unsure which record is yours, please contact your HR administrator for assistance.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <DialogFooter>
@@ -140,11 +225,11 @@ export function LinkEmployeeDialog({ userId, onSuccess }: LinkEmployeeDialogProp
             Cancel
           </Button>
           <Button
-            onClick={() => linkMutation.mutate()}
-            disabled={!selectedEmployeeId || linkMutation.isPending}
+            onClick={handleLink}
+            disabled={!effectiveSelectedEmployee || linkMutation.isPending}
           >
             {linkMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Link Account
+            {matchingEmployee && !selectedEmployeeId ? 'Link Matching Record' : 'Link Account'}
           </Button>
         </DialogFooter>
       </DialogContent>

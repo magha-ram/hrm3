@@ -5,20 +5,29 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sun, Moon, Monitor, Check, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sun, Moon, Monitor, Check, Loader2, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useAppearance, type AccentColor } from '@/hooks/useAppearance';
+import { useCompanySetting, useUpdateCompanySetting } from '@/hooks/useCompanySettings';
 
-const ACCENT_COLORS: { name: string; value: AccentColor; color: string }[] = [
-  { name: 'Default', value: 'default', color: 'hsl(221.2 83.2% 53.3%)' },
-  { name: 'Rose', value: 'rose', color: 'hsl(346.8 77.2% 49.8%)' },
-  { name: 'Orange', value: 'orange', color: 'hsl(24.6 95% 53.1%)' },
-  { name: 'Green', value: 'green', color: 'hsl(142.1 76.2% 36.3%)' },
-  { name: 'Purple', value: 'purple', color: 'hsl(262.1 83.3% 57.8%)' },
-  { name: 'Cyan', value: 'cyan', color: 'hsl(192 91% 36%)' },
-  { name: 'Amber', value: 'amber', color: 'hsl(38 92% 50%)' },
-  { name: 'Indigo', value: 'indigo', color: 'hsl(239 84% 67%)' },
+const ACCENT_COLORS = [
+  { name: 'Default', value: 'default', light: 'hsl(222.2 47.4% 11.2%)', dark: 'hsl(210 40% 98%)' },
+  { name: 'Blue', value: 'blue', light: 'hsl(221.2 83.2% 53.3%)', dark: 'hsl(217.2 91.2% 59.8%)' },
+  { name: 'Rose', value: 'rose', light: 'hsl(346.8 77.2% 49.8%)', dark: 'hsl(346.8 77.2% 59.8%)' },
+  { name: 'Orange', value: 'orange', light: 'hsl(24.6 95% 53.1%)', dark: 'hsl(20.5 90.2% 58.2%)' },
+  { name: 'Green', value: 'green', light: 'hsl(142.1 76.2% 36.3%)', dark: 'hsl(142.1 70.6% 45.3%)' },
+  { name: 'Purple', value: 'purple', light: 'hsl(262.1 83.3% 57.8%)', dark: 'hsl(263.4 70% 50.4%)' },
+  { name: 'Cyan', value: 'cyan', light: 'hsl(192 91% 36%)', dark: 'hsl(186 94% 45%)' },
+  { name: 'Amber', value: 'amber', light: 'hsl(38 92% 50%)', dark: 'hsl(38 92% 55%)' },
+  { name: 'Indigo', value: 'indigo', light: 'hsl(239 84% 67%)', dark: 'hsl(239 84% 72%)' },
+];
+
+const SIDEBAR_COLORS = [
+  { name: 'Default', value: 'default', color: 'hsl(0 0% 98%)' },
+  { name: 'Dark', value: 'dark', color: 'hsl(222.2 84% 4.9%)' },
+  { name: 'Blue', value: 'blue', color: 'hsl(222.2 47.4% 11.2%)' },
+  { name: 'Slate', value: 'slate', color: 'hsl(215.4 16.3% 15%)' },
 ];
 
 const FONT_SIZES = [
@@ -34,40 +43,115 @@ const BORDER_RADIUS = [
   { value: 'large', label: 'Large' },
 ];
 
+interface AppearanceSettings {
+  accentColor: string;
+  sidebarColor: string;
+  compactMode: boolean;
+  fontSize: string;
+  borderRadius: string;
+  theme: string;
+}
+
+const DEFAULT_SETTINGS: AppearanceSettings = {
+  accentColor: 'default',
+  sidebarColor: 'default',
+  compactMode: false,
+  fontSize: 'default',
+  borderRadius: 'default',
+  theme: 'system',
+};
+
+const FONT_SIZE_MAP: Record<string, string> = {
+  small: '14px',
+  default: '16px',
+  large: '18px',
+};
+
+const BORDER_RADIUS_MAP: Record<string, string> = {
+  none: '0',
+  small: '0.25rem',
+  default: '0.5rem',
+  large: '0.75rem',
+};
+
+function applySettings(settings: AppearanceSettings, isDark: boolean) {
+  const root = document.documentElement;
+  
+  // Apply accent color
+  const accentConfig = ACCENT_COLORS.find(c => c.value === settings.accentColor) || ACCENT_COLORS[0];
+  const colorHsl = isDark ? accentConfig.dark : accentConfig.light;
+  // Extract HSL values from hsl() string
+  const hslMatch = colorHsl.match(/hsl\(([^)]+)\)/);
+  if (hslMatch) {
+    root.style.setProperty('--primary', hslMatch[1]);
+    root.style.setProperty('--ring', hslMatch[1]);
+    root.style.setProperty('--sidebar-primary', hslMatch[1]);
+  }
+  
+  // Apply compact mode
+  if (settings.compactMode) {
+    root.classList.add('compact');
+  } else {
+    root.classList.remove('compact');
+  }
+  
+  // Apply font size
+  root.style.setProperty('--base-font-size', FONT_SIZE_MAP[settings.fontSize] || '16px');
+  
+  // Apply border radius
+  root.style.setProperty('--radius', BORDER_RADIUS_MAP[settings.borderRadius] || '0.5rem');
+}
+
 export function AppearanceSettingsPage() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const { 
-    settings, 
-    isLoading, 
-    updateAccentColor, 
-    updateCompactMode,
-    updateFontSize,
-    updateBorderRadius 
-  } = useAppearance();
+  const { data: savedSettings, isLoading } = useCompanySetting<AppearanceSettings>('appearance');
+  const updateSetting = useUpdateCompanySetting();
+  const [settings, setSettings] = useState<AppearanceSettings>(DEFAULT_SETTINGS);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleAccentChange = (value: AccentColor) => {
-    updateAccentColor(value);
-    toast.success('Accent color updated');
+  useEffect(() => {
+    if (savedSettings) {
+      const merged = { ...DEFAULT_SETTINGS, ...savedSettings };
+      setSettings(merged);
+      if (merged.theme && merged.theme !== theme) {
+        setTheme(merged.theme);
+      }
+      applySettings(merged, resolvedTheme === 'dark');
+    }
+  }, [savedSettings, resolvedTheme]);
+
+  // Re-apply when theme changes
+  useEffect(() => {
+    if (mounted) {
+      applySettings(settings, resolvedTheme === 'dark');
+    }
+  }, [resolvedTheme, mounted]);
+
+  const handleChange = <K extends keyof AppearanceSettings>(key: K, value: AppearanceSettings[K]) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    setHasChanges(true);
+    
+    // Apply immediately for preview
+    if (key === 'theme') {
+      setTheme(value as string);
+    }
+    applySettings(newSettings, resolvedTheme === 'dark');
   };
 
-  const handleCompactModeChange = (checked: boolean) => {
-    updateCompactMode(checked);
-    toast.success(`Compact mode ${checked ? 'enabled' : 'disabled'}`);
-  };
-
-  const handleFontSizeChange = (value: string) => {
-    updateFontSize(value as 'small' | 'default' | 'large');
-    toast.success('Font size updated');
-  };
-
-  const handleBorderRadiusChange = (value: string) => {
-    updateBorderRadius(value as 'none' | 'small' | 'default' | 'large');
-    toast.success('Border radius updated');
+  const handleSave = async () => {
+    await updateSetting.mutateAsync({
+      key: 'appearance',
+      value: settings as unknown as Record<string, unknown>,
+      description: 'Company appearance preferences',
+    });
+    setHasChanges(false);
+    toast.success('Appearance settings saved');
   };
 
   if (!mounted || isLoading) {
@@ -82,7 +166,7 @@ export function AppearanceSettingsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Appearance</h2>
-        <p className="text-muted-foreground">Customize the look and feel of your workspace</p>
+        <p className="text-muted-foreground">Customize the look and feel of your company workspace</p>
       </div>
 
       {/* Theme Selection */}
@@ -94,7 +178,7 @@ export function AppearanceSettingsPage() {
         <CardContent>
           <RadioGroup
             value={theme}
-            onValueChange={setTheme}
+            onValueChange={(value) => handleChange('theme', value)}
             className="grid grid-cols-3 gap-4"
           >
             <Label
@@ -137,7 +221,10 @@ export function AppearanceSettingsPage() {
       {/* Accent Color */}
       <Card>
         <CardHeader>
-          <CardTitle>Accent Color</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Accent Color
+          </CardTitle>
           <CardDescription>Choose your primary accent color for buttons, links, and highlights</CardDescription>
         </CardHeader>
         <CardContent>
@@ -145,12 +232,12 @@ export function AppearanceSettingsPage() {
             {ACCENT_COLORS.map((color) => (
               <button
                 key={color.value}
-                onClick={() => handleAccentChange(color.value)}
+                onClick={() => handleChange('accentColor', color.value)}
                 className={cn(
                   "h-10 w-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background",
                   settings.accentColor === color.value && "ring-2 ring-offset-2 ring-offset-background ring-foreground"
                 )}
-                style={{ backgroundColor: color.color }}
+                style={{ backgroundColor: resolvedTheme === 'dark' ? color.dark : color.light }}
                 title={color.name}
               >
                 {settings.accentColor === color.value && (
@@ -161,6 +248,37 @@ export function AppearanceSettingsPage() {
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
             Selected: <span className="font-medium capitalize">{settings.accentColor}</span>
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Sidebar Color */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sidebar Style</CardTitle>
+          <CardDescription>Choose sidebar background color</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            {SIDEBAR_COLORS.map((color) => (
+              <button
+                key={color.value}
+                onClick={() => handleChange('sidebarColor', color.value)}
+                className={cn(
+                  "h-10 w-10 rounded-lg flex items-center justify-center transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background border",
+                  settings.sidebarColor === color.value && "ring-2 ring-offset-2 ring-offset-background ring-foreground"
+                )}
+                style={{ backgroundColor: color.color }}
+                title={color.name}
+              >
+                {settings.sidebarColor === color.value && (
+                  <Check className={cn("h-5 w-5 drop-shadow-md", color.value !== 'default' ? 'text-white' : 'text-foreground')} />
+                )}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Selected: <span className="font-medium capitalize">{settings.sidebarColor}</span>
           </p>
         </CardContent>
       </Card>
@@ -182,14 +300,14 @@ export function AppearanceSettingsPage() {
             <Switch
               id="compact-mode"
               checked={settings.compactMode}
-              onCheckedChange={handleCompactModeChange}
+              onCheckedChange={(checked) => handleChange('compactMode', checked)}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Font Size</Label>
-              <Select value={settings.fontSize} onValueChange={handleFontSizeChange}>
+              <Select value={settings.fontSize} onValueChange={(v) => handleChange('fontSize', v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -205,7 +323,7 @@ export function AppearanceSettingsPage() {
 
             <div className="space-y-2">
               <Label>Border Radius</Label>
-              <Select value={settings.borderRadius} onValueChange={handleBorderRadiusChange}>
+              <Select value={settings.borderRadius} onValueChange={(v) => handleChange('borderRadius', v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -221,6 +339,14 @@ export function AppearanceSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={updateSetting.isPending || !hasChanges}>
+          {updateSetting.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Save Changes
+        </Button>
+      </div>
     </div>
   );
 }
