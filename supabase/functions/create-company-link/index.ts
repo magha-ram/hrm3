@@ -67,11 +67,11 @@ serve(async (req: Request): Promise<Response> => {
     const body: CreateLinkRequest = await req.json();
 
     // Get plan configuration if plan_id is provided
-    let planConfig: { trial_enabled: boolean | null; trial_default_days: number | null } | null = null;
+    let planConfig: { name: string; trial_enabled: boolean | null; trial_default_days: number | null } | null = null;
     if (body.plan_id) {
       const { data: plan } = await supabaseAdmin
         .from("plans")
-        .select("trial_enabled, trial_default_days")
+        .select("name, trial_enabled, trial_default_days")
         .eq("id", body.plan_id)
         .single();
       planConfig = plan;
@@ -143,22 +143,58 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
+    // Email status tracking
+    let emailStatus: 'sent' | 'skipped' | 'failed' = 'skipped';
+    let emailError: string | undefined;
+
     // Send email if email is specified
     if (body.email) {
       try {
-        await supabaseAdmin.functions.invoke('send-email', {
+        const planName = planConfig?.name || '';
+        const senderName = user.email || 'Platform Admin';
+        const expiresAtFormatted = expiresAt.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+
+        console.log(`Sending creation link email to ${body.email}`);
+
+        const { data: emailResult, error: emailInvokeError } = await supabaseAdmin.functions.invoke('send-email', {
+          headers: {
+            Authorization: authHeader, // Forward the auth header
+          },
           body: {
-            to: body.email,
             template: 'company_creation_link',
+            to: { email: body.email },
             data: {
-              signup_url: signupUrl,
-              expires_at: expiresAt.toLocaleDateString(),
-              plan_name: 'Your Plan', // Could fetch plan name if needed
+              recipientEmail: body.email,
+              signupUrl,
+              expiresAt: expiresAtFormatted,
+              planName,
+              trialDays: enableTrial ? trialDays : 0,
+              senderName,
             },
           },
         });
-      } catch (emailError) {
-        console.error("Failed to send link email:", emailError);
+
+        if (emailInvokeError) {
+          console.error("Failed to invoke send-email:", emailInvokeError);
+          emailStatus = 'failed';
+          emailError = emailInvokeError.message;
+        } else if (emailResult?.error) {
+          console.error("Email send failed:", emailResult.error, emailResult.message);
+          emailStatus = 'failed';
+          emailError = emailResult.message || emailResult.error;
+        } else {
+          emailStatus = 'sent';
+          console.log("Link email sent successfully:", emailResult);
+        }
+      } catch (err) {
+        console.error("Failed to send link email:", err);
+        emailStatus = 'failed';
+        emailError = err instanceof Error ? err.message : 'Unknown error';
       }
     }
 
@@ -174,6 +210,8 @@ serve(async (req: Request): Promise<Response> => {
           enable_trial: enableTrial,
           trial_days: enableTrial ? trialDays : null,
         },
+        email_status: emailStatus,
+        email_error: emailError,
       }),
       { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
