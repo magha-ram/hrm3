@@ -24,7 +24,7 @@ import Setup from "./pages/Setup";
 import { RootRedirect } from "@/components/RootRedirect";
 
 // App layout
-import { AppLayout } from "@/components/layout/AppLayout";
+import { AppLayout, AuthLayout } from "@/components/layout";
 import { PlatformLayout } from "@/components/platform/PlatformLayout";
 
 // Lazy load app pages
@@ -116,12 +116,12 @@ const App = () => (
                 <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<RootRedirect />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/setup" element={<Setup />} />
+                  <Route path="/auth" element={<AuthLayout><Auth /></AuthLayout>} />
+                  <Route path="/setup" element={<AuthLayout><Setup /></AuthLayout>} />
                   <Route path="/careers" element={<CareersPage />} />
                   <Route path="/careers/:slug" element={<JobDetailPage />} />
                   <Route path="/screening/:token" element={<CandidateScreeningPage />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/onboarding" element={<AuthLayout><Onboarding /></AuthLayout>} />
                   <Route path="/unauthorized" element={<Unauthorized />} />
 
                   {/* Platform admin routes */}

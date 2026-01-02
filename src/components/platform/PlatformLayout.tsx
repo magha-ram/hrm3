@@ -3,9 +3,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { PlatformSidebar } from './PlatformSidebar';
 import { PlatformHeader } from './PlatformHeader';
+import { AppFooter } from '@/components/layout/AppFooter';
+import { usePlatformFooter } from '@/hooks/usePlatformFooter';
 
 export function PlatformLayout() {
   const { isLoading, isAuthenticated, isPlatformAdmin } = useAuth();
+  const { showFooter } = usePlatformFooter();
 
   if (isLoading) {
     return (
@@ -31,6 +34,7 @@ export function PlatformLayout() {
         <main className="flex-1 overflow-auto p-6">
           <Outlet />
         </main>
+        <AppFooter showFooter={showFooter} />
       </div>
     </div>
   );
