@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCompanySetting, useUpdateCompanySetting } from '@/hooks/useCompanySettings';
 
 const LANGUAGES = [
   { value: 'en', label: 'English' },
@@ -21,6 +22,8 @@ const LANGUAGES = [
   { value: 'ar', label: 'العربية' },
   { value: 'zh', label: '中文' },
   { value: 'ja', label: '日本語' },
+  { value: 'hi', label: 'हिन्दी' },
+  { value: 'ur', label: 'اردو' },
 ];
 
 const DATE_FORMATS = [
@@ -68,6 +71,23 @@ const CURRENCY_FORMATS = [
   { value: 'TRY', label: 'Turkish Lira (₺)' },
 ];
 
+const CURRENCY_POSITIONS = [
+  { value: 'before', label: 'Before amount ($100)' },
+  { value: 'after', label: 'After amount (100$)' },
+];
+
+const DECIMAL_PRECISION = [
+  { value: '0', label: 'No decimals (100)' },
+  { value: '2', label: 'Two decimals (100.00)' },
+];
+
+const THOUSAND_SEPARATORS = [
+  { value: 'comma', label: 'Comma (1,000,000)' },
+  { value: 'period', label: 'Period (1.000.000)' },
+  { value: 'space', label: 'Space (1 000 000)' },
+  { value: 'none', label: 'None (1000000)' },
+];
+
 const TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
   { value: 'America/New_York', label: 'Eastern Time (ET)' },
@@ -91,55 +111,103 @@ const TIMEZONES = [
   { value: 'Africa/Johannesburg', label: 'South Africa (SAST)' },
 ];
 
+const PAYROLL_CYCLES = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'bi-weekly', label: 'Bi-Weekly' },
+  { value: 'weekly', label: 'Weekly' },
+];
+
+const WORKWEEK_OPTIONS = [
+  { value: '5', label: '5-day workweek (Mon-Fri)' },
+  { value: '6', label: '6-day workweek (Mon-Sat)' },
+  { value: '5.5', label: '5.5-day workweek (Mon-Sat half)' },
+];
+
+const NUMBER_FORMATS = [
+  { value: 'en-US', label: 'English (US) - 1,234.56' },
+  { value: 'en-GB', label: 'English (UK) - 1,234.56' },
+  { value: 'de-DE', label: 'German - 1.234,56' },
+  { value: 'fr-FR', label: 'French - 1 234,56' },
+  { value: 'es-ES', label: 'Spanish - 1.234,56' },
+  { value: 'hi-IN', label: 'Indian - 1,23,456.78' },
+];
+
+interface LocalizationSettings {
+  language: string;
+  dateFormat: string;
+  timeFormat: string;
+  firstDayOfWeek: string;
+  currency: string;
+  currencyPosition: string;
+  decimalPrecision: string;
+  thousandSeparator: string;
+  timezone: string;
+  payrollCycle: string;
+  workweek: string;
+  numberFormat: string;
+}
+
+const DEFAULT_SETTINGS: LocalizationSettings = {
+  language: 'en',
+  dateFormat: 'MM/DD/YYYY',
+  timeFormat: '12h',
+  firstDayOfWeek: 'sunday',
+  currency: 'USD',
+  currencyPosition: 'before',
+  decimalPrecision: '2',
+  thousandSeparator: 'comma',
+  timezone: 'UTC',
+  payrollCycle: 'monthly',
+  workweek: '5',
+  numberFormat: 'en-US',
+};
+
 export function LocalizationSettingsPage() {
-  const [isSaving, setIsSaving] = useState(false);
-  const [settings, setSettings] = useState({
-    language: 'en',
-    dateFormat: 'MM/DD/YYYY',
-    timeFormat: '12h',
-    firstDayOfWeek: 'sunday',
-    currency: 'USD',
-    timezone: 'UTC',
-  });
+  const { data: savedSettings, isLoading } = useCompanySetting<LocalizationSettings>('localization');
+  const updateSetting = useUpdateCompanySetting();
+  const [settings, setSettings] = useState<LocalizationSettings>(DEFAULT_SETTINGS);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    // Load saved preferences
-    const savedSettings = localStorage.getItem('localization-settings');
     if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+      setSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
     }
-  }, []);
+  }, [savedSettings]);
 
-  const handleChange = (key: keyof typeof settings, value: string) => {
+  const handleChange = (key: keyof LocalizationSettings, value: string) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+    setHasChanges(true);
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      // Save to localStorage (in a real app, this would be saved to the database)
-      localStorage.setItem('localization-settings', JSON.stringify(settings));
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-      toast.success('Localization settings saved');
-    } catch (error) {
-      toast.error('Failed to save settings');
-    } finally {
-      setIsSaving(false);
-    }
+    await updateSetting.mutateAsync({
+      key: 'localization',
+      value: settings as unknown as Record<string, unknown>,
+      description: 'Company localization preferences',
+    });
+    setHasChanges(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Localization</h2>
-        <p className="text-muted-foreground">Configure language, date, time, and regional settings</p>
+        <p className="text-muted-foreground">Configure language, date, time, and regional settings for your company</p>
       </div>
 
       {/* Language */}
       <Card>
         <CardHeader>
           <CardTitle>Language</CardTitle>
-          <CardDescription>Select your preferred language</CardDescription>
+          <CardDescription>Select your preferred language for the interface</CardDescription>
         </CardHeader>
         <CardContent>
           <Select value={settings.language} onValueChange={(v) => handleChange('language', v)}>
@@ -200,7 +268,7 @@ export function LocalizationSettingsPage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>First Day of Week</Label>
+              <Label>Week Starts On</Label>
               <Select value={settings.firstDayOfWeek} onValueChange={(v) => handleChange('firstDayOfWeek', v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select first day" />
@@ -234,32 +302,146 @@ export function LocalizationSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Currency */}
+      {/* Currency & Numbers */}
       <Card>
         <CardHeader>
-          <CardTitle>Currency</CardTitle>
-          <CardDescription>Set your default currency for monetary values</CardDescription>
+          <CardTitle>Currency & Numbers</CardTitle>
+          <CardDescription>Set currency and number formatting preferences</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Select value={settings.currency} onValueChange={(v) => handleChange('currency', v)}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Select currency" />
-            </SelectTrigger>
-            <SelectContent>
-              {CURRENCY_FORMATS.map(currency => (
-                <SelectItem key={currency.value} value={currency.value}>
-                  {currency.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select value={settings.currency} onValueChange={(v) => handleChange('currency', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_FORMATS.map(currency => (
+                    <SelectItem key={currency.value} value={currency.value}>
+                      {currency.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Symbol Position</Label>
+              <Select value={settings.currencyPosition} onValueChange={(v) => handleChange('currencyPosition', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select position" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_POSITIONS.map(pos => (
+                    <SelectItem key={pos.value} value={pos.value}>
+                      {pos.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Decimal Precision</Label>
+              <Select value={settings.decimalPrecision} onValueChange={(v) => handleChange('decimalPrecision', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select precision" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DECIMAL_PRECISION.map(prec => (
+                    <SelectItem key={prec.value} value={prec.value}>
+                      {prec.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Thousand Separator</Label>
+              <Select value={settings.thousandSeparator} onValueChange={(v) => handleChange('thousandSeparator', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select separator" />
+                </SelectTrigger>
+                <SelectContent>
+                  {THOUSAND_SEPARATORS.map(sep => (
+                    <SelectItem key={sep.value} value={sep.value}>
+                      {sep.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Number Format</Label>
+            <Select value={settings.numberFormat} onValueChange={(v) => handleChange('numberFormat', v)}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Select number format" />
+              </SelectTrigger>
+              <SelectContent>
+                {NUMBER_FORMATS.map(fmt => (
+                  <SelectItem key={fmt.value} value={fmt.value}>
+                    {fmt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payroll Localization */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Payroll Settings</CardTitle>
+          <CardDescription>Configure default payroll cycle and workweek</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Default Payroll Cycle</Label>
+              <Select value={settings.payrollCycle} onValueChange={(v) => handleChange('payrollCycle', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select cycle" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYROLL_CYCLES.map(cycle => (
+                    <SelectItem key={cycle.value} value={cycle.value}>
+                      {cycle.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Default Workweek</Label>
+              <Select value={settings.workweek} onValueChange={(v) => handleChange('workweek', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select workweek" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WORKWEEK_OPTIONS.map(week => (
+                    <SelectItem key={week.value} value={week.value}>
+                      {week.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+        <Button onClick={handleSave} disabled={updateSetting.isPending || !hasChanges}>
+          {updateSetting.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Save Changes
         </Button>
       </div>

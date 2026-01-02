@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useCompanyUsers, CompanyUser } from '@/hooks/useCompanyUsers';
 import { useUserManagement } from '@/hooks/useUserManagement';
+import { useEmployees } from '@/hooks/useEmployees';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, UserPlus, MoreHorizontal, Shield, UserMinus, RotateCcw, Upload, Search } from 'lucide-react';
 import { ChangeRoleDialog } from '@/components/users/ChangeRoleDialog';
@@ -45,6 +46,7 @@ export default function UsersSettingsPage() {
   const { isFrozen, companyId, isLoading: tenantLoading } = useTenant();
   const { user } = useAuth();
   const { data: users, isLoading, error, refetch } = useCompanyUsers();
+  const { data: employees } = useEmployees();
   const { canManageUsers, reactivateUser, bulkReactivateUsers } = useUserManagement();
 
   const [changeRoleUser, setChangeRoleUser] = useState<CompanyUser | null>(null);
@@ -55,6 +57,20 @@ export default function UsersSettingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const USERS_PAGE_SIZE = 10;
 
+  // Create a map of user_id to employee data
+  const employeeMap = useMemo(() => {
+    const map: Record<string, { employee_number: string; department_name: string | null }> = {};
+    employees?.forEach(emp => {
+      if (emp.user_id) {
+        map[emp.user_id] = {
+          employee_number: emp.employee_number,
+          department_name: (emp as any).department?.name || null,
+        };
+      }
+    });
+    return map;
+  }, [employees]);
+
   // Filter users based on search query
   const filterUsers = (userList: CompanyUser[]) => {
     if (!searchQuery.trim()) return userList;
@@ -64,9 +80,13 @@ export default function UsersSettingsPage() {
       const lastName = u.profile?.last_name?.toLowerCase() || '';
       const email = u.profile?.email?.toLowerCase() || '';
       const role = u.role?.toLowerCase() || '';
+      const empData = employeeMap[u.user_id];
+      const empNumber = empData?.employee_number?.toLowerCase() || '';
+      const deptName = empData?.department_name?.toLowerCase() || '';
       return firstName.includes(query) || lastName.includes(query) || 
              email.includes(query) || role.includes(query) ||
-             `${firstName} ${lastName}`.includes(query);
+             `${firstName} ${lastName}`.includes(query) ||
+             empNumber.includes(query) || deptName.includes(query);
     });
   };
 
@@ -219,6 +239,8 @@ export default function UsersSettingsPage() {
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     <TableHead>User</TableHead>
+                    <TableHead>Employee ID</TableHead>
+                    <TableHead>Department</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Joined</TableHead>
@@ -232,6 +254,7 @@ export default function UsersSettingsPage() {
                     const displayName = companyUser.profile?.first_name || companyUser.profile?.last_name 
                       ? `${companyUser.profile?.first_name || ''} ${companyUser.profile?.last_name || ''}`.trim()
                       : companyUser.profile?.email || 'Pending User';
+                    const empData = employeeMap[companyUser.user_id];
                     
                     return (
                       <TableRow key={companyUser.id}>
@@ -245,6 +268,20 @@ export default function UsersSettingsPage() {
                               {companyUser.profile?.email || 'No email'}
                             </div>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {empData?.employee_number ? (
+                            <span className="font-mono text-sm">{empData.employee_number}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {empData?.department_name ? (
+                            <span className="text-sm">{empData.department_name}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={getRoleBadgeVariant(companyUser.role)}>
@@ -342,52 +379,63 @@ export default function UsersSettingsPage() {
                       />
                     </TableHead>
                     <TableHead>User</TableHead>
+                    <TableHead>Employee ID</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {inactiveUsers.map((companyUser) => (
-                    <TableRow key={companyUser.id} className="opacity-60">
-                      <TableCell>
-                        <Checkbox 
-                          checked={selectedInactiveUsers.has(companyUser.id)}
-                          onCheckedChange={() => toggleUserSelection(companyUser.id)}
-                          disabled={isFrozen}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {companyUser.profile?.first_name || companyUser.profile?.last_name 
-                              ? `${companyUser.profile?.first_name || ''} ${companyUser.profile?.last_name || ''}`.trim()
-                              : companyUser.profile?.email || 'Pending User'}
+                  {inactiveUsers.map((companyUser) => {
+                    const empData = employeeMap[companyUser.user_id];
+                    return (
+                      <TableRow key={companyUser.id} className="opacity-60">
+                        <TableCell>
+                          <Checkbox 
+                            checked={selectedInactiveUsers.has(companyUser.id)}
+                            onCheckedChange={() => toggleUserSelection(companyUser.id)}
+                            disabled={isFrozen}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {companyUser.profile?.first_name || companyUser.profile?.last_name 
+                                ? `${companyUser.profile?.first_name || ''} ${companyUser.profile?.last_name || ''}`.trim()
+                                : companyUser.profile?.email || 'Pending User'}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {companyUser.profile?.email || 'No email'}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {companyUser.profile?.email || 'No email'}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{formatRole(companyUser.role)}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">Inactive</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleReactivate(companyUser)}
-                          disabled={isFrozen || reactivateUser.isPending}
-                        >
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          Reactivate
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>
+                          {empData?.employee_number ? (
+                            <span className="font-mono text-sm">{empData.employee_number}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{formatRole(companyUser.role)}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">Inactive</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleReactivate(companyUser)}
+                            disabled={isFrozen || reactivateUser.isPending}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Reactivate
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
