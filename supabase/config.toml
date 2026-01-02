@@ -96,5 +96,8 @@ verify_jwt = false
 [functions.create-company-admin]
 verify_jwt = false
 
+[functions.create-company-link]
+verify_jwt = false
+
 [functions.use-company-link]
 verify_jwt = false
