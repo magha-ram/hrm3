@@ -5,7 +5,7 @@ import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES } from '@/config/modules';
 import { NavLink } from '@/components/NavLink';
-import { Settings, Lock, Crown, HelpCircle, Eye, X, Clock, Receipt, User, Users, Shield, Activity } from 'lucide-react';
+import { Settings, Lock, HelpCircle, Eye, X, Clock, User, Users, Activity } from 'lucide-react';
 import { usePendingApprovalsCount } from '@/hooks/useMyTeam';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
@@ -207,42 +207,27 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive('/app/my-info')} tooltip="My Info">
+                <SidebarMenuButton asChild isActive={isActive('/app/profile')} tooltip="My Profile">
                   <NavLink 
-                    to="/app/my-info" 
+                    to="/app/profile" 
                     className="flex items-center gap-2"
                     activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
                   >
                     <User className="h-4 w-4" />
-                    {!collapsed && <span>My Info</span>}
+                    {!collapsed && <span>My Profile</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive('/app/payslips')} tooltip="My Payslips">
-                  <NavLink 
-                    to="/app/payslips" 
-                    className="flex items-center gap-2"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Receipt className="h-4 w-4" />
-                    {!collapsed && <span>My Payslips</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive('/app/my-security')} tooltip="Security">
-                  <NavLink 
-                    to="/app/my-security" 
-                    className="flex items-center gap-2"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <Shield className="h-4 w-4" />
-                    {!collapsed && <span>Security</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {isManager && (
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Manager Section - Only for managers */}
+        {isManager && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Manager</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive('/app/my-team')} tooltip="My Team">
                     <NavLink 
@@ -264,10 +249,10 @@ export function AppSidebar() {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Utility Links - Bottom section */}
         <SidebarGroup className="mt-auto">
