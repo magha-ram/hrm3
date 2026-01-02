@@ -4538,6 +4538,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      reset_role_permissions_to_defaults: {
+        Args: { _company_id: string }
+        Returns: undefined
+      }
       set_primary_company: { Args: { _company_id: string }; Returns: boolean }
       set_role_permission: {
         Args: {

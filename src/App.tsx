@@ -179,6 +179,8 @@ const App = () => (
                       <Route path="notifications" element={<NotificationSettingsPage />} />
                       <Route path="appearance" element={<AppearanceSettingsPage />} />
                       <Route path="localization" element={<LocalizationSettingsPage />} />
+                      <Route path="integrations" element={<IntegrationsPage />} />
+                      <Route path="compliance" element={<CompliancePage />} />
                     </Route>
                     <Route path="email-logs" element={<Navigate to="/app/logs" replace />} />
                     <Route path="help" element={<HelpPage />} />

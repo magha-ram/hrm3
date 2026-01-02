@@ -322,3 +322,32 @@ export function useInitializePermissions() {
     },
   });
 }
+
+// =====================================================
+// RESET ROLE PERMISSIONS TO DEFAULTS
+// =====================================================
+export function useResetRolePermissions() {
+  const { companyId } = useTenant();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!companyId) throw new Error('No company selected');
+      
+      const { error } = await supabase.rpc('reset_role_permissions_to_defaults', {
+        _company_id: companyId,
+      });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['role-permissions', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['my-permissions', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['user-permissions', companyId] });
+      toast.success('Role permissions reset to defaults');
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+}

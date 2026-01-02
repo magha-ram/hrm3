@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import type { Employee } from '@/hooks/useEmployees';
 import { EducationSection } from './EducationSection';
 import { ExperienceSection } from './ExperienceSection';
+import { SalarySection } from './SalarySection';
 import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
 import { useEmployeeLeaveBalances } from '@/hooks/useLeaveBalances';
 import { useCurrentEmployeeShift, useEmployeeShiftAssignments } from '@/hooks/useShifts';
@@ -67,6 +68,7 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
       <Tabs defaultValue="details" className="w-full">
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="salary">Salary</TabsTrigger>
           <TabsTrigger value="shift">Shift</TabsTrigger>
           <TabsTrigger value="leave">Leave</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
@@ -150,6 +152,10 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
               disabled
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="salary" className="mt-4">
+          <SalarySection employeeId={employee.id} canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="shift" className="mt-4 space-y-4">

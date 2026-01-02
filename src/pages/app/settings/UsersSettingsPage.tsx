@@ -180,83 +180,85 @@ export default function UsersSettingsPage() {
         </CardHeader>
         <CardContent>
           {activeUsers.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  {canManageUsers && <TableHead className="w-[70px]"></TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedActiveUsers.map((companyUser) => {
-                  const isCurrentUser = companyUser.user_id === user?.user_id;
-                  const isSuperAdmin = companyUser.role === 'super_admin';
-                  
-                  return (
-                    <TableRow key={companyUser.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {companyUser.profile?.first_name || companyUser.profile?.last_name 
-                              ? `${companyUser.profile?.first_name || ''} ${companyUser.profile?.last_name || ''}`.trim()
-                              : 'Unknown User'}
-                            {isCurrentUser && <span className="text-muted-foreground ml-2">(You)</span>}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {companyUser.profile?.email || 'No email'}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleBadgeVariant(companyUser.role)}>
-                          {formatRole(companyUser.role)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="default">Active</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {companyUser.joined_at 
-                          ? new Date(companyUser.joined_at).toLocaleDateString()
-                          : 'Pending'}
-                      </TableCell>
-                      {canManageUsers && (
+            <div className="max-h-[400px] overflow-auto border rounded-md">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    {canManageUsers && <TableHead className="w-[70px]"></TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedActiveUsers.map((companyUser) => {
+                    const isCurrentUser = companyUser.user_id === user?.user_id;
+                    const isSuperAdmin = companyUser.role === 'super_admin';
+                    
+                    return (
+                      <TableRow key={companyUser.id}>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                disabled={isFrozen || isCurrentUser || isSuperAdmin}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setChangeRoleUser(companyUser)}>
-                                <Shield className="h-4 w-4 mr-2" />
-                                Change Role
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => setRemoveUser(companyUser)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <UserMinus className="h-4 w-4 mr-2" />
-                                Remove from Company
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div>
+                            <div className="font-medium">
+                              {companyUser.profile?.first_name || companyUser.profile?.last_name 
+                                ? `${companyUser.profile?.first_name || ''} ${companyUser.profile?.last_name || ''}`.trim()
+                                : 'Unknown User'}
+                              {isCurrentUser && <span className="text-muted-foreground ml-2">(You)</span>}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {companyUser.profile?.email || 'No email'}
+                            </div>
+                          </div>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        <TableCell>
+                          <Badge variant={getRoleBadgeVariant(companyUser.role)}>
+                            {formatRole(companyUser.role)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">Active</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {companyUser.joined_at 
+                            ? new Date(companyUser.joined_at).toLocaleDateString()
+                            : 'Pending'}
+                        </TableCell>
+                        {canManageUsers && (
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  disabled={isFrozen || isCurrentUser || isSuperAdmin}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setChangeRoleUser(companyUser)}>
+                                  <Shield className="h-4 w-4 mr-2" />
+                                  Change Role
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => setRemoveUser(companyUser)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <UserMinus className="h-4 w-4 mr-2" />
+                                  Remove from Company
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="text-center py-12">
               <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
