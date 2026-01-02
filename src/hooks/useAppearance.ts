@@ -93,6 +93,8 @@ function applyBorderRadius(radius: 'none' | 'small' | 'default' | 'large') {
   document.documentElement.style.setProperty('--radius', BORDER_RADIUS_MAP[radius]);
 }
 
+export type AccentColor = keyof typeof ACCENT_COLORS;
+
 export function useAppearance() {
   const { data: savedSettings, isLoading } = useCompanySetting('appearance');
   const [settings, setSettings] = useState<AppearanceSettings>(DEFAULT_SETTINGS);
@@ -138,6 +140,30 @@ export function useAppearance() {
     return () => observer.disconnect();
   }, [settings.accentColor]);
 
+  const updateAccentColor = (color: string) => {
+    setSettings(prev => ({ ...prev, accentColor: color }));
+    localStorage.setItem('accent-color', color);
+    applyAccentColor(color);
+  };
+
+  const updateCompactMode = (enabled: boolean) => {
+    setSettings(prev => ({ ...prev, compactMode: enabled }));
+    localStorage.setItem('compact-mode', String(enabled));
+    applyCompactMode(enabled);
+  };
+
+  const updateFontSize = (size: 'small' | 'default' | 'large') => {
+    setSettings(prev => ({ ...prev, fontSize: size }));
+    localStorage.setItem('font-size', size);
+    applyFontSize(size);
+  };
+
+  const updateBorderRadius = (radius: 'none' | 'small' | 'default' | 'large') => {
+    setSettings(prev => ({ ...prev, borderRadius: radius }));
+    localStorage.setItem('border-radius', radius);
+    applyBorderRadius(radius);
+  };
+
   return {
     settings,
     isLoading,
@@ -145,6 +171,10 @@ export function useAppearance() {
     applyCompactMode,
     applyFontSize,
     applyBorderRadius,
+    updateAccentColor,
+    updateCompactMode,
+    updateFontSize,
+    updateBorderRadius,
   };
 }
 

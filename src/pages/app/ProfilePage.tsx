@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from 'sonner';
 import { 
   User, Mail, Phone, MapPin, Building2, Calendar, Users, 
-  AlertTriangle, CreditCard, Contact, Pencil, Shield, UserCircle
+  AlertTriangle, CreditCard, Contact, Pencil, Shield, UserCircle, Link2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -24,6 +24,8 @@ import { SalarySection } from '@/components/employees/SalarySection';
 import { ProfilePayslips } from '@/components/profile/ProfilePayslips';
 import { ProfileShiftAttendance } from '@/components/profile/ProfileShiftAttendance';
 import { ProfileDocuments } from '@/components/profile/ProfileDocuments';
+import { ProfilePhotoUpload } from '@/components/profile/ProfilePhotoUpload';
+import { LinkEmployeeDialog } from '@/components/profile/LinkEmployeeDialog';
 
 interface ProfileData {
   id: string;
@@ -355,9 +357,11 @@ export default function ProfilePage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <UserCircle className="h-10 w-10 text-primary" />
-              </div>
+              <ProfilePhotoUpload
+                userId={userId || ''}
+                currentAvatarUrl={null}
+                name={displayName}
+              />
               <div className="flex-1">
                 <h2 className="text-xl font-semibold">{displayName}</h2>
                 <p className="text-muted-foreground">{profile?.email}</p>
@@ -393,11 +397,20 @@ export default function ProfilePage() {
 
         <Card className="border-dashed">
           <CardContent className="py-8 text-center">
-            <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <Link2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
             <h3 className="font-medium text-lg mb-1">No Employee Record Linked</h3>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              Your user account is not linked to an employee record. Contact HR to link your account to an employee profile to access additional features like payslips, salary info, and documents.
+            <p className="text-muted-foreground text-sm max-w-md mx-auto mb-4">
+              Your user account is not linked to an employee record. Link to an existing employee profile to access additional features like payslips, salary info, and documents.
             </p>
+            {isHROrAdmin && userId && (
+              <LinkEmployeeDialog 
+                userId={userId} 
+                onSuccess={() => {
+                  refetch();
+                  queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
+                }}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -419,9 +432,11 @@ export default function ProfilePage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <User className="h-10 w-10 text-primary" />
-            </div>
+            <ProfilePhotoUpload
+              userId={userId || ''}
+              currentAvatarUrl={null}
+              name={`${employee.first_name} ${employee.last_name}`}
+            />
             <div className="flex-1">
               <h2 className="text-xl font-semibold">{employee.first_name} {employee.last_name}</h2>
               <p className="text-muted-foreground">{employee.job_title || 'Employee'}</p>

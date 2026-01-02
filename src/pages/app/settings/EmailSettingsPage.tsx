@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, Send, ChevronDown, CheckCircle2, XCircle, HelpCircle, Eye, EyeOff, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, Mail, Send, ChevronDown, CheckCircle2, XCircle, HelpCircle, Eye, EyeOff, AlertTriangle, RefreshCw, FileText } from 'lucide-react';
 import { useCompanyEmailSettings, type EmailProvider } from '@/hooks/useCompanyEmailSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { EmailTemplatesSection } from '@/components/settings/EmailTemplatesSection';
 
 const PROVIDER_OPTIONS: { value: EmailProvider; label: string; description: string }[] = [
   { value: 'smtp', label: 'SMTP', description: 'Connect to any SMTP server' },
