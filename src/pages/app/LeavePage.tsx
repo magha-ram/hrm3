@@ -78,10 +78,10 @@ export default function LeavePage() {
         />
 
         <Tabs defaultValue="my-leave" className="space-y-4">
-          <TabsList className="h-9 w-auto justify-start">
-            <TabsTrigger value="my-leave" className="text-sm">My Leave</TabsTrigger>
+          <TabsList className="h-9 w-auto p-1">
+            <TabsTrigger value="my-leave" className="text-sm px-3 py-1.5">My Leave</TabsTrigger>
             <PermGate module="leave" action="approve">
-              <TabsTrigger value="team" className="text-sm">
+              <TabsTrigger value="team" className="text-sm px-3 py-1.5">
                 Team Requests
                 {pendingRequests && pendingRequests.length > 0 && (
                   <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">{pendingRequests.length}</Badge>
@@ -90,8 +90,8 @@ export default function LeavePage() {
             </PermGate>
             <PermGate module="leave" action="read">
               <RoleGate role="hr_manager">
-                <TabsTrigger value="calendar" className="text-sm">Calendar</TabsTrigger>
-                <TabsTrigger value="balances" className="text-sm">All Balances</TabsTrigger>
+                <TabsTrigger value="calendar" className="text-sm px-3 py-1.5">Calendar</TabsTrigger>
+                <TabsTrigger value="balances" className="text-sm px-3 py-1.5">All Balances</TabsTrigger>
               </RoleGate>
             </PermGate>
           </TabsList>
