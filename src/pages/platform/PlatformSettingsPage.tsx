@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Settings, Mail, Palette, UserPlus, Clock, Save, Send, Loader2, Bell, CheckCircle2, XCircle, AlertCircle, ExternalLink, Globe, RefreshCw } from 'lucide-react';
+import { TestDataSeeder } from '@/components/platform/TestDataSeeder';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
@@ -1199,6 +1200,9 @@ export default function PlatformSettingsPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Test Data Seeder */}
+        <TestDataSeeder />
 
       </div>
     </div>
