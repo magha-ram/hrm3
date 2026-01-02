@@ -3249,6 +3249,66 @@ export type Database = {
           },
         ]
       }
+      salary_history: {
+        Row: {
+          base_salary: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          employee_id: string
+          id: string
+          reason: string | null
+          salary_currency: string
+          salary_structure: Json | null
+          updated_at: string
+        }
+        Insert: {
+          base_salary: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          effective_to?: string | null
+          employee_id: string
+          id?: string
+          reason?: string | null
+          salary_currency?: string
+          salary_structure?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          base_salary?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          employee_id?: string
+          id?: string
+          reason?: string | null
+          salary_currency?: string
+          salary_structure?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       screening_tests: {
         Row: {
           company_id: string

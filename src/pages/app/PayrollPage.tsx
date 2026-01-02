@@ -15,6 +15,7 @@ import {
 import { RoleGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { PayslipDownloadButton } from '@/components/payroll/PayslipDownloadButton';
+import { PayrollExportButton } from '@/components/payroll/PayrollExportButton';
 import { PayrollStatusBadge } from '@/components/payroll/PayrollStatusBadge';
 import { BulkAddEmployeesDialog } from '@/components/payroll/BulkAddEmployeesDialog';
 import { CreatePayrollRunDialog } from '@/components/payroll/CreatePayrollRunDialog';
@@ -83,6 +84,7 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
       )}
 
       <div className="flex gap-2">
+        <PayrollExportButton runId={runId} runName={run.name} />
         {!isLocked && (
           <>
             <Button variant="outline" size="sm" onClick={() => setShowAddEntry(true)}>
