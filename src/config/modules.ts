@@ -148,33 +148,6 @@ export const HR_MODULES: ModuleConfig[] = [
     planRequired: 'expenses',
   },
   {
-    id: 'compliance',
-    name: 'Compliance',
-    description: 'Security and SOC2 compliance',
-    icon: Shield,
-    path: '/app/compliance',
-    minRole: 'company_admin',
-    planRequired: 'compliance',
-  },
-  {
-    id: 'audit',
-    name: 'Audit Logs',
-    description: 'Activity tracking and audit trails',
-    icon: FileText,
-    path: '/app/audit',
-    minRole: 'company_admin',
-    planRequired: 'audit',
-  },
-  {
-    id: 'integrations',
-    name: 'Integrations',
-    description: 'Connect external services',
-    icon: Settings,
-    path: '/app/integrations',
-    minRole: 'company_admin',
-    planRequired: 'integrations',
-  },
-  {
     id: 'my_team',
     name: 'My Team',
     description: 'Manage your direct reports, approvals, and team calendar',
@@ -246,6 +219,18 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     path: '/app/settings/localization',
     icon: Globe,
     minRole: 'employee',
+  },
+  {
+    name: 'Integrations',
+    path: '/app/settings/integrations',
+    icon: Settings,
+    minRole: 'company_admin',
+  },
+  {
+    name: 'Compliance',
+    path: '/app/settings/compliance',
+    icon: Shield,
+    minRole: 'company_admin',
   },
 ];
 

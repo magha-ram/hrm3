@@ -257,17 +257,17 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer with Plan Info */}
-      <SidebarFooter className="border-t border-border/50 p-3">
-        {!collapsed && planName && (
+      {/* Footer with Plan Info - only show if there's content */}
+      {!collapsed && planName && (
+        <SidebarFooter className="border-t border-border/50 p-3">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{planName} Plan</span>
             {isTrialing && (
               <Badge variant="secondary" className="text-xs">Trial</Badge>
             )}
           </div>
-        )}
-      </SidebarFooter>
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }

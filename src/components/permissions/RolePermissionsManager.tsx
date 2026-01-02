@@ -31,7 +31,7 @@ import {
   useAllPermissions, 
   useRolePermissions, 
   useSetRolePermission,
-  useInitializePermissions 
+  useResetRolePermissions 
 } from '@/hooks/usePermissions';
 import { useTenant } from '@/contexts/TenantContext';
 import { AppRole } from '@/types/auth';
@@ -102,10 +102,10 @@ export function RolePermissionsManager() {
   const { isAdmin } = useTenant();
   
   const { data: allPermissions, isLoading: permissionsLoading } = useAllPermissions();
-  const initializePermissions = useInitializePermissions();
+  const resetPermissions = useResetRolePermissions();
 
-  const handleInitializeDefaults = () => {
-    initializePermissions.mutate();
+  const handleResetToDefaults = () => {
+    resetPermissions.mutate();
   };
 
   if (!isAdmin) {
@@ -133,10 +133,10 @@ export function RolePermissionsManager() {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={handleInitializeDefaults}
-            disabled={initializePermissions.isPending}
+            onClick={handleResetToDefaults}
+            disabled={resetPermissions.isPending}
           >
-            <RefreshCw className={cn("h-4 w-4 mr-2", initializePermissions.isPending && "animate-spin")} />
+            <RefreshCw className={cn("h-4 w-4 mr-2", resetPermissions.isPending && "animate-spin")} />
             Reset to Defaults
           </Button>
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
