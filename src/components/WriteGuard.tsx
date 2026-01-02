@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface WriteGuardProps {
   children: React.ReactNode;
@@ -10,6 +11,8 @@ interface WriteGuardProps {
   showToast?: boolean;
   /** Custom message for the toast */
   toastMessage?: string;
+  /** Whether to show tooltip on hover when blocked (default: true) */
+  showTooltip?: boolean;
 }
 
 /**
@@ -25,7 +28,8 @@ interface WriteGuardProps {
 export function WriteGuard({
   children,
   fallback,
-  showToast = true,
+  showToast = false,
+  showTooltip = true,
   toastMessage,
 }: WriteGuardProps) {
   const { canWrite, isFrozen, isTrialExpired, isPastDue, effectiveStatus } = useTenant();
@@ -41,11 +45,11 @@ export function WriteGuard({
   // Determine appropriate message
   const getMessage = () => {
     if (toastMessage) return toastMessage;
-    if (isFrozen) return 'Your account is frozen. Please update billing to make changes.';
-    if (isTrialExpired) return 'Your trial has expired. Please upgrade to continue.';
-    if (isPastDue) return 'Your payment is past due. Please update billing to make changes.';
-    if (effectiveStatus === 'paused') return 'Your subscription is paused. Please reactivate to make changes.';
-    if (effectiveStatus === 'canceled') return 'Your subscription is canceled. Please subscribe to make changes.';
+    if (isFrozen) return 'Account frozen. Update billing to make changes.';
+    if (isTrialExpired) return 'Trial expired. Upgrade to continue.';
+    if (isPastDue) return 'Payment past due. Update billing to make changes.';
+    if (effectiveStatus === 'paused') return 'Subscription paused. Reactivate to make changes.';
+    if (effectiveStatus === 'canceled') return 'Subscription canceled. Subscribe to make changes.';
     return 'You cannot make changes at this time.';
   };
 
@@ -58,7 +62,7 @@ export function WriteGuard({
     }
   };
 
-  return (
+  const blockedContent = (
     <div 
       onClick={handleBlockedClick}
       className="cursor-not-allowed opacity-50"
@@ -69,6 +73,21 @@ export function WriteGuard({
       </div>
     </div>
   );
+
+  if (showTooltip) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {blockedContent}
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{getMessage()}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return blockedContent;
 }
 
 /**
