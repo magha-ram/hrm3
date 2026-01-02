@@ -122,6 +122,15 @@ export function CreateCompanyDialog({ open, onOpenChange }: CreateCompanyDialogP
     onSuccess: (data) => {
       setCreatedCompany(data);
       queryClient.invalidateQueries({ queryKey: ['platform-companies'] });
+      
+      // Show email status feedback
+      if (data.email_status === 'sent') {
+        toast.success('Company created and credentials email sent');
+      } else if (data.email_status === 'failed') {
+        toast.warning(`Company created, but email failed: ${data.email_error || 'Unknown error'}`);
+      } else if (data.admin?.is_new_user) {
+        toast.success('Company created successfully');
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -442,6 +451,15 @@ export function CreateLinkDialog({ open, onOpenChange }: CreateLinkDialogProps) 
     onSuccess: (data) => {
       setCreatedLink(data.link);
       queryClient.invalidateQueries({ queryKey: ['company-creation-links'] });
+      
+      // Show email status feedback
+      if (data.email_status === 'sent') {
+        toast.success('Link created and email sent');
+      } else if (data.email_status === 'failed') {
+        toast.warning(`Link created, but email failed: ${data.email_error || 'Unknown error'}`);
+      } else {
+        toast.success('Link created successfully');
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message);

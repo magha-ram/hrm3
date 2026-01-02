@@ -112,11 +112,11 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Get plan configuration if plan_id is provided
-    let planConfig: { trial_enabled: boolean | null; trial_default_days: number | null; trial_restrictions: any } | null = null;
+    let planConfig: { name: string; trial_enabled: boolean | null; trial_default_days: number | null; trial_restrictions: any } | null = null;
     if (body.plan_id) {
       const { data: plan } = await supabaseAdmin
         .from("plans")
-        .select("trial_enabled, trial_default_days, trial_restrictions")
+        .select("name, trial_enabled, trial_default_days, trial_restrictions")
         .eq("id", body.plan_id)
         .single();
       planConfig = plan;
@@ -300,36 +300,68 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
+    // Email status tracking
+    let emailStatus: 'sent' | 'skipped' | 'failed' = 'skipped';
+    let emailError: string | undefined;
+
     // Send credentials email if requested and user is new
     if (body.send_credentials !== false && isNewUser) {
       try {
-        await supabaseAdmin.functions.invoke('send-email', {
+        const adminName = body.admin_first_name || 'Admin';
+        const companyUrl = `https://${slug}.${baseDomain}`;
+        const loginUrl = `${companyUrl}/auth`;
+        const planName = planConfig?.name || '';
+
+        console.log(`Sending onboarding email to ${body.admin_email}`);
+
+        const { data: emailResult, error: emailInvokeError } = await supabaseAdmin.functions.invoke('send-email', {
+          headers: {
+            Authorization: authHeader, // Forward the auth header
+          },
           body: {
-            to: body.admin_email,
             template: 'company_onboarding',
+            to: { email: body.admin_email.toLowerCase(), name: adminName },
             data: {
-              company_name: body.company_name,
-              admin_name: body.admin_first_name || 'Admin',
-              email: body.admin_email,
-              temporary_password: tempPassword,
-              login_url: `https://${slug}.${baseDomain}/auth`,
+              adminName,
+              companyName: body.company_name,
+              companyUrl,
+              adminEmail: body.admin_email,
+              temporaryPassword: tempPassword,
+              planName,
+              trialDays: enableTrial ? trialDays : 0,
+              loginUrl,
             },
           },
         });
 
-        // Log credentials sent (metadata only, not password)
-        await supabaseAdmin.from("onboarding_logs").insert({
-          event_type: "credentials_sent",
-          company_id: company.id,
-          user_id: user.id,
-          target_user_id: adminUserId,
-          metadata: {
-            email: body.admin_email,
-            force_password_change: true,
-          },
-        });
-      } catch (emailError) {
-        console.error("Failed to send onboarding email:", emailError);
+        if (emailInvokeError) {
+          console.error("Failed to invoke send-email:", emailInvokeError);
+          emailStatus = 'failed';
+          emailError = emailInvokeError.message;
+        } else if (emailResult?.error) {
+          console.error("Email send failed:", emailResult.error, emailResult.message);
+          emailStatus = 'failed';
+          emailError = emailResult.message || emailResult.error;
+        } else {
+          emailStatus = 'sent';
+          console.log("Onboarding email sent successfully:", emailResult);
+
+          // Log credentials sent (metadata only, not password)
+          await supabaseAdmin.from("onboarding_logs").insert({
+            event_type: "credentials_sent",
+            company_id: company.id,
+            user_id: user.id,
+            target_user_id: adminUserId,
+            metadata: {
+              email: body.admin_email,
+              force_password_change: true,
+            },
+          });
+        }
+      } catch (err) {
+        console.error("Failed to send onboarding email:", err);
+        emailStatus = 'failed';
+        emailError = err instanceof Error ? err.message : 'Unknown error';
       }
     }
 
@@ -374,6 +406,8 @@ serve(async (req: Request): Promise<Response> => {
           status: enableTrial ? "trialing" : "active",
           trial_days: enableTrial ? trialDays : null,
         },
+        email_status: emailStatus,
+        email_error: emailError,
       }),
       { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
