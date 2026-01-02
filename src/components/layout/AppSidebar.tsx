@@ -5,7 +5,7 @@ import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { HR_MODULES } from '@/config/modules';
 import { NavLink } from '@/components/NavLink';
-import { Settings, Lock, HelpCircle, Eye, X, Clock, User, Users, Activity } from 'lucide-react';
+import { Settings, Lock, HelpCircle, Eye, X, Clock, Users, Activity } from 'lucide-react';
 import { usePendingApprovalsCount } from '@/hooks/useMyTeam';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
@@ -201,31 +201,9 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Personal Section - Always visible */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Personal</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive('/app/profile')} tooltip="My Profile">
-                  <NavLink 
-                    to="/app/profile" 
-                    className="flex items-center gap-2"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                  >
-                    <User className="h-4 w-4" />
-                    {!collapsed && <span>My Profile</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Manager Section - Only for managers */}
+        {/* My Team - Only for managers, synced with modules above */}
         {isManager && (
           <SidebarGroup>
-            <SidebarGroupLabel>Manager</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
