@@ -5,18 +5,20 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useCreatePayrollRun } from '@/hooks/usePayroll';
+import { useLocalization, CURRENCY_CONFIG } from '@/contexts/LocalizationContext';
 
 interface CreatePayrollRunDialogProps {
   onClose: () => void;
 }
 
 export function CreatePayrollRunDialog({ onClose }: CreatePayrollRunDialogProps) {
+  const { settings } = useLocalization();
   const [formData, setFormData] = useState({
     name: '',
     period_start: '',
     period_end: '',
     pay_date: '',
-    currency: 'USD',
+    currency: settings.currency,
     notes: '',
   });
 
@@ -80,10 +82,11 @@ export function CreatePayrollRunDialog({ onClose }: CreatePayrollRunDialogProps)
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="USD">USD</SelectItem>
-              <SelectItem value="EUR">EUR</SelectItem>
-              <SelectItem value="GBP">GBP</SelectItem>
-              <SelectItem value="PKR">PKR</SelectItem>
+              {Object.entries(CURRENCY_CONFIG).map(([code, config]) => (
+                <SelectItem key={code} value={code}>
+                  {code} ({config.symbol})
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TenantProvider } from "@/contexts/TenantContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
+import { LocalizationProvider } from "@/contexts/LocalizationContext";
 import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { lazy, Suspense } from "react";
 
@@ -114,6 +115,7 @@ const App = () => (
           <AuthProvider>
             <ImpersonationProvider>
               <TenantProvider>
+                <LocalizationProvider>
                 <SessionTimeoutWarning />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
@@ -201,6 +203,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+            </LocalizationProvider>
             </TenantProvider>
           </ImpersonationProvider>
         </AuthProvider>

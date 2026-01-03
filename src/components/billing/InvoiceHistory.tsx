@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { FileText, Download, Receipt, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface Invoice {
   id: string;
@@ -38,15 +39,9 @@ function getStatusBadgeVariant(status: Invoice['status']) {
   }
 }
 
-function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-  }).format(amount / 100); // Assuming amount is in cents
-}
-
 export function InvoiceHistory() {
   const { companyId } = useTenant();
+  const { formatCurrency } = useLocalization();
   
   // This would typically fetch from a company_invoices table
   // For now, we'll show a placeholder since Stripe integration handles this
@@ -133,7 +128,7 @@ export function InvoiceHistory() {
                     {format(new Date(invoice.invoice_date), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {formatCurrency(invoice.amount, invoice.currency)}
+                    {formatCurrency(invoice.amount / 100, invoice.currency)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(invoice.status)}>

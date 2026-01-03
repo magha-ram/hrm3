@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Plus, History, TrendingUp } from 'lucide-react';
 import { useCurrentSalary, useSalaryHistory, useAddSalary } from '@/hooks/useSalaryHistory';
+import { useLocalization, CURRENCY_CONFIG } from '@/contexts/LocalizationContext';
 import { format } from 'date-fns';
 
 interface SalarySectionProps {
@@ -26,31 +27,23 @@ const SALARY_REASONS = [
   { value: 'other', label: 'Other' },
 ];
 
-const CURRENCIES = [
-  { value: 'USD', label: 'USD ($)' },
-  { value: 'PKR', label: 'PKR (₨)' },
-  { value: 'INR', label: 'INR (₹)' },
-  { value: 'GBP', label: 'GBP (£)' },
-  { value: 'EUR', label: 'EUR (€)' },
-];
-
-function formatCurrency(amount: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount);
-}
+// Generate currency options from CURRENCY_CONFIG
+const CURRENCIES = Object.entries(CURRENCY_CONFIG).map(([code, config]) => ({
+  value: code,
+  label: `${code} (${config.symbol})`,
+}));
 
 export function SalarySection({ employeeId, canEdit = false, readOnly = false }: SalarySectionProps) {
   const { data: currentSalary, isLoading: loadingCurrent } = useCurrentSalary(employeeId);
   const { data: salaryHistory, isLoading: loadingHistory } = useSalaryHistory(employeeId);
   const addSalary = useAddSalary();
+  const { formatCurrency, settings } = useLocalization();
   
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [newSalary, setNewSalary] = useState({
     base_salary: '',
-    salary_currency: 'USD',
+    salary_currency: settings.currency,
     effective_from: new Date().toISOString().split('T')[0],
     reason: 'initial',
   });
@@ -69,7 +62,7 @@ export function SalarySection({ employeeId, canEdit = false, readOnly = false }:
     setAddDialogOpen(false);
     setNewSalary({
       base_salary: '',
-      salary_currency: 'USD',
+      salary_currency: settings.currency,
       effective_from: new Date().toISOString().split('T')[0],
       reason: 'initial',
     });
@@ -210,7 +203,7 @@ export function SalarySection({ employeeId, canEdit = false, readOnly = false }:
               <div>
                 <p className="text-sm text-muted-foreground">Current Salary</p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(Number(currentSalary.base_salary), currentSalary.salary_currency)}
+                  {formatCurrency(Number(currentSalary.base_salary), currentSalary.salary_currency || settings.currency)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Effective from {format(new Date(currentSalary.effective_from), 'MMM d, yyyy')}
@@ -241,7 +234,7 @@ export function SalarySection({ employeeId, canEdit = false, readOnly = false }:
                     {salaryHistory.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">
-                          {formatCurrency(Number(record.base_salary), record.salary_currency)}
+                          {formatCurrency(Number(record.base_salary), record.salary_currency || settings.currency)}
                         </TableCell>
                         <TableCell>
                           {format(new Date(record.effective_from), 'MMM d, yyyy')}
