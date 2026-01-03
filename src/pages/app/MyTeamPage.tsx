@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +9,17 @@ import { useMyTeam, useTeamStats } from '@/hooks/useMyTeam';
 import { useTeamDocuments } from '@/hooks/useDocuments';
 import { useTeamExpenses, useApproveExpense, useRejectExpense } from '@/hooks/useExpenses';
 import { TeamAbsenceCalendar } from '@/components/team/TeamAbsenceCalendar';
-import { Users, Calendar, UserCheck, Clock, AlertCircle, FileText, Receipt, Check, X, ExternalLink } from 'lucide-react';
+import { Users, Calendar, UserCheck, Clock, AlertCircle, FileText, Receipt, Check, X, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function MyTeamPage() {
-  const { data: team, isLoading: teamLoading } = useMyTeam();
-  const { data: stats, isLoading: statsLoading } = useTeamStats();
+  const { data: team, isLoading: teamLoading, refetch: refetchTeam, isFetching } = useMyTeam();
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useTeamStats();
+
+  const handleRefresh = () => {
+    refetchTeam();
+    refetchStats();
+  };
 
   const statItems = [
     { 
@@ -74,6 +78,10 @@ export default function MyTeamPage() {
           <h1 className="text-2xl font-bold">My Team</h1>
           <p className="text-muted-foreground">Manage your direct reports</p>
         </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {/* Stats Grid */}
