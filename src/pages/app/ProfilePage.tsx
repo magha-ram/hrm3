@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useTenant } from '@/contexts/TenantContext';
 import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,25 +15,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from 'sonner';
 import { 
   User, Mail, Phone, MapPin, Building2, Calendar, Users, 
-  AlertTriangle, CreditCard, Contact, Pencil, Shield, UserCircle, Link2
+  AlertTriangle, CreditCard, Contact, Pencil, Shield, UserCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { WriteGate } from '@/components/PermissionGate';
 import { SalarySection } from '@/components/employees/SalarySection';
 import { ProfilePayslips } from '@/components/profile/ProfilePayslips';
 import { ProfileShiftAttendance } from '@/components/profile/ProfileShiftAttendance';
 import { ProfileDocuments } from '@/components/profile/ProfileDocuments';
 import { ProfilePhotoUpload } from '@/components/profile/ProfilePhotoUpload';
-import { LinkEmployeeDialog } from '@/components/profile/LinkEmployeeDialog';
-
-interface ProfileData {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  avatar_url: string | null;
-}
 
 interface EmployeeRecord {
   id: string;
@@ -99,7 +88,7 @@ function EditContactDialog({ employee, onSuccess }: EditContactDialogProps) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
+      queryClient.invalidateQueries({ queryKey: ['my-employee'] });
       toast.success('Contact information updated');
       setOpen(false);
       onSuccess();
@@ -178,7 +167,7 @@ function EditEmergencyContactDialog({ employee, onSuccess }: EditContactDialogPr
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
+      queryClient.invalidateQueries({ queryKey: ['my-employee'] });
       toast.success('Emergency contact updated');
       setOpen(false);
       onSuccess();
@@ -252,48 +241,15 @@ function EditEmergencyContactDialog({ employee, onSuccess }: EditContactDialogPr
 }
 
 export default function ProfilePage() {
-  const { companyId, role, currentEmployee, employeeId } = useTenant();
-  const { user, refreshUserContext } = useAuth();
-  const userRoleInfo = useUserRole();
-  const userId = user?.user_id;
+  const { user } = useAuth();
+  const { companyId, role } = useTenant();
   const queryClient = useQueryClient();
 
-  const isHROrAdmin = userRoleInfo.role === 'super_admin' || userRoleInfo.role === 'company_admin' || userRoleInfo.role === 'hr_manager';
-
-  // Use profile data from auth context when available
-  const profileFromContext = user ? {
-    id: user.user_id,
-    email: user.email,
-    first_name: user.first_name,
-    last_name: user.last_name,
-    avatar_url: user.avatar_url,
-  } as ProfileData : null;
-
-  // Only fetch profile if not in context
-  const { data: profileFetched, isLoading: profileLoading } = useQuery({
-    queryKey: ['my-profile', userId],
-    queryFn: async () => {
-      if (!userId) return null;
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, first_name, last_name, avatar_url')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data as ProfileData | null;
-    },
-    enabled: !!userId && !profileFromContext,
-  });
-
-  const profile = profileFromContext || profileFetched;
-
-  // Only fetch full employee data if we have an employee link
+  // Simple direct query: get employee by user_id
   const { data: employee, isLoading, refetch } = useQuery({
-    queryKey: ['my-employee-record', companyId, userId, employeeId],
+    queryKey: ['my-employee', user?.user_id, companyId],
     queryFn: async () => {
-      if (!companyId || !userId) return null;
+      if (!user?.user_id || !companyId) return null;
 
       const { data, error } = await supabase
         .from('employees')
@@ -319,7 +275,7 @@ export default function ProfilePage() {
           department:departments(name),
           manager:employees!employees_manager_id_fkey(first_name, last_name)
         `)
-        .eq('user_id', userId)
+        .eq('user_id', user.user_id)
         .eq('company_id', companyId)
         .maybeSingle();
 
@@ -334,18 +290,15 @@ export default function ProfilePage() {
       }
       return null;
     },
-    enabled: !!companyId && !!userId,
+    enabled: !!user?.user_id && !!companyId,
   });
 
-  // Show loading only when fetching data we don't have in context
-  const showLoading = isLoading || (!profileFromContext && profileLoading);
-  
-  if (showLoading) {
+  if (isLoading) {
     return (
       <PageContainer className="max-w-4xl mx-auto">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Skeleton className="h-32 w-full mt-4" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
@@ -358,12 +311,8 @@ export default function ProfilePage() {
     return r.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
-  // Fallback view for users without employee records
+  // No employee record found
   if (!employee) {
-    const displayName = profile?.first_name && profile?.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : profile?.email || 'User';
-
     return (
       <PageContainer className="max-w-4xl mx-auto">
         <PageHeader title="My Profile" description="Your account information" />
@@ -372,13 +321,15 @@ export default function ProfilePage() {
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <ProfilePhotoUpload
-                userId={userId || ''}
-                currentAvatarUrl={profile?.avatar_url || null}
-                name={displayName}
+                userId={user?.user_id || ''}
+                currentAvatarUrl={user?.avatar_url || null}
+                name={user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.email || 'User'}
               />
               <div className="flex-1">
-                <h2 className="text-xl font-semibold">{displayName}</h2>
-                <p className="text-muted-foreground">{profile?.email}</p>
+                <h2 className="text-xl font-semibold">
+                  {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.email}
+                </h2>
+                <p className="text-muted-foreground">{user?.email}</p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   <Badge variant="default">{formatRoleName(role)}</Badge>
                 </div>
@@ -393,39 +344,14 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Account Information
-            </CardTitle>
-            <CardDescription>Your user account details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InfoRow icon={Mail} label="Email" value={profile?.email} />
-              <InfoRow icon={User} label="Role" value={formatRoleName(role)} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-dashed">
-          <CardContent className="py-8 text-center">
-            <Link2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="font-medium text-lg mb-1">No Employee Record Linked</h3>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto mb-4">
-              Your user account is not linked to an employee record. Link to an existing employee profile to access additional features like payslips, salary info, and documents.
+        <Card className="mt-6">
+          <CardContent className="py-12 text-center">
+            <UserCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="font-semibold text-lg mb-2">No Employee Record Found</h3>
+            <p className="text-muted-foreground text-sm max-w-md mx-auto">
+              Your account is not linked to an employee record in this company. 
+              Please contact your HR administrator to set up your employee profile.
             </p>
-            {userId && (
-              <LinkEmployeeDialog 
-                userId={userId} 
-                onSuccess={async () => {
-                  await refreshUserContext();
-                  refetch();
-                  queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
-                }}
-              />
-            )}
           </CardContent>
         </Card>
       </PageContainer>
@@ -445,8 +371,8 @@ export default function ProfilePage() {
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <ProfilePhotoUpload
-              userId={userId || ''}
-              currentAvatarUrl={profile?.avatar_url || null}
+              userId={user?.user_id || ''}
+              currentAvatarUrl={user?.avatar_url || null}
               name={`${employee.first_name} ${employee.last_name}`}
             />
             <div className="flex-1">
@@ -471,7 +397,7 @@ export default function ProfilePage() {
       </Card>
 
       {/* Tabbed Sections */}
-      <Tabs defaultValue="personal" className="space-y-4">
+      <Tabs defaultValue="personal" className="space-y-4 mt-6">
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="personal">Personal</TabsTrigger>
           <TabsTrigger value="employment">Employment</TabsTrigger>
@@ -492,9 +418,7 @@ export default function ProfilePage() {
                     <Mail className="h-4 w-4" />
                     Contact Information
                   </CardTitle>
-                  <WriteGate>
-                    <EditContactDialog employee={employee} onSuccess={() => refetch()} />
-                  </WriteGate>
+                  <EditContactDialog employee={employee} onSuccess={() => refetch()} />
                 </div>
               </CardHeader>
               <CardContent className="space-y-1">
@@ -554,9 +478,7 @@ export default function ProfilePage() {
                     <Contact className="h-4 w-4" />
                     Emergency Contact
                   </CardTitle>
-                  <WriteGate>
-                    <EditEmergencyContactDialog employee={employee} onSuccess={() => refetch()} />
-                  </WriteGate>
+                  <EditEmergencyContactDialog employee={employee} onSuccess={() => refetch()} />
                 </div>
               </CardHeader>
               <CardContent>
