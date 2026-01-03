@@ -1427,6 +1427,61 @@ export type Database = {
           },
         ]
       }
+      document_expiry_notifications: {
+        Row: {
+          company_id: string
+          days_until_expiry: number | null
+          document_id: string
+          employee_id: string
+          id: string
+          notification_type: string
+          sent_at: string | null
+          sent_to: string
+        }
+        Insert: {
+          company_id: string
+          days_until_expiry?: number | null
+          document_id: string
+          employee_id: string
+          id?: string
+          notification_type: string
+          sent_at?: string | null
+          sent_to: string
+        }
+        Update: {
+          company_id?: string
+          days_until_expiry?: number | null
+          document_id?: string
+          employee_id?: string
+          id?: string
+          notification_type?: string
+          sent_at?: string | null
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_expiry_notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_expiry_notifications_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "employee_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_expiry_notifications_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_types: {
         Row: {
           allowed_for_employee_upload: boolean | null
@@ -3949,6 +4004,116 @@ export type Database = {
         }
         Relationships: []
       }
+      review_cycles: {
+        Row: {
+          auto_create_reviews: boolean | null
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          cycle_type: string
+          description: string | null
+          end_date: string
+          escalation_days: number | null
+          id: string
+          name: string
+          reminder_days: number[] | null
+          review_period_end: string
+          review_period_start: string
+          start_date: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_create_reviews?: boolean | null
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          cycle_type?: string
+          description?: string | null
+          end_date: string
+          escalation_days?: number | null
+          id?: string
+          name: string
+          reminder_days?: number[] | null
+          review_period_end: string
+          review_period_start: string
+          start_date: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_create_reviews?: boolean | null
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          cycle_type?: string
+          description?: string | null
+          end_date?: string
+          escalation_days?: number | null
+          id?: string
+          name?: string
+          reminder_days?: number[] | null
+          review_period_end?: string
+          review_period_start?: string
+          start_date?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_cycles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_reminders: {
+        Row: {
+          company_id: string
+          days_remaining: number | null
+          id: string
+          reminder_type: string
+          review_id: string
+          sent_at: string | null
+          sent_to: string
+        }
+        Insert: {
+          company_id: string
+          days_remaining?: number | null
+          id?: string
+          reminder_type: string
+          review_id: string
+          sent_at?: string | null
+          sent_to: string
+        }
+        Update: {
+          company_id?: string
+          days_remaining?: number | null
+          id?: string
+          reminder_type?: string
+          review_id?: string
+          sent_at?: string | null
+          sent_to?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_reminders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_reminders_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           company_id: string
@@ -5244,6 +5409,7 @@ export type Database = {
         }
         Returns: string
       }
+      create_reviews_for_cycle: { Args: { _cycle_id: string }; Returns: number }
       current_company_id: { Args: never; Returns: string }
       current_employee_id: { Args: never; Returns: string }
       current_user_role: {
@@ -5368,12 +5534,77 @@ export type Database = {
         Args: { _date: string; _employee_id: string }
         Returns: string
       }
+      get_expired_documents: {
+        Args: never
+        Returns: {
+          company_id: string
+          days_expired: number
+          document_id: string
+          document_title: string
+          document_type_name: string
+          employee_id: string
+          expiry_date: string
+        }[]
+      }
+      get_expiring_documents: {
+        Args: { _days_threshold?: number }
+        Returns: {
+          company_id: string
+          days_until_expiry: number
+          document_id: string
+          document_title: string
+          document_type_name: string
+          employee_email: string
+          employee_id: string
+          employee_name: string
+          employee_user_id: string
+          expiry_date: string
+          manager_email: string
+          manager_user_id: string
+        }[]
+      }
+      get_expiring_trials: {
+        Args: { _days_threshold?: number }
+        Returns: {
+          admin_emails: string[]
+          company_id: string
+          company_name: string
+          days_remaining: number
+          trial_ends_at: string
+        }[]
+      }
       get_leave_balance: {
         Args: { _employee_id: string; _leave_type_id: string; _year?: number }
         Returns: number
       }
       get_platform_admin_role: { Args: { _user_id: string }; Returns: string }
       get_registration_settings: { Args: never; Returns: Json }
+      get_reviews_needing_escalation: {
+        Args: { _escalation_days?: number }
+        Returns: {
+          company_id: string
+          days_overdue: number
+          employee_id: string
+          manager_of_reviewer: string
+          review_id: string
+          reviewer_id: string
+        }[]
+      }
+      get_reviews_needing_reminders: {
+        Args: never
+        Returns: {
+          company_id: string
+          days_until_due: number
+          employee_name: string
+          review_id: string
+          review_period_end: string
+          reviewer_email: string
+          reviewer_id: string
+          reviewer_name: string
+          reviewer_user_id: string
+          status: string
+        }[]
+      }
       get_role_permissions: {
         Args: {
           _company_id: string
@@ -5603,6 +5834,15 @@ export type Database = {
         Returns: undefined
       }
       mask_ip_address: { Args: { ip_addr: string }; Returns: string }
+      process_expired_documents: { Args: never; Returns: number }
+      process_expired_trials: {
+        Args: { _freeze_after_days?: number }
+        Returns: {
+          action_taken: string
+          company_id: string
+          company_name: string
+        }[]
+      }
       record_failed_login: { Args: { _user_id: string }; Returns: undefined }
       record_successful_login: {
         Args: { _user_id: string }
