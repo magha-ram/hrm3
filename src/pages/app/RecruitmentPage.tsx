@@ -20,6 +20,7 @@ import { AssignScreeningDialog } from '@/components/recruitment/AssignScreeningD
 import { ScheduleInterviewDialog } from '@/components/recruitment/ScheduleInterviewDialog';
 import { CreateOfferDialog } from '@/components/recruitment/CreateOfferDialog';
 import { ScreeningTestsManager } from '@/components/recruitment/ScreeningTestsManager';
+import { CandidateAuthSettings } from '@/components/recruitment/CandidateAuthSettings';
 
 export default function RecruitmentPage() {
   const navigate = useNavigate();
@@ -214,6 +215,12 @@ export default function RecruitmentPage() {
                 <Badge variant="secondary" className="h-5 px-1.5">{activeOffers}</Badge>
               )}
             </TabsTrigger>
+            {isHROrAbove && (
+              <TabsTrigger value="settings" className="flex items-center gap-1">
+                <Settings className="h-3 w-3" />
+                Settings
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="jobs" className="mt-4">
@@ -713,6 +720,13 @@ export default function RecruitmentPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Settings Tab */}
+          {isHROrAbove && (
+            <TabsContent value="settings" className="mt-4 space-y-6">
+              <CandidateAuthSettings />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

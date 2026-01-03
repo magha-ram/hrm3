@@ -13,6 +13,7 @@ import { lazy, Suspense } from "react";
 // Public pages (lazy loaded)
 const CareersPage = lazy(() => import("./pages/CareersPage"));
 const JobDetailPage = lazy(() => import("./pages/JobDetailPage"));
+const CandidateAuthPage = lazy(() => import("./pages/CandidateAuthPage"));
 const CandidateScreeningPage = lazy(() => import("./pages/CandidateScreeningPage"));
 
 // Core pages (not lazy - needed immediately)
@@ -121,6 +122,7 @@ const App = () => (
                   <Route path="/auth" element={<AuthLayout><Auth /></AuthLayout>} />
                   <Route path="/setup" element={<AuthLayout><Setup /></AuthLayout>} />
                   <Route path="/careers" element={<CareersPage />} />
+                  <Route path="/careers/auth" element={<CandidateAuthPage />} />
                   <Route path="/careers/:slug" element={<JobDetailPage />} />
                   <Route path="/screening/:token" element={<CandidateScreeningPage />} />
                   <Route path="/onboarding" element={<AuthLayout><Onboarding /></AuthLayout>} />
