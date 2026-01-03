@@ -365,13 +365,19 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Department</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)} 
+                          value={field.value || '__none__'}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select department" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="__none__">
+                              <span className="text-muted-foreground">No Department</span>
+                            </SelectItem>
                             {departments?.map((dept) => (
                               <SelectItem key={dept.id} value={dept.id}>
                                 {dept.name}
@@ -420,13 +426,13 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
+                <FormField
                     control={form.control}
                     name="employment_type"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Employment Type <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || 'full_time'}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -450,7 +456,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || 'active'}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -480,7 +486,10 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
                           <Clock className="h-4 w-4" />
                           Default Shift
                         </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || undefined}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select shift" />
@@ -593,13 +602,19 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Gender</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)} 
+                          value={field.value || '__none__'}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="__none__">
+                              <span className="text-muted-foreground">Not specified</span>
+                            </SelectItem>
                             <SelectItem value="male">Male</SelectItem>
                             <SelectItem value="female">Female</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
