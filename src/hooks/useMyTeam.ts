@@ -24,18 +24,24 @@ export interface TeamStats {
 }
 
 export function useMyTeam() {
-  const { companyId, employeeId, currentEmployee } = useTenant();
+  const { companyId, employeeId } = useTenant();
   const { user } = useAuth();
   const userId = user?.user_id;
 
   return useQuery({
-    queryKey: ['my-team', companyId, employeeId],
+    queryKey: ['my-team', companyId, employeeId, userId],
     queryFn: async (): Promise<TeamMember[]> => {
-      if (!companyId) return [];
+      console.log('[useMyTeam] Starting query with:', { companyId, employeeId, userId });
+      
+      if (!companyId) {
+        console.log('[useMyTeam] No companyId, returning empty');
+        return [];
+      }
 
       // Use employeeId from context first, fallback to query
       let managerId = employeeId;
       if (!managerId && userId) {
+        console.log('[useMyTeam] No employeeId, falling back to userId lookup');
         const { data: currentEmployee } = await supabase
           .from('employees')
           .select('id')
@@ -43,9 +49,15 @@ export function useMyTeam() {
           .eq('user_id', userId)
           .maybeSingle();
         managerId = currentEmployee?.id;
+        console.log('[useMyTeam] Fallback lookup result:', managerId);
       }
 
-      if (!managerId) return [];
+      if (!managerId) {
+        console.log('[useMyTeam] No managerId found, returning empty');
+        return [];
+      }
+      
+      console.log('[useMyTeam] Using managerId:', managerId);
 
       // Get direct reports (employees where manager_id = current employee)
       const { data: directReports, error: reportsError } = await supabase
@@ -148,7 +160,9 @@ export function useMyTeam() {
         };
       });
     },
-    enabled: !!companyId,
+    enabled: !!companyId && (!!employeeId || !!userId),
+    staleTime: 0,
+    refetchOnMount: 'always' as const,
   });
 }
 
@@ -255,7 +269,9 @@ export function useTeamStats() {
         onLeaveToday: onLeaveNames,
       };
     },
-    enabled: !!companyId,
+    enabled: !!companyId && (!!employeeId || !!userId),
+    staleTime: 0,
+    refetchOnMount: 'always' as const,
   });
 }
 
