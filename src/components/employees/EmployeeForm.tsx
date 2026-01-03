@@ -342,13 +342,19 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
                     <Users className="h-4 w-4" />
                     Manager
                   </FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select 
+                    onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)} 
+                    value={field.value || '__none__'}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select manager" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="__none__">
+                        <span className="text-muted-foreground">No Manager</span>
+                      </SelectItem>
                       {potentialManagers.map((mgr) => (
                         <SelectItem key={mgr.id} value={mgr.id}>
                           {mgr.first_name} {mgr.last_name}
