@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { 
   ArrowLeft, 
@@ -13,7 +13,10 @@ import {
   DollarSign,
   MoreVertical,
   Star,
-  ExternalLink
+  ExternalLink,
+  UserPlus,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { CandidateStatusBadge } from '@/components/recruitment/CandidateStatusBadge';
 import { CandidateTimelineCard } from '@/components/recruitment/CandidateTimelineCard';
@@ -28,7 +32,7 @@ import { AssignScreeningDialog } from '@/components/recruitment/AssignScreeningD
 import { ScheduleInterviewDialog } from '@/components/recruitment/ScheduleInterviewDialog';
 import { CreateOfferDialog } from '@/components/recruitment/CreateOfferDialog';
 import { useCandidate, useUpdateCandidateStatus } from '@/hooks/useRecruitment';
-import { useCandidateScreenings, useInterviews, useOffers } from '@/hooks/useRecruitmentWorkflow';
+import { useCandidateScreenings, useInterviews, useOffers, useConvertCandidateToEmployee, useUpdateOfferStatus } from '@/hooks/useRecruitmentWorkflow';
 import { toast } from 'sonner';
 
 const statusFlow = [
@@ -52,6 +56,13 @@ export default function CandidateDetailPage() {
   const { data: interviews } = useInterviews(candidateId);
   const { data: offers } = useOffers(candidateId);
   const updateStatus = useUpdateCandidateStatus();
+  const convertToEmployee = useConvertCandidateToEmployee();
+  const updateOfferStatus = useUpdateOfferStatus();
+  
+  // Find accepted offer
+  const acceptedOffer = offers?.find(o => o.status === 'accepted');
+  const sentOffer = offers?.find(o => o.status === 'sent');
+  const isHired = candidate?.status === 'hired';
   
   if (isLoading) {
     return (
@@ -94,6 +105,27 @@ export default function CandidateDetailPage() {
       rejected_reason: 'Not a fit for the role'
     });
     toast.success('Candidate rejected');
+  };
+  
+  const handleAcceptOffer = async (offerId: string) => {
+    await updateOfferStatus.mutateAsync({
+      id: offerId,
+      candidateId: candidate.id,
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    });
+  };
+  
+  const handleConvertToEmployee = async () => {
+    if (!acceptedOffer) return;
+    const employeeId = await convertToEmployee.mutateAsync({
+      candidateId: candidate.id,
+      offerId: acceptedOffer.id,
+      createLogin: false,
+    });
+    if (employeeId) {
+      navigate(`/app/employees`);
+    }
   };
   
   return (
@@ -158,6 +190,67 @@ export default function CandidateDetailPage() {
             </DropdownMenu>
           </div>
         </div>
+        
+        {/* Hired Success Banner */}
+        {isHired && candidate.hired_employee_id && (
+          <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-800 dark:text-green-200">Candidate Hired!</AlertTitle>
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              This candidate has been converted to an employee.{' '}
+              <Link to="/app/employees" className="underline font-medium">
+                View Employee Record
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Accepted Offer - Convert to Employee Banner */}
+        {acceptedOffer && !candidate.hired_employee_id && (
+          <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+            <UserPlus className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800 dark:text-blue-200">Offer Accepted!</AlertTitle>
+            <AlertDescription className="text-blue-700 dark:text-blue-300 flex items-center justify-between">
+              <span>
+                Candidate accepted the offer. Convert them to an employee to complete the hiring process.
+              </span>
+              <Button 
+                size="sm" 
+                onClick={handleConvertToEmployee}
+                disabled={convertToEmployee.isPending}
+              >
+                {convertToEmployee.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <UserPlus className="h-4 w-4 mr-2" />
+                )}
+                Convert to Employee
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Pending Offer - Mark as Accepted */}
+        {sentOffer && !acceptedOffer && (
+          <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
+            <DollarSign className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800 dark:text-amber-200">Offer Sent</AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300 flex items-center justify-between">
+              <span>
+                Waiting for candidate response. If they accepted verbally, you can mark it as accepted.
+              </span>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleAcceptOffer(sentOffer.id)}
+                disabled={updateOfferStatus.isPending}
+              >
+                {updateOfferStatus.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Mark as Accepted
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         
         {/* Stage Progress */}
         <Card>

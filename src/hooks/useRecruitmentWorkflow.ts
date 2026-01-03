@@ -864,6 +864,23 @@ export function useUpdateOfferStatus() {
       
       if (error) throw error;
       
+      // Update candidate status based on offer status
+      if (status === 'accepted') {
+        await supabase
+          .from('candidates')
+          .update({ status: 'hired' as const, current_stage_started_at: new Date().toISOString() })
+          .eq('id', candidateId);
+      } else if (status === 'declined' || status === 'withdrawn') {
+        await supabase
+          .from('candidates')
+          .update({ 
+            status: 'rejected' as const, 
+            rejected_reason: `Offer ${status}`,
+            current_stage_started_at: new Date().toISOString() 
+          })
+          .eq('id', candidateId);
+      }
+      
       // Add timeline event
       await supabase.from('candidate_timeline').insert({
         company_id: companyId!,
@@ -895,11 +912,111 @@ export function useUpdateOfferStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job-offers'] });
       queryClient.invalidateQueries({ queryKey: ['candidate-timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
       toast.success('Offer updated');
     },
     onError: (error) => {
       toast.error('Failed to update offer');
       console.error(error);
+    },
+  });
+}
+
+// ============ HIRE CANDIDATE (CONVERT TO EMPLOYEE) ============
+
+export function useConvertCandidateToEmployee() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({
+      candidateId,
+      offerId,
+      createLogin = false,
+    }: {
+      candidateId: string;
+      offerId: string;
+      createLogin?: boolean;
+    }) => {
+      const { data, error } = await supabase.rpc('convert_candidate_to_employee', {
+        _candidate_id: candidateId,
+        _offer_id: offerId,
+        _create_login: createLogin,
+      });
+      
+      if (error) throw error;
+      return data as string; // Returns employee_id
+    },
+    onSuccess: (employeeId) => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate-timeline'] });
+      queryClient.invalidateQueries({ queryKey: ['job-offers'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Candidate successfully converted to employee!');
+      return employeeId;
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to convert candidate');
+      console.error(error);
+    },
+  });
+}
+
+// For candidate portal - accept offer
+export function useAcceptOffer() {
+  return useMutation({
+    mutationFn: async ({
+      offerId,
+      accessToken,
+      responseNotes,
+    }: {
+      offerId: string;
+      accessToken: string;
+      responseNotes?: string;
+    }) => {
+      const { data, error } = await supabase.rpc('accept_job_offer', {
+        _offer_id: offerId,
+        _access_token: accessToken,
+        _response_notes: responseNotes,
+      });
+      
+      if (error) throw error;
+      return data as { success: boolean; employee_id: string; message: string };
+    },
+    onSuccess: () => {
+      toast.success('Offer accepted! Welcome aboard!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to accept offer');
+    },
+  });
+}
+
+// For candidate portal - decline offer
+export function useDeclineOffer() {
+  return useMutation({
+    mutationFn: async ({
+      offerId,
+      accessToken,
+      reason,
+    }: {
+      offerId: string;
+      accessToken: string;
+      reason?: string;
+    }) => {
+      const { data, error } = await supabase.rpc('decline_job_offer', {
+        _offer_id: offerId,
+        _access_token: accessToken,
+        _reason: reason,
+      });
+      
+      if (error) throw error;
+      return data as { success: boolean; message: string };
+    },
+    onSuccess: () => {
+      toast.success('Offer declined');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to decline offer');
     },
   });
 }
