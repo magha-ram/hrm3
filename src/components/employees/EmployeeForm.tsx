@@ -158,18 +158,25 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
     if (data.email) form.setValue('personal_email', data.email);
   };
 
+  const normalizeDateOrNull = (value: string | undefined) => {
+    const v = (value ?? '').trim();
+    return v.length ? v : null;
+  };
+
   const onSubmit = async (values: EmployeeFormValues) => {
     try {
       // Extract fields not stored directly on employee
       const { shift_id, initial_salary, salary_currency, ...employeeValues } = values;
-      
+
       if (isEditing && employee) {
-        await updateEmployee.mutateAsync({ 
-          id: employee.id, 
+        await updateEmployee.mutateAsync({
+          id: employee.id,
           ...employeeValues,
           department_id: employeeValues.department_id || null,
           manager_id: employeeValues.manager_id || null,
           personal_email: employeeValues.personal_email || null,
+          // IMPORTANT: Supabase date columns can't accept "" (empty string)
+          date_of_birth: normalizeDateOrNull(employeeValues.date_of_birth),
           emergency_contact: emergencyContact as Record<string, string>,
           bank_details: bankDetails as Record<string, string>,
         });
@@ -188,10 +195,13 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
           phone: employeeValues.phone || null,
           personal_email: employeeValues.personal_email || null,
           work_location: employeeValues.work_location || null,
+          national_id: employeeValues.national_id || null,
+          date_of_birth: normalizeDateOrNull(employeeValues.date_of_birth),
+          gender: employeeValues.gender || null,
           emergency_contact: emergencyContact as Record<string, string>,
           bank_details: bankDetails as Record<string, string>,
         });
-        
+
         // Assign shift to new employee
         if (shift_id && newEmployee?.id) {
           await assignShift.mutateAsync({
@@ -201,7 +211,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
             is_temporary: false,
           });
         }
-        
+
         // Create initial salary record if provided
         if (initial_salary && initial_salary > 0 && newEmployee?.id) {
           await addSalary.mutateAsync({
