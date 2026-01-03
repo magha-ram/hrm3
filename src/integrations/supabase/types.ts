@@ -5071,6 +5071,14 @@ export type Database = {
       }
     }
     Functions: {
+      accept_job_offer: {
+        Args: {
+          _access_token: string
+          _offer_id: string
+          _response_notes?: string
+        }
+        Returns: Json
+      }
       accrue_leave_balances: {
         Args: { _company_id: string; _year?: number }
         Returns: {
@@ -5219,6 +5227,14 @@ export type Database = {
         Returns: boolean
       }
       company_has_ocr: { Args: { _company_id: string }; Returns: boolean }
+      convert_candidate_to_employee: {
+        Args: {
+          _candidate_id: string
+          _create_login?: boolean
+          _offer_id: string
+        }
+        Returns: string
+      }
       create_company_with_admin: {
         Args: {
           _industry?: string
@@ -5233,6 +5249,10 @@ export type Database = {
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      decline_job_offer: {
+        Args: { _access_token: string; _offer_id: string; _reason?: string }
+        Returns: Json
       }
       delete_test_company: { Args: { _company_id: string }; Returns: boolean }
       generate_attendance_summary: {
