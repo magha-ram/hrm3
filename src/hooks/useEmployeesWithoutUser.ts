@@ -49,5 +49,7 @@ export function useEmployeesWithoutUser() {
       }));
     },
     enabled: !!companyId,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }

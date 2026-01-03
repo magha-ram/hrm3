@@ -52,7 +52,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.create-employee-user]
-verify_jwt = false
+verify_jwt = true
 
 [functions.manage-email-settings]
 verify_jwt = false
