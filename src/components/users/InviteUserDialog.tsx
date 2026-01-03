@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Loader2, UserPlus, User, Mail, Briefcase, Building2 } from 'lucide-react';
 import { useUserManagement } from '@/hooks/useUserManagement';
 import { useEmployeesWithoutUser } from '@/hooks/useEmployeesWithoutUser';
@@ -24,10 +25,30 @@ const AVAILABLE_ROLES: { value: AppRole; label: string; description: string }[] 
 
 export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [employeeSearch, setEmployeeSearch] = useState('');
   const [role, setRole] = useState<AppRole>('employee');
-  
+
   const { createEmployeeUser, isCreatingUser } = useUserManagement();
-  const { data: employees, isLoading: isLoadingEmployees } = useEmployeesWithoutUser();
+  const {
+    data: employees,
+    isLoading: isLoadingEmployees,
+    refetch: refetchEmployees,
+  } = useEmployeesWithoutUser();
+
+  useEffect(() => {
+    if (open) void refetchEmployees();
+  }, [open, refetchEmployees]);
+
+  const filteredEmployees = useMemo(() => {
+    const list = employees ?? [];
+    const q = employeeSearch.trim().toLowerCase();
+    if (!q) return list;
+
+    return list.filter((emp) => {
+      const hay = `${emp.first_name} ${emp.last_name} ${emp.employee_number} ${emp.email}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [employees, employeeSearch]);
 
   const selectedEmployee = employees?.find(e => e.id === selectedEmployeeId);
 
@@ -79,23 +100,38 @@ export function InviteUserDialog({ open, onOpenChange }: InviteUserDialogProps) 
                 <Skeleton className="h-4 w-48" />
               </div>
             ) : employees && employees.length > 0 ? (
-              <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose an employee..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <ScrollArea className="h-60">
-                    {employees.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{emp.first_name} {emp.last_name}</span>
-                          <span className="text-muted-foreground">({emp.employee_number})</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </ScrollArea>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Input
+                  value={employeeSearch}
+                  onChange={(e) => setEmployeeSearch(e.target.value)}
+                  placeholder="Search by name, employee ID, or email…"
+                  aria-label="Search employees"
+                />
+
+                {filteredEmployees.length > 0 ? (
+                  <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose an employee..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <ScrollArea className="h-60">
+                        {filteredEmployees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{emp.first_name} {emp.last_name}</span>
+                              <span className="text-muted-foreground">({emp.employee_number})</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </ScrollArea>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="p-4 border rounded-md bg-muted/50 text-center text-sm text-muted-foreground">
+                    No employees match “{employeeSearch.trim()}”.
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="p-4 border rounded-md bg-muted/50 text-center text-sm text-muted-foreground">
                 No employees without user accounts found.

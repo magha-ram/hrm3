@@ -20,21 +20,44 @@ function generateTemporaryPassword(): string {
   const numbers = '0123456789';
   const symbols = '!@#$%^&*';
   const all = lowercase + uppercase + numbers + symbols;
-  
+
   let password = '';
   // Ensure at least one of each type
   password += lowercase[Math.floor(Math.random() * lowercase.length)];
   password += uppercase[Math.floor(Math.random() * uppercase.length)];
   password += numbers[Math.floor(Math.random() * numbers.length)];
   password += symbols[Math.floor(Math.random() * symbols.length)];
-  
+
   // Fill the rest with random characters (total 16 chars)
   for (let i = 0; i < 12; i++) {
     password += all[Math.floor(Math.random() * all.length)];
   }
-  
+
   // Shuffle the password
   return password.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_REGEX.test(value);
+}
+
+function getUserIdFromAuthHeader(authHeader: string): string | null {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+
+    const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payloadB64 + '='.repeat((4 - (payloadB64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
+
+    return isUuid(payload?.sub) ? payload.sub : null;
+  } catch {
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -76,6 +99,16 @@ serve(async (req) => {
       );
     }
 
+    // Sometimes we've seen non-UUID identifiers here depending on auth setup.
+    // Always derive a UUID for DB writes from the JWT `sub` claim.
+    const requesterUserId = isUuid(authUser.id) ? authUser.id : getUserIdFromAuthHeader(authHeader);
+    if (!requesterUserId) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse request body
     const body: CreateEmployeeUserRequest = await req.json();
     const { employee_id, company_id, role } = body;
@@ -91,7 +124,7 @@ serve(async (req) => {
 
     // Check if requesting user has admin permissions in this company
     const { data: isAdmin, error: permError } = await supabaseUser.rpc('is_active_company_admin', {
-      _user_id: authUser.id,
+      _user_id: requesterUserId,
       _company_id: company_id,
     });
 
@@ -211,10 +244,7 @@ serve(async (req) => {
     }
 
     // Add user to company_users table
-    // Note: invited_by must be a valid UUID, not an email
-    const invitedByUserId = authUser.id && authUser.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) 
-      ? authUser.id 
-      : null;
+    const invitedByUserId = requesterUserId;
 
     const { error: companyUserError } = await supabaseAdmin
       .from('company_users')
@@ -243,7 +273,7 @@ serve(async (req) => {
     // Log audit event
     await supabaseAdmin.from('audit_logs').insert({
       company_id: company_id,
-      user_id: authUser.id,
+      user_id: requesterUserId,
       action: 'create',
       table_name: 'company_users',
       record_id: newUser.user.id,
@@ -277,7 +307,7 @@ serve(async (req) => {
         },
         context: {
           companyId: company_id,
-          triggeredBy: authUser.id,
+          triggeredBy: requesterUserId,
           triggeredFrom: 'create-employee-user',
           metadata: {
             employee_id: employee_id,
