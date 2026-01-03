@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { useCreatePayrollRun } from '@/hooks/usePayroll';
 import { useLocalization, CURRENCY_CONFIG } from '@/contexts/LocalizationContext';
@@ -20,6 +21,7 @@ export function CreatePayrollRunDialog({ onClose }: CreatePayrollRunDialogProps)
     pay_date: '',
     currency: settings.currency,
     notes: '',
+    autoGenerateSummaries: true,
   });
 
   const createRun = useCreatePayrollRun();
@@ -90,6 +92,19 @@ export function CreatePayrollRunDialog({ onClose }: CreatePayrollRunDialogProps)
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+        <div className="space-y-0.5">
+          <Label htmlFor="auto-generate">Auto-generate Attendance Summaries</Label>
+          <p className="text-xs text-muted-foreground">
+            Automatically calculate attendance data from time entries and leave records
+          </p>
+        </div>
+        <Switch
+          id="auto-generate"
+          checked={formData.autoGenerateSummaries}
+          onCheckedChange={(checked) => setFormData({ ...formData, autoGenerateSummaries: checked })}
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes (optional)</Label>

@@ -90,8 +90,18 @@ export function useCreatePayrollRun() {
       pay_date: string;
       currency?: string;
       notes?: string;
+      autoGenerateSummaries?: boolean;
     }) => {
       if (!companyId) throw new Error('No company selected');
+
+      // Auto-generate attendance summaries if requested
+      if (data.autoGenerateSummaries) {
+        await supabase.rpc('generate_attendance_summary', {
+          _company_id: companyId,
+          _period_start: data.period_start,
+          _period_end: data.period_end,
+        });
+      }
 
       const { data: run, error } = await supabase
         .from('payroll_runs')
@@ -113,7 +123,8 @@ export function useCreatePayrollRun() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payroll-runs'] });
-      toast.success('Payroll run created');
+      queryClient.invalidateQueries({ queryKey: ['attendance-summaries'] });
+      toast.success('Payroll run created with attendance data');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -288,6 +299,13 @@ export function useLockPayrollRun() {
         throw new Error('Can only complete processing payroll runs');
       }
 
+      // Lock attendance summaries when completing
+      if (action === 'complete') {
+        await supabase.rpc('lock_attendance_for_payroll', {
+          _payroll_run_id: runId,
+        });
+      }
+
       // Calculate totals from entries
       const { data: entries } = await supabase
         .from('payroll_entries')
@@ -323,11 +341,32 @@ export function useLockPayrollRun() {
         .single();
 
       if (error) throw error;
+
+      // Send notifications on payroll completion
+      if (action === 'complete') {
+        try {
+          await supabase.functions.invoke('send-notification', {
+            body: {
+              type: 'payroll_processed',
+              companyId: run.company_id,
+              data: {
+                payrollRunId: runId,
+                payrollName: run.name,
+                payDate: run.pay_date,
+              },
+            },
+          });
+        } catch (e) {
+          console.error('Failed to send payroll notification:', e);
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['payroll-runs'] });
       queryClient.invalidateQueries({ queryKey: ['payroll-run', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-summaries'] });
       toast.success(data.status === 'completed' ? 'Payroll run completed and locked' : 'Payroll run submitted for processing');
     },
     onError: (error: Error) => {

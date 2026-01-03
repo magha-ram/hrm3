@@ -143,14 +143,18 @@ export type Database = {
           half_day_absents: number
           id: string
           is_locked: boolean
+          late_minutes: number | null
           locked_at: string | null
           locked_by: string | null
           notes: string | null
           overtime_hours: number
+          paid_leave_days: number | null
+          payroll_run_id: string | null
           period_end: string
           period_start: string
           total_working_days: number
           total_working_hours: number
+          unpaid_leave_days: number | null
           updated_at: string
         }
         Insert: {
@@ -165,14 +169,18 @@ export type Database = {
           half_day_absents?: number
           id?: string
           is_locked?: boolean
+          late_minutes?: number | null
           locked_at?: string | null
           locked_by?: string | null
           notes?: string | null
           overtime_hours?: number
+          paid_leave_days?: number | null
+          payroll_run_id?: string | null
           period_end: string
           period_start: string
           total_working_days?: number
           total_working_hours?: number
+          unpaid_leave_days?: number | null
           updated_at?: string
         }
         Update: {
@@ -187,14 +195,18 @@ export type Database = {
           half_day_absents?: number
           id?: string
           is_locked?: boolean
+          late_minutes?: number | null
           locked_at?: string | null
           locked_by?: string | null
           notes?: string | null
           overtime_hours?: number
+          paid_leave_days?: number | null
+          payroll_run_id?: string | null
           period_end?: string
           period_start?: string
           total_working_days?: number
           total_working_hours?: number
+          unpaid_leave_days?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -210,6 +222,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_summaries_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -5097,6 +5116,24 @@ export type Database = {
           unlinked_users: number
         }[]
       }
+      calculate_payroll_from_attendance: {
+        Args: {
+          _employee_id: string
+          _period_end: string
+          _period_start: string
+        }
+        Returns: {
+          base_salary: number
+          daily_rate: number
+          days_absent: number
+          days_worked: number
+          deductions: number
+          overtime_hours: number
+          overtime_pay: number
+          prorated_salary: number
+          unpaid_leave_days: number
+        }[]
+      }
       can_access_document: {
         Args: { _action: string; _document_id: string; _user_id: string }
         Returns: boolean
@@ -5198,9 +5235,68 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       delete_test_company: { Args: { _company_id: string }; Returns: boolean }
+      generate_attendance_summary: {
+        Args: {
+          _company_id: string
+          _period_end: string
+          _period_start: string
+        }
+        Returns: {
+          days_late: number
+          days_present: number
+          employee_id: string
+          full_day_absents: number
+          half_day_absents: number
+          late_minutes: number
+          overtime_hours: number
+          paid_leave_days: number
+          summary_id: string
+          total_working_hours: number
+          unpaid_leave_days: number
+        }[]
+      }
       generate_employee_number: {
         Args: { _company_id: string }
         Returns: string
+      }
+      get_attendance_summary: {
+        Args: {
+          _employee_id: string
+          _period_end: string
+          _period_start: string
+        }
+        Returns: {
+          calculated_from: string | null
+          calculated_to: string | null
+          company_id: string
+          created_at: string
+          days_late: number
+          days_present: number
+          employee_id: string
+          full_day_absents: number
+          half_day_absents: number
+          id: string
+          is_locked: boolean
+          late_minutes: number | null
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          overtime_hours: number
+          paid_leave_days: number | null
+          payroll_run_id: string | null
+          period_end: string
+          period_start: string
+          total_working_days: number
+          total_working_hours: number
+          unpaid_leave_days: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_summaries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_company_branding_for_domain: {
         Args: { hostname: string }
@@ -5400,6 +5496,10 @@ export type Database = {
       link_user_to_employee: {
         Args: { _company_id: string; _employee_id: string; _user_id: string }
         Returns: boolean
+      }
+      lock_attendance_for_payroll: {
+        Args: { _payroll_run_id: string }
+        Returns: number
       }
       log_application_event: {
         Args: {
