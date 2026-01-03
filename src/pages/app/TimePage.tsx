@@ -15,6 +15,8 @@ import { ModuleGuard } from '@/components/ModuleGuard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTenant } from '@/contexts/TenantContext';
 import { TimeCorrectionDialog } from '@/components/time/TimeCorrectionDialog';
+import { TimeCorrectionRequestsPanel } from '@/components/time/TimeCorrectionRequestsPanel';
+import { usePendingTimeCorrectionRequests } from '@/hooks/useTimeCorrectionRequests';
 import { 
   useTodayEntry, 
   useClockIn, 
@@ -143,6 +145,7 @@ export default function TimePage() {
   const startBreak = useStartBreak();
   const endBreak = useEndBreak();
   const approveEntry = useApproveTimeEntry();
+  const { data: correctionRequests = [] } = usePendingTimeCorrectionRequests();
   
   const [activeTab, setActiveTab] = useState('my');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
@@ -378,6 +381,12 @@ export default function TimePage() {
                 )}
               </TabsTrigger>
             )}
+            {(isHROrAbove || isManager) && correctionRequests.length > 0 && (
+              <TabsTrigger value="corrections">
+                Corrections
+                <Badge variant="secondary" className="ml-2">{correctionRequests.length}</Badge>
+              </TabsTrigger>
+            )}
             {isHROrAbove && (
               <>
                 <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -542,6 +551,10 @@ export default function TimePage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="corrections" className="mt-4">
+            <TimeCorrectionRequestsPanel />
           </TabsContent>
 
           <TabsContent value="reports" className="mt-4">
