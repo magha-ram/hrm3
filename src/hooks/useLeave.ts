@@ -266,6 +266,20 @@ export function useCreateLeaveRequest() {
     mutationFn: async (request: Omit<LeaveRequestInsert, 'company_id' | 'employee_id'>) => {
       if (!companyId || !employeeId) throw new Error('Missing context');
 
+      // Check balance before creating request
+      const { data: balanceCheck, error: balanceError } = await supabase.rpc('check_leave_balance', {
+        _employee_id: employeeId,
+        _leave_type_id: request.leave_type_id,
+        _days: request.total_days,
+      });
+
+      if (balanceError) {
+        console.warn('Balance check failed:', balanceError);
+        // Continue anyway - balance check is advisory
+      } else if (balanceCheck?.[0] && !balanceCheck[0].has_balance) {
+        throw new Error(balanceCheck[0].message || 'Insufficient leave balance');
+      }
+
       const { data, error } = await supabase
         .from('leave_requests')
         .insert({ ...request, company_id: companyId, employee_id: employeeId })
@@ -274,6 +288,7 @@ export function useCreateLeaveRequest() {
 
       if (error) throw error;
 
+      // Audit log
       await supabase.from('audit_logs').insert({
         company_id: companyId,
         user_id: (await supabase.auth.getUser()).data.user?.id,
@@ -283,10 +298,20 @@ export function useCreateLeaveRequest() {
         new_values: data,
       });
 
+      // Trigger notification (fire and forget)
+      supabase.functions.invoke('send-notification', {
+        body: {
+          type: 'leave_request_submitted',
+          record_id: data.id,
+          company_id: companyId,
+        },
+      }).catch(err => console.warn('Notification failed:', err));
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
       toast.success('Leave request submitted');
     },
     onError: (error: Error) => {
@@ -301,6 +326,26 @@ export function useApproveLeaveRequest() {
 
   return useMutation({
     mutationFn: async ({ id, review_notes }: { id: string; review_notes?: string }) => {
+      // First get the request to check balance
+      const { data: request, error: fetchError } = await supabase
+        .from('leave_requests')
+        .select('employee_id, leave_type_id, total_days')
+        .eq('id', id)
+        .single();
+
+      if (fetchError || !request) throw new Error('Leave request not found');
+
+      // Verify balance is sufficient
+      const { data: balanceCheck } = await supabase.rpc('check_leave_balance', {
+        _employee_id: request.employee_id,
+        _leave_type_id: request.leave_type_id,
+        _days: request.total_days,
+      });
+
+      if (balanceCheck?.[0] && !balanceCheck[0].has_balance) {
+        throw new Error(`Cannot approve: ${balanceCheck[0].message}`);
+      }
+
       const { data, error } = await supabase
         .from('leave_requests')
         .update({
@@ -315,6 +360,7 @@ export function useApproveLeaveRequest() {
 
       if (error) throw error;
 
+      // Audit log
       await supabase.from('audit_logs').insert({
         company_id: companyId,
         user_id: (await supabase.auth.getUser()).data.user?.id,
@@ -325,10 +371,20 @@ export function useApproveLeaveRequest() {
         metadata: { action_type: 'approve_leave' },
       });
 
+      // Send notification
+      supabase.functions.invoke('send-notification', {
+        body: {
+          type: 'leave_request_approved',
+          record_id: id,
+          company_id: companyId,
+        },
+      }).catch(err => console.warn('Notification failed:', err));
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
       toast.success('Leave request approved');
     },
     onError: (error: Error) => {
@@ -357,6 +413,7 @@ export function useRejectLeaveRequest() {
 
       if (error) throw error;
 
+      // Audit log
       await supabase.from('audit_logs').insert({
         company_id: companyId,
         user_id: (await supabase.auth.getUser()).data.user?.id,
@@ -367,10 +424,20 @@ export function useRejectLeaveRequest() {
         metadata: { action_type: 'reject_leave' },
       });
 
+      // Send notification
+      supabase.functions.invoke('send-notification', {
+        body: {
+          type: 'leave_request_rejected',
+          record_id: id,
+          company_id: companyId,
+        },
+      }).catch(err => console.warn('Notification failed:', err));
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
       toast.success('Leave request rejected');
     },
     onError: (error: Error) => {
@@ -408,6 +475,7 @@ export function useCancelLeaveRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
       toast.success('Leave request cancelled');
     },
     onError: (error: Error) => {
