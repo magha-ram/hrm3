@@ -245,11 +245,14 @@ export default function ProfilePage() {
   const { companyId, role } = useTenant();
   const queryClient = useQueryClient();
 
-  // Simple direct query: get employee by user_id
+  // Get employee ID from context (already available from get_user_context)
+  const employeeId = user?.current_employee_id;
+
+  // Fetch full employee details using the employee ID from context
   const { data: employee, isLoading, refetch } = useQuery({
-    queryKey: ['my-employee', user?.user_id, companyId],
+    queryKey: ['my-employee', employeeId, companyId],
     queryFn: async () => {
-      if (!user?.user_id || !companyId) return null;
+      if (!employeeId || !companyId) return null;
 
       const { data, error } = await supabase
         .from('employees')
@@ -275,7 +278,7 @@ export default function ProfilePage() {
           department:departments(name),
           manager:employees!employees_manager_id_fkey(first_name, last_name)
         `)
-        .eq('user_id', user.user_id)
+        .eq('id', employeeId)
         .eq('company_id', companyId)
         .maybeSingle();
 
@@ -290,7 +293,7 @@ export default function ProfilePage() {
       }
       return null;
     },
-    enabled: !!user?.user_id && !!companyId,
+    enabled: !!employeeId && !!companyId,
   });
 
   if (isLoading) {
