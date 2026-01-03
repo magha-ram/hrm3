@@ -19,6 +19,7 @@ import { PayrollExportButton } from '@/components/payroll/PayrollExportButton';
 import { PayrollStatusBadge } from '@/components/payroll/PayrollStatusBadge';
 import { BulkAddEmployeesDialog } from '@/components/payroll/BulkAddEmployeesDialog';
 import { CreatePayrollRunDialog } from '@/components/payroll/CreatePayrollRunDialog';
+import { PayrollAttendanceSummary } from '@/components/payroll/PayrollAttendanceSummary';
 import { usePayrollRuns, usePayrollEntries, useLockPayrollRun, usePayrollStats, useAddPayrollEntry } from '@/hooks/usePayroll';
 import { useEmployees } from '@/hooks/useEmployees';
 import { format } from 'date-fns';
@@ -186,6 +187,17 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Attendance Summary Section */}
+      {entries && entries.length > 0 && (
+        <PayrollAttendanceSummary
+          runId={runId}
+          periodStart={run.period_start}
+          periodEnd={run.period_end}
+          entries={entries}
+          isLocked={isLocked}
+        />
       )}
 
       {isLoading ? (
