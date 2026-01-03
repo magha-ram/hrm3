@@ -252,7 +252,7 @@ function EditEmergencyContactDialog({ employee, onSuccess }: EditContactDialogPr
 }
 
 export default function ProfilePage() {
-  const { companyId, role } = useTenant();
+  const { companyId, role, currentEmployee, employeeId } = useTenant();
   const { user, refreshUserContext } = useAuth();
   const userRoleInfo = useUserRole();
   const userId = user?.user_id;
@@ -260,8 +260,17 @@ export default function ProfilePage() {
 
   const isHROrAdmin = userRoleInfo.role === 'super_admin' || userRoleInfo.role === 'company_admin' || userRoleInfo.role === 'hr_manager';
 
-  // Fetch profile data as fallback for users without employee records
-  const { data: profile, isLoading: profileLoading } = useQuery({
+  // Use profile data from auth context when available
+  const profileFromContext = user ? {
+    id: user.user_id,
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
+    avatar_url: user.avatar_url,
+  } as ProfileData : null;
+
+  // Only fetch profile if not in context
+  const { data: profileFetched, isLoading: profileLoading } = useQuery({
     queryKey: ['my-profile', userId],
     queryFn: async () => {
       if (!userId) return null;
@@ -275,11 +284,14 @@ export default function ProfilePage() {
       if (error) throw error;
       return data as ProfileData | null;
     },
-    enabled: !!userId,
+    enabled: !!userId && !profileFromContext,
   });
 
+  const profile = profileFromContext || profileFetched;
+
+  // Only fetch full employee data if we have an employee link
   const { data: employee, isLoading, refetch } = useQuery({
-    queryKey: ['my-employee-record', companyId, userId],
+    queryKey: ['my-employee-record', companyId, userId, employeeId],
     queryFn: async () => {
       if (!companyId || !userId) return null;
 
@@ -325,7 +337,10 @@ export default function ProfilePage() {
     enabled: !!companyId && !!userId,
   });
 
-  if (isLoading || profileLoading) {
+  // Show loading only when fetching data we don't have in context
+  const showLoading = isLoading || (!profileFromContext && profileLoading);
+  
+  if (showLoading) {
     return (
       <PageContainer className="max-w-4xl mx-auto">
         <Skeleton className="h-8 w-48" />
@@ -404,7 +419,8 @@ export default function ProfilePage() {
             {userId && (
               <LinkEmployeeDialog 
                 userId={userId} 
-                onSuccess={() => {
+                onSuccess={async () => {
+                  await refreshUserContext();
                   refetch();
                   queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
                 }}

@@ -4982,6 +4982,14 @@ export type Database = {
       }
     }
     Functions: {
+      bulk_link_users_to_employees: {
+        Args: { _company_id: string }
+        Returns: {
+          linked_count: number
+          unlinked_employees: number
+          unlinked_users: number
+        }[]
+      }
       can_access_document: {
         Args: { _action: string; _document_id: string; _user_id: string }
         Returns: boolean

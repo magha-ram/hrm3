@@ -96,10 +96,11 @@ export function LinkEmployeeDialog({ userId, onSuccess }: LinkEmployeeDialogProp
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['my-employee-record'] });
       queryClient.invalidateQueries({ queryKey: ['unlinked-employees'] });
       queryClient.invalidateQueries({ queryKey: ['company-users'] });
+      queryClient.invalidateQueries({ queryKey: ['my-team'] });
       toast.success('Account successfully linked to employee record');
       setOpen(false);
       setSelectedEmployeeId('');
