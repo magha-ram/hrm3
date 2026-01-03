@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Loader2, Upload, Download, FileSpreadsheet, LayoutList, Network, LayoutGrid } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Trash2, Loader2, Upload, Download, FileSpreadsheet, LayoutList, Network, LayoutGrid, Building2 } from 'lucide-react';
 import { WriteGate, RoleGate, PermGate } from '@/components/PermissionGate';
 import { usePermission } from '@/contexts/PermissionContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -25,17 +25,13 @@ import { EmployeeFilters, type EmployeeFiltersState } from '@/components/employe
 import { ReadOnlyPageBanner } from '@/components/platform/ImpersonationRestricted';
 import { exportEmployeesToCSV, downloadEmployeeImportTemplate } from '@/lib/export-utils';
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
+import { EmployeeStatsBar } from '@/components/employees/EmployeeStatsBar';
+import { StatusIndicator, type EmployeeStatus } from '@/components/employees/StatusIndicator';
 import { TablePagination, LoadMoreButton } from '@/components/ui/table-pagination';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-const statusColors: Record<string, string> = {
-  active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  on_leave: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  terminated: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  suspended: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
-};
+import { cn } from '@/lib/utils';
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
@@ -190,96 +186,110 @@ export default function EmployeesPage() {
     <ModuleGuard moduleId="employees">
       <div className="p-4 md:p-6 space-y-6">
         <ReadOnlyPageBanner />
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">{isHROrAbove ? 'Employees' : 'Company Directory'}</h1>
-            <p className="text-muted-foreground">
-              {isHROrAbove ? "Manage your organization's employees" : 'View your colleagues'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Export/Import Dropdown - Permission based */}
-            <PermGate module="employees" action="read">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Import/Export
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleExportEmployees} disabled={!employees?.length}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Employees
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={downloadEmployeeImportTemplate}>
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Download Template
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <PermGate module="employees" action="create">
-                    <WriteGate>
-                      <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Bulk Import
-                      </DropdownMenuItem>
-                    </WriteGate>
-                  </PermGate>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </PermGate>
-
-            <PermGate module="employees" action="create">
-              <WriteGate>
-                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => setEditingEmployee(null)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Employee
+        
+        {/* Enhanced Header */}
+        <div className="space-y-1">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {isHROrAbove ? 'Employees' : 'Company Directory'}
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                {isHROrAbove ? "Manage your organization's workforce" : 'View your colleagues and team members'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Export/Import Dropdown */}
+              <PermGate module="employees" action="read">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="border-border/60">
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">Import/Export</span>
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{editingEmployee ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
-                    </DialogHeader>
-                    <EmployeeForm 
-                      employee={editingEmployee} 
-                      onSuccess={handleFormClose}
-                      onCancel={handleFormClose}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </WriteGate>
-            </PermGate>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={handleExportEmployees} disabled={!employees?.length}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export Employees
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={downloadEmployeeImportTemplate}>
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Download Template
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <PermGate module="employees" action="create">
+                      <WriteGate>
+                        <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Bulk Import
+                        </DropdownMenuItem>
+                      </WriteGate>
+                    </PermGate>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </PermGate>
+
+              <PermGate module="employees" action="create">
+                <WriteGate>
+                  <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <DialogTrigger asChild>
+                      <Button onClick={() => setEditingEmployee(null)} className="shadow-sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Employee
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl">
+                          {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <EmployeeForm 
+                        employee={editingEmployee} 
+                        onSuccess={handleFormClose}
+                        onCancel={handleFormClose}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </WriteGate>
+              </PermGate>
+            </div>
           </div>
         </div>
 
-        {/* Tabs for List and Org Chart views */}
+        {/* Stats Bar */}
+        <EmployeeStatsBar employees={employees || []} isLoading={isLoading} />
+
+        {/* Main Content with Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <TabsList>
-              <TabsTrigger value="list" className="gap-2">
+            <TabsList className="bg-muted/50 p-1">
+              <TabsTrigger value="list" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <LayoutList className="h-4 w-4" />
-                List
+                <span>List</span>
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {filteredEmployees.length}
+                </Badge>
               </TabsTrigger>
-              <TabsTrigger value="grid" className="gap-2">
+              <TabsTrigger value="grid" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <LayoutGrid className="h-4 w-4" />
                 Grid
               </TabsTrigger>
-              <TabsTrigger value="org" className="gap-2">
+              <TabsTrigger value="org" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <Network className="h-4 w-4" />
                 Org Chart
               </TabsTrigger>
             </TabsList>
 
-            {/* Filters - only show in list view */}
+            {/* Filters - only show in list/grid view */}
             {(activeTab === 'list' || activeTab === 'grid') && (
-              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <div className="relative flex-1 sm:w-80">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Search by name, email, or ID..." 
-                    className="pl-10"
+                    placeholder="Search employees..." 
+                    className="pl-10 bg-background border-border/60"
                     value={search}
                     onChange={(e) => handleSearchChange(e.target.value)}
                   />
@@ -297,33 +307,35 @@ export default function EmployeesPage() {
           {(activeTab === 'list' || activeTab === 'grid') && activeFilterCount > 0 && (
             <div className="flex flex-wrap gap-2 mt-4">
               {filters.departmentId && (
-                <Badge variant="secondary" className="gap-1">
-                  Department: {departments?.find(d => d.id === filters.departmentId)?.name}
+                <Badge variant="secondary" className="gap-1.5 pl-2 pr-1 py-1">
+                  <Building2 className="h-3 w-3" />
+                  {departments?.find(d => d.id === filters.departmentId)?.name}
                   <button 
                     onClick={() => setFilters(f => ({ ...f, departmentId: '' }))}
-                    className="ml-1 hover:text-destructive"
+                    className="ml-1 hover:bg-muted rounded-full p-0.5"
                   >
+                    <span className="sr-only">Remove filter</span>
                     ×
                   </button>
                 </Badge>
               )}
               {filters.status && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1.5 pl-2 pr-1 py-1">
                   Status: {filters.status.replace('_', ' ')}
                   <button 
                     onClick={() => setFilters(f => ({ ...f, status: '' }))}
-                    className="ml-1 hover:text-destructive"
+                    className="ml-1 hover:bg-muted rounded-full p-0.5"
                   >
                     ×
                   </button>
                 </Badge>
               )}
               {filters.type && (
-                <Badge variant="secondary" className="gap-1">
+                <Badge variant="secondary" className="gap-1.5 pl-2 pr-1 py-1">
                   Type: {filters.type.replace('_', ' ')}
                   <button 
                     onClick={() => setFilters(f => ({ ...f, type: '' }))}
-                    className="ml-1 hover:text-destructive"
+                    className="ml-1 hover:bg-muted rounded-full p-0.5"
                   >
                     ×
                   </button>
@@ -334,133 +346,166 @@ export default function EmployeesPage() {
 
           {/* List View */}
           <TabsContent value="list" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Employee Directory</CardTitle>
-                <CardDescription>
-                  {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''}
-                  {activeFilterCount > 0 && ` (filtered from ${employees?.length || 0})`}
-                </CardDescription>
+            <Card className="border-border/60">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Employee Directory</CardTitle>
+                    <CardDescription>
+                      {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''}
+                      {activeFilterCount > 0 && ` (filtered from ${employees?.length || 0})`}
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : filteredEmployees.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <p>{search || activeFilterCount > 0 ? 'No employees match your search or filters.' : 'No employees found. Add your first employee to get started.'}</p>
+                  <div className="text-center py-16 text-muted-foreground">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <LayoutList className="h-6 w-6" />
+                    </div>
+                    <p className="font-medium">No employees found</p>
+                    <p className="text-sm mt-1">
+                      {search || activeFilterCount > 0 
+                        ? 'Try adjusting your search or filters.' 
+                        : 'Add your first employee to get started.'}
+                    </p>
                   </div>
                 ) : (
                   <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Employee</TableHead>
-                          <TableHead>Department</TableHead>
-                          <TableHead>Job Title</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead className="w-[50px]"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedListEmployees.map((employee) => (
-                          <TableRow key={employee.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleView(employee)}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-9 w-9">
-                                  <AvatarFallback>
-                                    {employee.first_name[0]}{employee.last_name[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="font-medium">{employee.first_name} {employee.last_name}</div>
-                                  <div className="text-sm text-muted-foreground">{employee.email}</div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {(employee as any).department?.name || '-'}
-                            </TableCell>
-                            <TableCell>{employee.job_title || '-'}</TableCell>
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <PermGate module="employees" action="update">
-                                <WriteGate fallback={
-                                  <Badge className={statusColors[employee.employment_status] || ''} variant="secondary">
-                                    {employee.employment_status.replace('_', ' ')}
-                                  </Badge>
-                                }>
-                                  <Select 
-                                    value={employee.employment_status} 
-                                    onValueChange={(value) => handleStatusChange(employee.id, value)}
-                                    disabled={updateStatus.isPending}
-                                  >
-                                    <SelectTrigger className="h-7 w-[110px] text-xs">
-                                      {updateStatus.isPending ? (
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                      ) : (
-                                        <SelectValue />
-                                      )}
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {STATUS_OPTIONS.map(option => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                          <span className={option.value === 'terminated' ? 'text-destructive' : ''}>
-                                            {option.label}
-                                          </span>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </WriteGate>
-                              </PermGate>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">
-                                {employee.employment_type.replace('_', ' ')}
-                              </Badge>
-                            </TableCell>
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              {can('employees', 'read') && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleView(employee)}>
-                                      <Eye className="h-4 w-4 mr-2" />
-                                      View
-                                    </DropdownMenuItem>
-                                    <PermGate module="employees" action="update">
-                                      <WriteGate>
-                                        <DropdownMenuItem onClick={() => handleEdit(employee)}>
-                                          <Pencil className="h-4 w-4 mr-2" />
-                                          Edit
-                                        </DropdownMenuItem>
-                                      </WriteGate>
-                                    </PermGate>
-                                    <PermGate module="employees" action="delete">
-                                      <WriteGate>
-                                        <DropdownMenuItem 
-                                          onClick={() => setDeletingId(employee.id)}
-                                          className="text-destructive"
-                                        >
-                                          <Trash2 className="h-4 w-4 mr-2" />
-                                          Delete
-                                        </DropdownMenuItem>
-                                      </WriteGate>
-                                    </PermGate>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
-                            </TableCell>
+                    <div className="rounded-lg border border-border/60 overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableHead className="font-semibold">Employee</TableHead>
+                            <TableHead className="font-semibold">Department</TableHead>
+                            <TableHead className="font-semibold">Job Title</TableHead>
+                            <TableHead className="font-semibold">Status</TableHead>
+                            <TableHead className="font-semibold">Type</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedListEmployees.map((employee) => (
+                            <TableRow 
+                              key={employee.id} 
+                              className="cursor-pointer group"
+                              onClick={() => handleView(employee)}
+                            >
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-10 w-10 ring-1 ring-border">
+                                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                                      {employee.first_name[0]}{employee.last_name[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <div className="font-medium text-foreground">
+                                      {employee.first_name} {employee.last_name}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                      <span>{employee.email}</span>
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                                        {employee.employee_number}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-foreground">
+                                  {(employee as any).department?.name || '-'}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-foreground">
+                                  {employee.job_title || '-'}
+                                </span>
+                              </TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <PermGate module="employees" action="update">
+                                  <WriteGate fallback={
+                                    <StatusIndicator status={employee.employment_status as EmployeeStatus} />
+                                  }>
+                                    <Select 
+                                      value={employee.employment_status} 
+                                      onValueChange={(value) => handleStatusChange(employee.id, value)}
+                                      disabled={updateStatus.isPending}
+                                    >
+                                      <SelectTrigger className="h-8 w-[130px] text-xs border-0 bg-transparent hover:bg-muted">
+                                        {updateStatus.isPending ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <StatusIndicator status={employee.employment_status as EmployeeStatus} />
+                                        )}
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {STATUS_OPTIONS.map(option => (
+                                          <SelectItem key={option.value} value={option.value}>
+                                            <span className={option.value === 'terminated' ? 'text-destructive' : ''}>
+                                              {option.label}
+                                            </span>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </WriteGate>
+                                </PermGate>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="font-normal capitalize">
+                                  {employee.employment_type.replace('_', ' ')}
+                                </Badge>
+                              </TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                {can('employees', 'read') && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon"
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-40">
+                                      <DropdownMenuItem onClick={() => handleView(employee)}>
+                                        <Eye className="h-4 w-4 mr-2" />
+                                        View
+                                      </DropdownMenuItem>
+                                      <PermGate module="employees" action="update">
+                                        <WriteGate>
+                                          <DropdownMenuItem onClick={() => handleEdit(employee)}>
+                                            <Pencil className="h-4 w-4 mr-2" />
+                                            Edit
+                                          </DropdownMenuItem>
+                                        </WriteGate>
+                                      </PermGate>
+                                      <PermGate module="employees" action="delete">
+                                        <WriteGate>
+                                          <DropdownMenuItem 
+                                            onClick={() => setDeletingId(employee.id)}
+                                            className="text-destructive focus:text-destructive"
+                                          >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </WriteGate>
+                                      </PermGate>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                     <TablePagination
                       currentPage={listCurrentPage}
                       totalItems={filteredEmployees.length}
@@ -475,22 +520,34 @@ export default function EmployeesPage() {
 
           {/* Grid View */}
           <TabsContent value="grid" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Employee Directory</CardTitle>
-                <CardDescription>
-                  {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''}
-                  {activeFilterCount > 0 && ` (filtered from ${employees?.length || 0})`}
-                </CardDescription>
+            <Card className="border-border/60">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Employee Directory</CardTitle>
+                    <CardDescription>
+                      {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''}
+                      {activeFilterCount > 0 && ` (filtered from ${employees?.length || 0})`}
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : filteredEmployees.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <p>{search || activeFilterCount > 0 ? 'No employees match your search or filters.' : 'No employees found. Add your first employee to get started.'}</p>
+                  <div className="text-center py-16 text-muted-foreground">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <LayoutGrid className="h-6 w-6" />
+                    </div>
+                    <p className="font-medium">No employees found</p>
+                    <p className="text-sm mt-1">
+                      {search || activeFilterCount > 0 
+                        ? 'Try adjusting your search or filters.' 
+                        : 'Add your first employee to get started.'}
+                    </p>
                   </div>
                 ) : (
                   <>
@@ -518,16 +575,18 @@ export default function EmployeesPage() {
 
           {/* Org Chart View */}
           <TabsContent value="org" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Organization Chart</CardTitle>
-                <CardDescription>
-                  View department hierarchy and reporting structure
-                </CardDescription>
+            <Card className="border-border/60">
+              <CardHeader className="pb-3">
+                <div>
+                  <CardTitle className="text-lg">Organization Chart</CardTitle>
+                  <CardDescription>
+                    View department hierarchy and reporting structure
+                  </CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
@@ -544,9 +603,9 @@ export default function EmployeesPage() {
 
         {/* Employee Detail Dialog */}
         <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle>Employee Details</DialogTitle>
+              <DialogTitle className="text-xl">Employee Details</DialogTitle>
             </DialogHeader>
             {selectedEmployee && <EmployeeDetail employee={selectedEmployee} canEdit={isHROrAbove} />}
           </DialogContent>
