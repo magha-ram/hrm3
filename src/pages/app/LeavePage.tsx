@@ -6,14 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Calendar, Loader2, MessageSquare } from 'lucide-react';
+import { Plus, Calendar, Loader2, MessageSquare, RefreshCw } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WriteGate, RoleGate, PermGate } from '@/components/PermissionGate';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { usePermission } from '@/contexts/PermissionContext';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useMyLeaveRequests, usePendingLeaveRequests, useApproveLeaveRequest, useRejectLeaveRequest, useCancelLeaveRequest } from '@/hooks/useLeave';
-import { useMyLeaveBalances, useAllEmployeeLeaveBalances } from '@/hooks/useLeaveBalances';
+import { useMyLeaveBalances, useAllEmployeeLeaveBalances, useAccrueLeaveBalances } from '@/hooks/useLeaveBalances';
 import { LeaveRequestFormV2 } from '@/components/leave/LeaveRequestFormV2';
 import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
 import { LeaveBalanceTable } from '@/components/leave/LeaveBalanceTable';
@@ -37,6 +37,7 @@ export default function LeavePage() {
   const approveRequest = useApproveLeaveRequest();
   const rejectRequest = useRejectLeaveRequest();
   const cancelRequest = useCancelLeaveRequest();
+  const accrueBalances = useAccrueLeaveBalances();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [myLeavePage, setMyLeavePage] = useState(1);
@@ -250,7 +251,27 @@ export default function LeavePage() {
 
           <TabsContent value="balances">
             <PermGate module="leave" action="read">
-              <LeaveBalanceTable data={allBalances} isLoading={loadingAllBalances} />
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <RoleGate role="hr_manager">
+                    <WriteGate>
+                      <Button
+                        variant="outline"
+                        onClick={() => accrueBalances.mutate(new Date().getFullYear())}
+                        disabled={accrueBalances.isPending}
+                      >
+                        {accrueBalances.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Accrue Balances for {new Date().getFullYear()}
+                      </Button>
+                    </WriteGate>
+                  </RoleGate>
+                </div>
+                <LeaveBalanceTable data={allBalances} isLoading={loadingAllBalances} />
+              </div>
             </PermGate>
           </TabsContent>
 

@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Loader2, AlertTriangle, Info, Plus, Trash2 } from 'lucide-react';
 import { useLeaveTypes, useCreateLeaveRequest } from '@/hooks/useLeave';
-import { useMyLeaveBalances } from '@/hooks/useLeaveBalances';
+import { useMyLeaveBalances, useCheckLeaveBalance } from '@/hooks/useLeaveBalances';
 import { TeamConflictWarning } from './TeamConflictWarning';
 import { format, parseISO, isWeekend, addDays, isBefore, isAfter, isSameDay } from 'date-fns';
 import { useTenant } from '@/contexts/TenantContext';
@@ -42,7 +42,8 @@ export function LeaveRequestFormV2({ onSuccess, onCancel }: LeaveRequestFormV2Pr
   const { companyId, employeeId } = useTenant();
   const queryClient = useQueryClient();
   const { data: leaveTypes } = useLeaveTypes();
-  const { data: balances } = useMyLeaveBalances();
+  const { data: balances, isLoading: balancesLoading } = useMyLeaveBalances();
+  const checkBalance = useCheckLeaveBalance();
   
   const [leaveDays, setLeaveDays] = useState<LeaveDay[]>([]);
   const [newDate, setNewDate] = useState('');
@@ -164,7 +165,23 @@ export function LeaveRequestFormV2({ onSuccess, onCancel }: LeaveRequestFormV2Pr
     },
   });
 
-  const onSubmit = (values: LeaveFormValues) => {
+  const onSubmit = async (values: LeaveFormValues) => {
+    // Pre-check balance (the mutation will also check, but this gives better UX)
+    if (selectedLeaveTypeId && employeeId && totalDays > 0) {
+      try {
+        const result = await checkBalance.mutateAsync({
+          employeeId,
+          leaveTypeId: selectedLeaveTypeId,
+          days: totalDays,
+        });
+        if (!result.has_balance) {
+          toast.error(result.message || 'Insufficient leave balance');
+          return;
+        }
+      } catch {
+        // Continue even if balance check fails - the server will validate
+      }
+    }
     createRequestMutation.mutate(values);
   };
 

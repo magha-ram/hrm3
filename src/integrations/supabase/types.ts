@@ -2932,6 +2932,76 @@ export type Database = {
           },
         ]
       }
+      leave_balances: {
+        Row: {
+          adjustment_days: number
+          adjustment_reason: string | null
+          allocated_days: number
+          carried_over_days: number
+          company_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          leave_type_id: string
+          pending_days: number
+          updated_at: string
+          used_days: number
+          year: number
+        }
+        Insert: {
+          adjustment_days?: number
+          adjustment_reason?: string | null
+          allocated_days?: number
+          carried_over_days?: number
+          company_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          leave_type_id: string
+          pending_days?: number
+          updated_at?: string
+          used_days?: number
+          year: number
+        }
+        Update: {
+          adjustment_days?: number
+          adjustment_reason?: string | null
+          allocated_days?: number
+          carried_over_days?: number
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          leave_type_id?: string
+          pending_days?: number
+          updated_at?: string
+          used_days?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balances_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "leave_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leave_request_days: {
         Row: {
           company_id: string
@@ -4982,6 +5052,43 @@ export type Database = {
       }
     }
     Functions: {
+      accrue_leave_balances: {
+        Args: { _company_id: string; _year?: number }
+        Returns: {
+          balances_created: number
+          employees_processed: number
+          errors: string[]
+        }[]
+      }
+      adjust_leave_balance: {
+        Args: {
+          _adjustment_days: number
+          _employee_id: string
+          _leave_type_id: string
+          _reason: string
+        }
+        Returns: {
+          adjustment_days: number
+          adjustment_reason: string | null
+          allocated_days: number
+          carried_over_days: number
+          company_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          leave_type_id: string
+          pending_days: number
+          updated_at: string
+          used_days: number
+          year: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leave_balances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       bulk_link_users_to_employees: {
         Args: { _company_id: string }
         Returns: {
@@ -5044,6 +5151,19 @@ export type Database = {
       check_document_limits: {
         Args: { _company_id: string; _employee_id: string }
         Returns: Json
+      }
+      check_leave_balance: {
+        Args: {
+          _days: number
+          _employee_id: string
+          _exclude_request_id?: string
+          _leave_type_id: string
+        }
+        Returns: {
+          available_days: number
+          has_balance: boolean
+          message: string
+        }[]
       }
       check_subdomain_availability: {
         Args: { subdomain_to_check: string }
@@ -5131,6 +5251,10 @@ export type Database = {
       get_employee_shift_for_date: {
         Args: { _date: string; _employee_id: string }
         Returns: string
+      }
+      get_leave_balance: {
+        Args: { _employee_id: string; _leave_type_id: string; _year?: number }
+        Returns: number
       }
       get_platform_admin_role: { Args: { _user_id: string }; Returns: string }
       get_registration_settings: { Args: never; Returns: Json }

@@ -1,15 +1,20 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { toast } from 'sonner';
 
 export interface LeaveBalance {
+  id: string;
   leaveTypeId: string;
   leaveTypeName: string;
   leaveTypeCode: string;
   color: string | null;
+  year: number;
   allocated: number;
   used: number;
   pending: number;
+  carriedOver: number;
+  adjustments: number;
   remaining: number;
 }
 
@@ -19,72 +24,78 @@ export interface EmployeeLeaveBalances {
   balances: LeaveBalance[];
 }
 
-/**
- * Calculate leave balances for the current year
- * Formula: remaining = allocated - approved_used
- */
-function calculateBalance(
-  leaveType: { id: string; name: string; code: string; color: string | null; default_days: number | null },
-  approvedRequests: { leave_type_id: string; total_days: number; status: string }[]
-): LeaveBalance {
-  const allocated = leaveType.default_days || 0;
-  const approved = approvedRequests
-    .filter(r => r.leave_type_id === leaveType.id && r.status === 'approved')
-    .reduce((sum, r) => sum + Number(r.total_days), 0);
-  const pending = approvedRequests
-    .filter(r => r.leave_type_id === leaveType.id && r.status === 'pending')
-    .reduce((sum, r) => sum + Number(r.total_days), 0);
+interface RawLeaveBalance {
+  id: string;
+  leave_type_id: string;
+  year: number;
+  allocated_days: number;
+  used_days: number;
+  pending_days: number;
+  carried_over_days: number;
+  adjustment_days: number;
+  leave_type: {
+    id: string;
+    name: string;
+    code: string;
+    color: string | null;
+  } | null;
+}
 
+function mapBalance(raw: RawLeaveBalance): LeaveBalance {
+  const allocated = Number(raw.allocated_days) || 0;
+  const used = Number(raw.used_days) || 0;
+  const pending = Number(raw.pending_days) || 0;
+  const carriedOver = Number(raw.carried_over_days) || 0;
+  const adjustments = Number(raw.adjustment_days) || 0;
+  
   return {
-    leaveTypeId: leaveType.id,
-    leaveTypeName: leaveType.name,
-    leaveTypeCode: leaveType.code,
-    color: leaveType.color,
+    id: raw.id,
+    leaveTypeId: raw.leave_type_id,
+    leaveTypeName: raw.leave_type?.name || 'Unknown',
+    leaveTypeCode: raw.leave_type?.code || '',
+    color: raw.leave_type?.color || null,
+    year: raw.year,
     allocated,
-    used: approved,
+    used,
     pending,
-    remaining: allocated - approved,
+    carriedOver,
+    adjustments,
+    remaining: allocated + carriedOver + adjustments - used,
   };
 }
 
 /**
  * Get leave balances for the current user (employee self-service)
+ * Now uses the actual leave_balances table
  */
 export function useMyLeaveBalances() {
   const { companyId, employeeId } = useTenant();
+  const currentYear = new Date().getFullYear();
 
   return useQuery({
-    queryKey: ['leave-balances', 'my', companyId, employeeId],
+    queryKey: ['leave-balances', 'my', companyId, employeeId, currentYear],
     queryFn: async () => {
       if (!companyId || !employeeId) return [];
 
-      // Get current year bounds
-      const currentYear = new Date().getFullYear();
-      const yearStart = `${currentYear}-01-01`;
-      const yearEnd = `${currentYear}-12-31`;
-
-      // Get all active leave types
-      const { data: leaveTypes, error: typesError } = await supabase
-        .from('leave_types')
-        .select('id, name, code, color, default_days')
-        .eq('company_id', companyId)
-        .eq('is_active', true)
-        .order('name');
-
-      if (typesError) throw typesError;
-
-      // Get all leave requests for this year
-      const { data: requests, error: requestsError } = await supabase
-        .from('leave_requests')
-        .select('leave_type_id, total_days, status')
+      const { data, error } = await supabase
+        .from('leave_balances')
+        .select(`
+          id,
+          leave_type_id,
+          year,
+          allocated_days,
+          used_days,
+          pending_days,
+          carried_over_days,
+          adjustment_days,
+          leave_type:leave_types(id, name, code, color)
+        `)
         .eq('employee_id', employeeId)
-        .gte('start_date', yearStart)
-        .lte('start_date', yearEnd)
-        .in('status', ['approved', 'pending']);
+        .eq('year', currentYear);
 
-      if (requestsError) throw requestsError;
+      if (error) throw error;
 
-      return leaveTypes?.map(lt => calculateBalance(lt, requests || [])) || [];
+      return (data || []).map(mapBalance);
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -95,36 +106,32 @@ export function useMyLeaveBalances() {
  */
 export function useEmployeeLeaveBalances(employeeId: string | null) {
   const { companyId } = useTenant();
+  const currentYear = new Date().getFullYear();
 
   return useQuery({
-    queryKey: ['leave-balances', 'employee', companyId, employeeId],
+    queryKey: ['leave-balances', 'employee', companyId, employeeId, currentYear],
     queryFn: async () => {
       if (!companyId || !employeeId) return [];
 
-      const currentYear = new Date().getFullYear();
-      const yearStart = `${currentYear}-01-01`;
-      const yearEnd = `${currentYear}-12-31`;
-
-      const { data: leaveTypes, error: typesError } = await supabase
-        .from('leave_types')
-        .select('id, name, code, color, default_days')
-        .eq('company_id', companyId)
-        .eq('is_active', true)
-        .order('name');
-
-      if (typesError) throw typesError;
-
-      const { data: requests, error: requestsError } = await supabase
-        .from('leave_requests')
-        .select('leave_type_id, total_days, status')
+      const { data, error } = await supabase
+        .from('leave_balances')
+        .select(`
+          id,
+          leave_type_id,
+          year,
+          allocated_days,
+          used_days,
+          pending_days,
+          carried_over_days,
+          adjustment_days,
+          leave_type:leave_types(id, name, code, color)
+        `)
         .eq('employee_id', employeeId)
-        .gte('start_date', yearStart)
-        .lte('start_date', yearEnd)
-        .in('status', ['approved', 'pending']);
+        .eq('year', currentYear);
 
-      if (requestsError) throw requestsError;
+      if (error) throw error;
 
-      return leaveTypes?.map(lt => calculateBalance(lt, requests || [])) || [];
+      return (data || []).map(mapBalance);
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -135,56 +142,160 @@ export function useEmployeeLeaveBalances(employeeId: string | null) {
  */
 export function useAllEmployeeLeaveBalances() {
   const { companyId } = useTenant();
+  const currentYear = new Date().getFullYear();
 
   return useQuery({
-    queryKey: ['leave-balances', 'all', companyId],
+    queryKey: ['leave-balances', 'all', companyId, currentYear],
     queryFn: async () => {
       if (!companyId) return [];
 
-      const currentYear = new Date().getFullYear();
-      const yearStart = `${currentYear}-01-01`;
-      const yearEnd = `${currentYear}-12-31`;
-
-      // Get all active leave types
-      const { data: leaveTypes, error: typesError } = await supabase
-        .from('leave_types')
-        .select('id, name, code, color, default_days')
+      // Get all balances with employee and leave type info
+      const { data: balances, error: balError } = await supabase
+        .from('leave_balances')
+        .select(`
+          id,
+          employee_id,
+          leave_type_id,
+          year,
+          allocated_days,
+          used_days,
+          pending_days,
+          carried_over_days,
+          adjustment_days,
+          employee:employees(id, first_name, last_name),
+          leave_type:leave_types(id, name, code, color)
+        `)
         .eq('company_id', companyId)
-        .eq('is_active', true)
-        .order('name');
+        .eq('year', currentYear);
 
-      if (typesError) throw typesError;
+      if (balError) throw balError;
 
-      // Get all active employees
-      const { data: employees, error: empError } = await supabase
-        .from('employees')
-        .select('id, first_name, last_name')
-        .eq('company_id', companyId)
-        .neq('employment_status', 'terminated')
-        .order('first_name');
+      // Group by employee
+      const employeeMap = new Map<string, EmployeeLeaveBalances>();
+      
+      for (const bal of balances || []) {
+        const empId = bal.employee_id;
+        const emp = bal.employee as { id: string; first_name: string; last_name: string } | null;
+        
+        if (!employeeMap.has(empId)) {
+          employeeMap.set(empId, {
+            employeeId: empId,
+            employeeName: emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown',
+            balances: [],
+          });
+        }
+        
+        employeeMap.get(empId)!.balances.push(mapBalance({
+          id: bal.id,
+          leave_type_id: bal.leave_type_id,
+          year: bal.year,
+          allocated_days: bal.allocated_days,
+          used_days: bal.used_days,
+          pending_days: bal.pending_days,
+          carried_over_days: bal.carried_over_days,
+          adjustment_days: bal.adjustment_days,
+          leave_type: bal.leave_type as { id: string; name: string; code: string; color: string | null } | null,
+        }));
+      }
 
-      if (empError) throw empError;
-
-      // Get all leave requests for this year
-      const { data: allRequests, error: requestsError } = await supabase
-        .from('leave_requests')
-        .select('employee_id, leave_type_id, total_days, status')
-        .eq('company_id', companyId)
-        .gte('start_date', yearStart)
-        .lte('start_date', yearEnd)
-        .in('status', ['approved', 'pending']);
-
-      if (requestsError) throw requestsError;
-
-      // Calculate balances per employee
-      return employees?.map(emp => ({
-        employeeId: emp.id,
-        employeeName: `${emp.first_name} ${emp.last_name}`,
-        balances: leaveTypes?.map(lt => 
-          calculateBalance(lt, allRequests?.filter(r => r.employee_id === emp.id) || [])
-        ) || [],
-      })) as EmployeeLeaveBalances[];
+      return Array.from(employeeMap.values());
     },
     enabled: !!companyId,
+  });
+}
+
+/**
+ * Accrue leave balances for the company
+ */
+export function useAccrueLeaveBalances() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async (year?: number) => {
+      if (!companyId) throw new Error('No company selected');
+
+      const targetYear = year || new Date().getFullYear();
+
+      const { data, error } = await supabase.rpc('accrue_leave_balances', {
+        _company_id: companyId,
+        _year: targetYear,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
+      const result = data?.[0] || { employees_processed: 0, balances_created: 0 };
+      toast.success(`Accrued balances for ${result.employees_processed} employees (${result.balances_created} records)`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to accrue balances: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Adjust leave balance for an employee
+ */
+export function useAdjustLeaveBalance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      employeeId, 
+      leaveTypeId, 
+      adjustmentDays, 
+      reason 
+    }: {
+      employeeId: string;
+      leaveTypeId: string;
+      adjustmentDays: number;
+      reason: string;
+    }) => {
+      const { data, error } = await supabase.rpc('adjust_leave_balance', {
+        _employee_id: employeeId,
+        _leave_type_id: leaveTypeId,
+        _adjustment_days: adjustmentDays,
+        _reason: reason,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
+      toast.success('Leave balance adjusted');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to adjust balance: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Check leave balance before submitting request
+ */
+export function useCheckLeaveBalance() {
+  return useMutation({
+    mutationFn: async ({
+      employeeId,
+      leaveTypeId,
+      days,
+    }: {
+      employeeId: string;
+      leaveTypeId: string;
+      days: number;
+    }) => {
+      const { data, error } = await supabase.rpc('check_leave_balance', {
+        _employee_id: employeeId,
+        _leave_type_id: leaveTypeId,
+        _days: days,
+      });
+
+      if (error) throw error;
+      return data?.[0] || { has_balance: false, available_days: 0, message: 'Unable to check balance' };
+    },
   });
 }
