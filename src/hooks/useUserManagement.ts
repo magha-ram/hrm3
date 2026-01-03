@@ -87,10 +87,29 @@ export function useUserManagement() {
 
       console.log('Edge function response:', { data, error });
 
-      if (error) {
-        console.error('Create employee user error:', error);
-        throw new Error(error.message || 'Failed to create user account');
-      }
+       if (error) {
+         console.error('Create employee user error:', error);
+
+         let message = error.message || 'Failed to create user account';
+         // For non-2xx responses Supabase returns a FunctionsHttpError with a response body
+         // available via error.context.text()/json(). Parse it so we show the real backend error.
+         try {
+           const anyErr = error as any;
+           const text = await anyErr?.context?.text?.();
+           if (typeof text === 'string' && text.trim().length > 0) {
+             try {
+               const parsed = JSON.parse(text);
+               message = parsed?.message || parsed?.error || message;
+             } catch {
+               message = text;
+             }
+           }
+         } catch {
+           // ignore parsing issues and fall back to error.message
+         }
+
+         throw new Error(message);
+       }
 
       // Handle case where data might be the response directly or wrapped
       const responseData = data;

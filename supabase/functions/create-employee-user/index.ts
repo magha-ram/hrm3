@@ -160,6 +160,14 @@ serve(async (req) => {
       );
     }
 
+    const employeeEmail = (employee.email ?? '').toString().trim().toLowerCase();
+    if (!employeeEmail) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Employee does not have an email address set. Please add an email and try again.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get company details
     const { data: company, error: compError } = await supabaseAdmin
       .from('companies')
@@ -184,13 +192,13 @@ serve(async (req) => {
 
     // Generate temporary password
     const temporaryPassword = generateTemporaryPassword();
-    
+
     // Determine login type based on role
     const loginType = (role === 'company_admin' || role === 'hr_manager') ? 'email' : 'employee_id';
 
     // Create auth user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: employee.email,
+      email: employeeEmail,
       password: temporaryPassword,
       email_confirm: true, // Auto-confirm the email
       user_metadata: {
@@ -203,9 +211,14 @@ serve(async (req) => {
 
     if (createError || !newUser.user) {
       console.error('Failed to create auth user:', createError);
+      const rawMessage = createError?.message || 'Failed to create user account';
+      const message = rawMessage.toLowerCase().includes('already')
+        ? 'A user with this email already exists. If they belong to this company, add/reactivate them from Users. Otherwise, use a different email.'
+        : rawMessage;
+
       return new Response(
-        JSON.stringify({ success: false, message: createError?.message || 'Failed to create user account' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, message }),
+        { status: rawMessage.toLowerCase().includes('already') ? 409 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -265,7 +278,7 @@ serve(async (req) => {
       await supabaseAdmin.from('employees').update({ user_id: null }).eq('id', employee_id);
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
       return new Response(
-        JSON.stringify({ success: false, message: 'Failed to add user to company' }),
+        JSON.stringify({ success: false, message: companyUserError.message || 'Failed to add user to company' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
