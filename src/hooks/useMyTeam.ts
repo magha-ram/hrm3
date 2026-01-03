@@ -69,11 +69,13 @@ export function useMyTeam() {
           email,
           job_title,
           employment_status,
-          department:departments(name)
+          department:departments!employees_department_id_fkey(name)
         `)
         .eq('company_id', companyId)
         .eq('manager_id', managerId)
         .neq('employment_status', 'terminated');
+
+      console.log('[useMyTeam] Direct reports query result:', { directReports, reportsError });
 
       if (reportsError) throw reportsError;
       
@@ -97,7 +99,7 @@ export function useMyTeam() {
             email,
             job_title,
             employment_status,
-            department:departments(name)
+            department:departments!employees_department_id_fkey(name)
           `)
           .eq('company_id', companyId)
           .in('department_id', deptIds)
