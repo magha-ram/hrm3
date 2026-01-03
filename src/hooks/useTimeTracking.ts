@@ -578,6 +578,37 @@ export function useApproveTimeEntry() {
   });
 }
 
+export function useBulkApproveTimeEntries() {
+  const queryClient = useQueryClient();
+  const { employeeId } = useTenant();
+
+  return useMutation({
+    mutationFn: async (entryIds: string[]) => {
+      if (entryIds.length === 0) throw new Error('No entries selected');
+
+      const { data, error } = await supabase
+        .from('time_entries')
+        .update({
+          is_approved: true,
+          approved_by: employeeId,
+          approved_at: new Date().toISOString(),
+        })
+        .in('id', entryIds)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
+      toast.success(`${data?.length || 0} time entries approved`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to approve entries');
+    },
+  });
+}
+
 export function useRejectTimeEntry() {
   const queryClient = useQueryClient();
   const { employeeId } = useTenant();

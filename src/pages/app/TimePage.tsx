@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer, X } from 'lucide-react';
+import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer, X, CheckCheck } from 'lucide-react';
 import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { LoadMoreButton } from '@/components/ui/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 import { WriteGate } from '@/components/PermissionGate';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -27,6 +28,7 @@ import {
   useTeamTimeEntries,
   useApproveTimeEntry,
   useRejectTimeEntry,
+  useBulkApproveTimeEntries,
   useActiveBreak,
   useStartBreak,
   useEndBreak,
@@ -148,6 +150,7 @@ export default function TimePage() {
   const endBreak = useEndBreak();
   const approveEntry = useApproveTimeEntry();
   const rejectEntry = useRejectTimeEntry();
+  const bulkApprove = useBulkApproveTimeEntries();
   const { data: correctionRequests = [] } = usePendingTimeCorrectionRequests();
   const { data: myCorrectionRequests = [] } = useMyTimeCorrectionRequests();
   
@@ -155,6 +158,7 @@ export default function TimePage() {
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [breakElapsed, setBreakElapsed] = useState('00:00');
   const [entriesDisplayCount, setEntriesDisplayCount] = useState(20);
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
 
   const clockStatus = getClockStatus(todayEntry, activeBreak);
   const statusConfig = getStatusConfig(clockStatus);
@@ -505,9 +509,28 @@ export default function TimePage() {
 
           <TabsContent value="team" className="mt-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Team Time Entries</CardTitle>
-                <CardDescription>Review and approve team time entries</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Team Time Entries</CardTitle>
+                  <CardDescription>Review and approve team time entries</CardDescription>
+                </div>
+                {selectedEntries.size > 0 && (
+                  <Button
+                    onClick={() => {
+                      bulkApprove.mutate(Array.from(selectedEntries), {
+                        onSuccess: () => setSelectedEntries(new Set()),
+                      });
+                    }}
+                    disabled={bulkApprove.isPending}
+                  >
+                    {bulkApprove.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCheck className="h-4 w-4 mr-2" />
+                    )}
+                    Approve Selected ({selectedEntries.size})
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 {teamLoading ? (
@@ -521,6 +544,22 @@ export default function TimePage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox
+                              checked={
+                                pendingApprovals.length > 0 &&
+                                pendingApprovals.every(e => selectedEntries.has(e.id))
+                              }
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedEntries(new Set(pendingApprovals.map(e => e.id)));
+                                } else {
+                                  setSelectedEntries(new Set());
+                                }
+                              }}
+                              disabled={pendingApprovals.length === 0}
+                            />
+                          </TableHead>
                           <TableHead>Employee</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Clock In/Out</TableHead>
@@ -530,59 +569,77 @@ export default function TimePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {teamEntries.map((entry) => (
-                          <TableRow key={entry.id}>
-                            <TableCell className="font-medium">
-                              {(entry as any).employee?.first_name} {(entry as any).employee?.last_name}
-                            </TableCell>
-                            <TableCell>{format(new Date(entry.date), 'MMM d, yyyy')}</TableCell>
-                            <TableCell>
-                              {entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}
-                              {' - '}
-                              {entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}
-                            </TableCell>
-                            <TableCell>{entry.total_hours ? formatHours(entry.total_hours) : '-'}</TableCell>
-                            <TableCell>
-                              {entry.is_approved ? (
-                                <Badge variant="default">Approved</Badge>
-                              ) : (
-                                <Badge variant="secondary">Pending</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="flex gap-2">
-                              {!entry.is_approved && entry.total_hours && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => approveEntry.mutate(entry.id)}
-                                    disabled={approveEntry.isPending || rejectEntry.isPending}
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      const reason = window.prompt('Enter rejection reason:');
-                                      if (reason) {
-                                        rejectEntry.mutate({ entryId: entry.id, reason });
-                                      }
-                                    }}
-                                    disabled={approveEntry.isPending || rejectEntry.isPending}
-                                  >
-                                    <X className="h-4 w-4 mr-1" />
-                                    Reject
-                                  </Button>
-                                </>
-                              )}
-                              {entry.notes && !entry.is_approved && (
-                                <span className="text-xs text-destructive">Rejected: {entry.notes}</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {teamEntries.map((entry) => {
+                          const isPending = !entry.is_approved && entry.total_hours;
+                          return (
+                            <TableRow key={entry.id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedEntries.has(entry.id)}
+                                  onCheckedChange={(checked) => {
+                                    const newSet = new Set(selectedEntries);
+                                    if (checked) {
+                                      newSet.add(entry.id);
+                                    } else {
+                                      newSet.delete(entry.id);
+                                    }
+                                    setSelectedEntries(newSet);
+                                  }}
+                                  disabled={!isPending}
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {(entry as any).employee?.first_name} {(entry as any).employee?.last_name}
+                              </TableCell>
+                              <TableCell>{format(new Date(entry.date), 'MMM d, yyyy')}</TableCell>
+                              <TableCell>
+                                {entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}
+                                {' - '}
+                                {entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}
+                              </TableCell>
+                              <TableCell>{entry.total_hours ? formatHours(entry.total_hours) : '-'}</TableCell>
+                              <TableCell>
+                                {entry.is_approved ? (
+                                  <Badge variant="default">Approved</Badge>
+                                ) : (
+                                  <Badge variant="secondary">Pending</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="flex gap-2">
+                                {isPending && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => approveEntry.mutate(entry.id)}
+                                      disabled={approveEntry.isPending || rejectEntry.isPending}
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => {
+                                        const reason = window.prompt('Enter rejection reason:');
+                                        if (reason) {
+                                          rejectEntry.mutate({ entryId: entry.id, reason });
+                                        }
+                                      }}
+                                      disabled={approveEntry.isPending || rejectEntry.isPending}
+                                    >
+                                      <X className="h-4 w-4 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                                {entry.notes && !entry.is_approved && (
+                                  <span className="text-xs text-destructive">Rejected: {entry.notes}</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
