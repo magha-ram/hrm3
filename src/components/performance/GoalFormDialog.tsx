@@ -237,7 +237,18 @@ export function GoalFormDialog({ open, onOpenChange, goal }: GoalFormDialogProps
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Auto-adjust progress based on status
+                      if (value === 'not_started') {
+                        form.setValue('progress', 0);
+                      } else if (value === 'completed') {
+                        form.setValue('progress', 100);
+                      }
+                    }} 
+                    value={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -258,20 +269,41 @@ export function GoalFormDialog({ open, onOpenChange, goal }: GoalFormDialogProps
             <FormField
               control={form.control}
               name="progress"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Progress ({field.value}%)</FormLabel>
-                  <FormControl>
-                    <Slider
-                      value={[field.value]}
-                      onValueChange={([value]) => field.onChange(value)}
-                      max={100}
-                      step={5}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const status = form.watch('status');
+                const isEditable = status === 'in_progress';
+                return (
+                  <FormItem>
+                    <FormLabel>Progress ({field.value}%)</FormLabel>
+                    <FormControl>
+                      <Slider
+                        value={[field.value]}
+                        onValueChange={([value]) => {
+                          field.onChange(value);
+                          // Auto-update status based on progress
+                          if (value === 100 && status !== 'completed') {
+                            form.setValue('status', 'completed');
+                          } else if (value === 0 && status !== 'not_started' && status !== 'cancelled') {
+                            form.setValue('status', 'not_started');
+                          } else if (value > 0 && value < 100 && status !== 'in_progress' && status !== 'cancelled') {
+                            form.setValue('status', 'in_progress');
+                          }
+                        }}
+                        max={100}
+                        step={5}
+                        disabled={!isEditable && status !== 'not_started'}
+                        className={!isEditable && status !== 'not_started' ? 'opacity-50' : ''}
+                      />
+                    </FormControl>
+                    {!isEditable && status !== 'not_started' && (
+                      <p className="text-xs text-muted-foreground">
+                        Progress is fixed for {status === 'completed' ? 'completed' : 'cancelled'} goals
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <div className="flex justify-end gap-2 pt-4">
