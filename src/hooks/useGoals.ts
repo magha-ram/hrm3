@@ -184,8 +184,8 @@ export function useCreateGoal() {
           description: goal.description || null,
           target_date: goal.target_date || null,
           review_id: goal.review_id || null,
-          progress_percentage: 0,
-          status: 'not_started',
+          progress_percentage: goal.progress ?? 0,
+          status: goal.status || 'not_started',
           progress_notes: [],
         })
         .select()

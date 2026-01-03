@@ -16,7 +16,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useTenant } from '@/contexts/TenantContext';
 import { TimeCorrectionDialog } from '@/components/time/TimeCorrectionDialog';
 import { TimeCorrectionRequestsPanel } from '@/components/time/TimeCorrectionRequestsPanel';
-import { usePendingTimeCorrectionRequests } from '@/hooks/useTimeCorrectionRequests';
+import { MyCorrectionRequestsTab } from '@/components/time/MyCorrectionRequestsTab';
+import { usePendingTimeCorrectionRequests, useMyTimeCorrectionRequests } from '@/hooks/useTimeCorrectionRequests';
 import { 
   useTodayEntry, 
   useClockIn, 
@@ -146,6 +147,7 @@ export default function TimePage() {
   const endBreak = useEndBreak();
   const approveEntry = useApproveTimeEntry();
   const { data: correctionRequests = [] } = usePendingTimeCorrectionRequests();
+  const { data: myCorrectionRequests = [] } = useMyTimeCorrectionRequests();
   
   const [activeTab, setActiveTab] = useState('my');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
@@ -372,7 +374,15 @@ export default function TimePage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="my">My Time Entries</TabsTrigger>
+            <TabsTrigger value="my">My Entries</TabsTrigger>
+            <TabsTrigger value="my-requests">
+              My Requests
+              {myCorrectionRequests.filter(r => r.status === 'pending' || r.status === 'clarification_needed').length > 0 && (
+                <Badge variant="outline" className="ml-2">
+                  {myCorrectionRequests.filter(r => r.status === 'pending' || r.status === 'clarification_needed').length}
+                </Badge>
+              )}
+            </TabsTrigger>
             {(isHROrAbove || isManager) && (
               <TabsTrigger value="team">
                 Team Entries
@@ -381,10 +391,12 @@ export default function TimePage() {
                 )}
               </TabsTrigger>
             )}
-            {(isHROrAbove || isManager) && correctionRequests.length > 0 && (
+            {(isHROrAbove || isManager) && (
               <TabsTrigger value="corrections">
                 Corrections
-                <Badge variant="secondary" className="ml-2">{correctionRequests.length}</Badge>
+                {correctionRequests.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{correctionRequests.length}</Badge>
+                )}
               </TabsTrigger>
             )}
             {isHROrAbove && (
@@ -483,6 +495,10 @@ export default function TimePage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="my-requests" className="mt-4">
+            <MyCorrectionRequestsTab />
           </TabsContent>
 
           <TabsContent value="team" className="mt-4">

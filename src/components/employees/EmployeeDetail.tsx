@@ -54,7 +54,7 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
