@@ -15,10 +15,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
-import { useShifts, useCreateShift, useUpdateShift, useDeleteShift, useAllShiftAssignments } from '@/hooks/useShifts';
-import { RoleGate } from '@/components/PermissionGate';
+import { useShifts, useCreateShift, useUpdateShift, useDeleteShift } from '@/hooks/useShifts';
+import { RoleGate, PermissionGate } from '@/components/PermissionGate';
 import { ALL_DAYS, DAY_FULL_LABELS, type Shift, type DayOfWeek } from '@/types/shifts';
 import { format } from 'date-fns';
+import { ShiftAssignmentsTab } from '@/components/shift/ShiftAssignmentsTab';
+import { useTenant } from '@/contexts/TenantContext';
+import { usePermission } from '@/contexts/PermissionContext';
 
 const shiftSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -462,115 +465,50 @@ function ShiftsTab() {
   );
 }
 
-function AssignmentsTab() {
-  const { data: assignments, isLoading } = useAllShiftAssignments();
-  const today = new Date().toISOString().split('T')[0];
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const activeAssignments = assignments?.filter(
-    (a) => a.effective_from <= today && (!a.effective_to || a.effective_to >= today)
-  );
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Shift Assignments</CardTitle>
-        <CardDescription>
-          View current employee shift assignments. Assign shifts from the employee profile.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!activeAssignments || activeAssignments.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No active shift assignments</p>
-            <p className="text-sm">Assign shifts from employee profiles</p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Shift</TableHead>
-                <TableHead>Effective From</TableHead>
-                <TableHead>Effective To</TableHead>
-                <TableHead>Type</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activeAssignments.map((assignment) => (
-                <TableRow key={assignment.id}>
-                  <TableCell className="font-medium">
-                    {assignment.employee.first_name} {assignment.employee.last_name}
-                    <div className="text-xs text-muted-foreground">
-                      {assignment.employee.employee_number}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {assignment.employee.department?.name || '-'}
-                  </TableCell>
-                  <TableCell>{assignment.shift.name}</TableCell>
-                  <TableCell>
-                    {format(new Date(assignment.effective_from), 'MMM d, yyyy')}
-                  </TableCell>
-                  <TableCell>
-                    {assignment.effective_to
-                      ? format(new Date(assignment.effective_to), 'MMM d, yyyy')
-                      : 'Ongoing'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={assignment.is_temporary ? 'outline' : 'default'}>
-                      {assignment.is_temporary ? 'Temporary' : 'Permanent'}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+// Using ShiftAssignmentsTab component from src/components/shift/ShiftAssignmentsTab.tsx
 
 export default function ShiftManagementPage() {
+  const { can } = usePermission();
+  const canManageShifts = can('time_tracking', 'update');
+  const canViewAssignments = can('employees', 'read');
+
   return (
-    <RoleGate role="hr_manager">
+    <PermissionGate permission={{ module: 'time_tracking', action: 'read' }}>
       <PageContainer>
         <PageHeader
           title="Shift Management"
           description="Configure shift templates and manage employee assignments"
         />
 
-        <Tabs defaultValue="shifts" className="space-y-6">
+        <Tabs defaultValue={canManageShifts ? 'shifts' : 'assignments'} className="space-y-6">
           <TabsList>
-            <TabsTrigger value="shifts" className="gap-2">
-              <Clock className="h-4 w-4" />
-              Shift Templates
-            </TabsTrigger>
-            <TabsTrigger value="assignments" className="gap-2">
-              <Users className="h-4 w-4" />
-              Assignments
-            </TabsTrigger>
+            {canManageShifts && (
+              <TabsTrigger value="shifts" className="gap-2">
+                <Clock className="h-4 w-4" />
+                Shift Templates
+              </TabsTrigger>
+            )}
+            {canViewAssignments && (
+              <TabsTrigger value="assignments" className="gap-2">
+                <Users className="h-4 w-4" />
+                Assignments
+              </TabsTrigger>
+            )}
           </TabsList>
 
-          <TabsContent value="shifts">
-            <ShiftsTab />
-          </TabsContent>
+          {canManageShifts && (
+            <TabsContent value="shifts">
+              <ShiftsTab />
+            </TabsContent>
+          )}
 
-          <TabsContent value="assignments">
-            <AssignmentsTab />
-          </TabsContent>
+          {canViewAssignments && (
+            <TabsContent value="assignments">
+              <ShiftAssignmentsTab />
+            </TabsContent>
+          )}
         </Tabs>
       </PageContainer>
-    </RoleGate>
+    </PermissionGate>
   );
 }

@@ -19,6 +19,17 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useDocumentTypes, DocumentType } from '@/hooks/useDocuments';
 import { toast } from 'sonner';
 
+const ALLOWED_MIME_TYPES = [
+  { value: 'application/pdf', label: 'PDF' },
+  { value: 'image/jpeg', label: 'JPEG' },
+  { value: 'image/png', label: 'PNG' },
+  { value: 'image/gif', label: 'GIF' },
+  { value: 'application/msword', label: 'DOC' },
+  { value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', label: 'DOCX' },
+  { value: 'application/vnd.ms-excel', label: 'XLS' },
+  { value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', label: 'XLSX' },
+];
+
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   code: z.string().min(1, 'Code is required').max(20).regex(/^[A-Z0-9_]+$/, 'Code must be uppercase letters, numbers, and underscores'),
@@ -26,6 +37,9 @@ const formSchema = z.object({
   has_expiry: z.boolean(),
   is_required: z.boolean(),
   reminder_days: z.number().min(0).max(365).optional(),
+  allowed_for_employee_upload: z.boolean(),
+  allowed_mime_types: z.array(z.string()).optional(),
+  max_file_size_mb: z.number().min(1).max(100).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -49,6 +63,9 @@ export function DocumentTypeManager() {
       has_expiry: false,
       is_required: false,
       reminder_days: undefined,
+      allowed_for_employee_upload: true,
+      allowed_mime_types: [],
+      max_file_size_mb: 10,
     },
   });
 
@@ -64,6 +81,9 @@ export function DocumentTypeManager() {
           is_required: values.is_required,
           company_id: companyId!,
           reminder_days: values.has_expiry ? values.reminder_days : null,
+          allowed_for_employee_upload: values.allowed_for_employee_upload,
+          allowed_mime_types: values.allowed_mime_types?.length ? values.allowed_mime_types : null,
+          max_file_size_mb: values.max_file_size_mb || null,
         })
         .select()
         .single();
@@ -92,6 +112,9 @@ export function DocumentTypeManager() {
           has_expiry: values.has_expiry,
           is_required: values.is_required,
           reminder_days: values.has_expiry ? values.reminder_days : null,
+          allowed_for_employee_upload: values.allowed_for_employee_upload,
+          allowed_mime_types: values.allowed_mime_types?.length ? values.allowed_mime_types : null,
+          max_file_size_mb: values.max_file_size_mb || null,
         })
         .eq('id', id)
         .select()
@@ -140,6 +163,9 @@ export function DocumentTypeManager() {
         has_expiry: type.has_expiry || false,
         is_required: type.is_required || false,
         reminder_days: type.reminder_days || undefined,
+        allowed_for_employee_upload: type.allowed_for_employee_upload ?? true,
+        allowed_mime_types: (type.allowed_mime_types as string[]) || [],
+        max_file_size_mb: type.max_file_size_mb || 10,
       });
     } else {
       setEditingType(null);
@@ -210,12 +236,18 @@ export function DocumentTypeManager() {
                         <code className="text-xs bg-muted px-2 py-1 rounded">{type.code}</code>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-1">
                           {type.is_required && <Badge variant="secondary">Required</Badge>}
                           {type.has_expiry && (
                             <Badge variant="outline">
-                              Expires {type.reminder_days ? `(${type.reminder_days}d notice)` : ''}
+                              Expires {type.reminder_days ? `(${type.reminder_days}d)` : ''}
                             </Badge>
+                          )}
+                          {type.allowed_for_employee_upload === false && (
+                            <Badge variant="destructive">HR Only</Badge>
+                          )}
+                          {type.max_file_size_mb && (
+                            <Badge variant="outline">{type.max_file_size_mb}MB max</Badge>
                           )}
                         </div>
                       </TableCell>
@@ -360,6 +392,82 @@ export function DocumentTypeManager() {
                 )}
               </div>
 
+              <div className="space-y-3 pt-2 border-t">
+                <h4 className="text-sm font-medium">Upload Permissions</h4>
+                
+                <FormField
+                  control={form.control}
+                  name="allowed_for_employee_upload"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2">
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <FormLabel className="!mt-0">Allow employee self-upload</FormLabel>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="max_file_size_mb"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Max File Size (MB)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="10"
+                          min={1}
+                          max={100}
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="allowed_mime_types"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Allowed File Types</FormLabel>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {ALLOWED_MIME_TYPES.map((mimeType) => (
+                          <label
+                            key={mimeType.value}
+                            className={`px-3 py-1.5 rounded-md border cursor-pointer text-sm transition-colors ${
+                              field.value?.includes(mimeType.value)
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background hover:bg-muted'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={field.value?.includes(mimeType.value)}
+                              onChange={(e) => {
+                                const current = field.value || [];
+                                if (e.target.checked) {
+                                  field.onChange([...current, mimeType.value]);
+                                } else {
+                                  field.onChange(current.filter(v => v !== mimeType.value));
+                                }
+                              }}
+                            />
+                            {mimeType.label}
+                          </label>
+                        ))}
+                      </div>
+                      <FormDescription>Leave empty to allow all types</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={handleCloseDialog}>
                   Cancel
