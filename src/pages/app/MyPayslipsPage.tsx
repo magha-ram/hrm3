@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PayslipDownloadButton } from '@/components/payroll/PayslipDownloadButton';
 import { FileText, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 interface PayslipEntry {
   id: string;
@@ -27,6 +28,7 @@ interface PayslipEntry {
 
 export default function MyPayslipsPage() {
   const { companyId, employeeId } = useTenant();
+  const { formatCurrency } = useLocalization();
 
   const { data: payslips, isLoading } = useQuery({
     queryKey: ['my-payslips', companyId, employeeId],
@@ -57,13 +59,6 @@ export default function MyPayslipsPage() {
     },
     enabled: !!companyId && !!employeeId,
   });
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">

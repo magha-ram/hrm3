@@ -57,6 +57,7 @@ import { format } from 'date-fns';
 import { Plus, Receipt, Check, X, Trash2, Settings } from 'lucide-react';
 import { getStatusColor, formatStatus } from '@/lib/status-utils';
 import { TablePagination } from '@/components/ui/table-pagination';
+import { useLocalization, CURRENCY_CONFIG } from '@/contexts/LocalizationContext';
 
 const PAGE_SIZE = 10;
 
@@ -86,6 +87,7 @@ function ExpenseStatusBadge({ status }: { status: string }) {
 function ExpenseForm({ onSuccess }: { onSuccess: () => void }) {
   const { data: categories = [] } = useExpenseCategories();
   const createExpense = useCreateExpense();
+  const { settings } = useLocalization();
   
   type ExpenseFormData = {
     category_id: string;
@@ -98,7 +100,7 @@ function ExpenseForm({ onSuccess }: { onSuccess: () => void }) {
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      currency: 'USD',
+      currency: settings.currency,
       expense_date: format(new Date(), 'yyyy-MM-dd'),
     },
   });
@@ -174,11 +176,12 @@ function ExpenseForm({ onSuccess }: { onSuccess: () => void }) {
                       <SelectValue />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="PKR">PKR</SelectItem>
+                <SelectContent>
+                    {Object.entries(CURRENCY_CONFIG).map(([code, config]) => (
+                      <SelectItem key={code} value={code}>
+                        {code} ({config.symbol})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -289,7 +292,7 @@ function ExpenseTable({
                 <TableCell>{expense.category?.name || '-'}</TableCell>
                 <TableCell className="max-w-xs truncate">{expense.description}</TableCell>
                 <TableCell className="text-right font-medium">
-                  {expense.currency} {expense.amount.toFixed(2)}
+                  {CURRENCY_CONFIG[expense.currency]?.symbol || expense.currency} {expense.amount.toFixed(2)}
                 </TableCell>
                 <TableCell>
                   <ExpenseStatusBadge status={expense.status} />
@@ -483,7 +486,7 @@ function CategoryManager() {
                 <TableCell>{cat.code}</TableCell>
                 <TableCell className="text-muted-foreground">{cat.description || '-'}</TableCell>
                 <TableCell className="text-right">
-                  {cat.budget_limit ? `$${cat.budget_limit.toFixed(2)}` : '-'}
+                  {cat.budget_limit ? cat.budget_limit.toLocaleString() : '-'}
                 </TableCell>
               </TableRow>
             ))}

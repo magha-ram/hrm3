@@ -23,6 +23,7 @@ import { usePayrollRuns, usePayrollEntries, useLockPayrollRun, usePayrollStats, 
 import { useEmployees } from '@/hooks/useEmployees';
 import { format } from 'date-fns';
 import { PayrollStatus } from '@/types/payroll';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 // Removed inline CreateRunDialog - now using extracted component
 
@@ -33,6 +34,7 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
   const lockRun = useLockPayrollRun();
   const addEntry = useAddPayrollEntry();
   const { data: employees } = useEmployees();
+  const { formatCurrency } = useLocalization();
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [newEntry, setNewEntry] = useState({
     employee_id: '',
@@ -216,14 +218,14 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
                     </p>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">${Number(entry.base_salary).toLocaleString()}</TableCell>
-                <TableCell className="text-right">${Number(entry.overtime_pay || 0).toLocaleString()}</TableCell>
-                <TableCell className="text-right">${Number(entry.bonuses || 0).toLocaleString()}</TableCell>
+                <TableCell className="text-right">{formatCurrency(Number(entry.base_salary))}</TableCell>
+                <TableCell className="text-right">{formatCurrency(Number(entry.overtime_pay || 0))}</TableCell>
+                <TableCell className="text-right">{formatCurrency(Number(entry.bonuses || 0))}</TableCell>
                 <TableCell className="text-right text-destructive">
-                  -${Number(entry.total_deductions || 0).toLocaleString()}
+                  -{formatCurrency(Number(entry.total_deductions || 0))}
                 </TableCell>
                 <TableCell className="text-right font-semibold">
-                  ${Number(entry.net_pay).toLocaleString()}
+                  {formatCurrency(Number(entry.net_pay))}
                 </TableCell>
                 <TableCell className="text-right">
                   <PayslipDownloadButton 
@@ -252,19 +254,19 @@ function PayrollRunDetail({ runId, onClose }: { runId: string; onClose: () => vo
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  ${entries.reduce((sum, e) => sum + Number(e.gross_pay), 0).toLocaleString()}
+                  {formatCurrency(entries.reduce((sum, e) => sum + Number(e.gross_pay), 0))}
                 </p>
                 <p className="text-sm text-muted-foreground">Total Gross</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-destructive">
-                  ${entries.reduce((sum, e) => sum + Number(e.total_deductions || 0), 0).toLocaleString()}
+                  {formatCurrency(entries.reduce((sum, e) => sum + Number(e.total_deductions || 0), 0))}
                 </p>
                 <p className="text-sm text-muted-foreground">Total Deductions</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">
-                  ${entries.reduce((sum, e) => sum + Number(e.net_pay), 0).toLocaleString()}
+                  {formatCurrency(entries.reduce((sum, e) => sum + Number(e.net_pay), 0))}
                 </p>
                 <p className="text-sm text-muted-foreground">Total Net Pay</p>
               </div>
@@ -283,6 +285,7 @@ export default function PayrollPage() {
   const RUNS_PAGE_SIZE = 10;
   const { data: runs, isLoading } = usePayrollRuns();
   const { data: stats } = usePayrollStats();
+  const { formatCurrency } = useLocalization();
 
   const paginatedRuns = useMemo(() => {
     if (!runs) return [];
@@ -347,7 +350,7 @@ export default function PayrollPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats.lastPayrollTotal ? `$${Number(stats.lastPayrollTotal).toLocaleString()}` : '-'}
+                {stats.lastPayrollTotal ? formatCurrency(Number(stats.lastPayrollTotal)) : '-'}
               </div>
               {stats.lastPayDate && (
                 <p className="text-xs text-muted-foreground">
@@ -363,7 +366,7 @@ export default function PayrollPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${stats.totalPaidThisYear.toLocaleString()}
+                {formatCurrency(stats.totalPaidThisYear)}
               </div>
             </CardContent>
           </Card>
@@ -414,7 +417,7 @@ export default function PayrollPage() {
                           <TableCell>{format(new Date(run.pay_date), 'MMM d, yyyy')}</TableCell>
                           <TableCell>{run.employee_count || 0}</TableCell>
                           <TableCell>
-                            {run.total_net ? `$${Number(run.total_net).toLocaleString()}` : '-'}
+                            {run.total_net ? formatCurrency(Number(run.total_net)) : '-'}
                           </TableCell>
                           <TableCell>
                             <PayrollStatusBadge status={run.status as PayrollStatus} />

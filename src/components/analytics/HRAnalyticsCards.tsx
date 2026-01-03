@@ -21,6 +21,7 @@ import {
   useLeaveAnalytics, 
   usePayrollAnalytics 
 } from '@/hooks/useHRAnalytics';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { Clock, DollarSign, Calendar, TrendingUp } from 'lucide-react';
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
@@ -96,6 +97,7 @@ export function AttendanceAnalyticsCard() {
 
 export function ExpenseAnalyticsCard() {
   const { data, isLoading } = useExpenseAnalytics();
+  const { formatCurrency } = useLocalization();
 
   if (isLoading) {
     return (
@@ -112,9 +114,6 @@ export function ExpenseAnalyticsCard() {
       </Card>
     );
   }
-
-  const formatCurrency = (amount: number) => 
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
 
   return (
     <Card>
@@ -252,6 +251,7 @@ export function LeaveAnalyticsCard() {
 
 export function PayrollAnalyticsCard() {
   const { data, isLoading } = usePayrollAnalytics();
+  const { formatCurrency } = useLocalization();
 
   if (isLoading) {
     return (
@@ -268,9 +268,6 @@ export function PayrollAnalyticsCard() {
       </Card>
     );
   }
-
-  const formatCurrency = (amount: number) => 
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
 
   return (
     <Card>

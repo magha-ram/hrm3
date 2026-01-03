@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Loader2, TrendingUp } from 'lucide-react';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useCreatePromotion } from '@/hooks/useEmploymentHistory';
+import { useLocalization, CURRENCY_CONFIG } from '@/contexts/LocalizationContext';
 import type { Employee } from '@/hooks/useEmployees';
 
 const promotionSchema = z.object({
@@ -36,6 +37,7 @@ interface PromotionDialogProps {
 export function PromotionDialog({ open, onOpenChange, employee }: PromotionDialogProps) {
   const { data: departments } = useDepartments();
   const createPromotion = useCreatePromotion();
+  const { settings } = useLocalization();
 
   const form = useForm<PromotionFormValues>({
     resolver: zodResolver(promotionSchema),
@@ -47,7 +49,7 @@ export function PromotionDialog({ open, onOpenChange, employee }: PromotionDialo
       notes: '',
       include_salary_increase: false,
       salary_increase: undefined,
-      salary_currency: 'USD',
+      salary_currency: settings.currency,
     },
   });
 
@@ -212,19 +214,18 @@ export function PromotionDialog({ open, onOpenChange, employee }: PromotionDialo
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Currency</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || 'USD'}>
+                        <Select onValueChange={field.onChange} value={field.value || settings.currency}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="USD">USD</SelectItem>
-                            <SelectItem value="EUR">EUR</SelectItem>
-                            <SelectItem value="GBP">GBP</SelectItem>
-                            <SelectItem value="PKR">PKR</SelectItem>
-                            <SelectItem value="INR">INR</SelectItem>
-                            <SelectItem value="AED">AED</SelectItem>
+                            {Object.entries(CURRENCY_CONFIG).map(([code, config]) => (
+                              <SelectItem key={code} value={code}>
+                                {code} ({config.symbol})
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
