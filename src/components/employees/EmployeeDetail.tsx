@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Edit2, TrendingUp, Calendar } from 'lucide-react';
+import { Clock, Edit2, TrendingUp, Calendar, Mail, Phone, Building2, MapPin, User, GraduationCap, Briefcase, Wallet, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Employee } from '@/hooks/useEmployees';
 import { EducationSection } from './EducationSection';
@@ -18,9 +18,11 @@ import { EmergencyContactSection, type EmergencyContact } from './EmergencyConta
 import { BankDetailsSection, type BankDetails } from './BankDetailsSection';
 import { ShiftAssignmentDialog } from './ShiftAssignmentDialog';
 import { PromotionDialog } from './PromotionDialog';
+import { StatusIndicator, type EmployeeStatus } from './StatusIndicator';
 import { DAY_LABELS, type DayOfWeek } from '@/types/shifts';
 import { useLatestEmploymentHistory } from '@/hooks/useEmploymentHistory';
 import { useSalaryHistory } from '@/hooks/useSalaryHistory';
+import { cn } from '@/lib/utils';
 
 interface EmployeeDetailProps {
   employee: Employee & {
@@ -45,164 +47,255 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
   const lastIncrement = salaryHistory?.find(s => 
     s.reason === 'Annual Increment' || s.reason === 'Promotion' || s.reason === 'Salary Adjustment'
   );
-  
-  const statusColors: Record<string, string> = {
-    active: 'bg-green-100 text-green-800',
-    on_leave: 'bg-yellow-100 text-yellow-800',
-    terminated: 'bg-red-100 text-red-800',
-    suspended: 'bg-gray-100 text-gray-800',
-  };
 
   return (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16">
-            <AvatarFallback className="text-lg">
-              {employee.first_name[0]}{employee.last_name[0]}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h3 className="text-xl font-semibold">
-              {employee.first_name} {employee.last_name}
-            </h3>
-            <p className="text-muted-foreground">{employee.job_title || 'No title'}</p>
-            <div className="flex gap-2 mt-1">
-              <Badge className={statusColors[employee.employment_status]} variant="secondary">
-                {employee.employment_status.replace('_', ' ')}
-              </Badge>
-              <Badge variant="outline">
-                {employee.employment_type.replace('_', ' ')}
-              </Badge>
-            </div>
-          </div>
-        </div>
+      {/* Enhanced Header */}
+      <div className="relative">
+        {/* Status bar at top */}
+        <div className={cn(
+          "absolute top-0 left-0 right-0 h-1 rounded-t-lg",
+          employee.employment_status === 'active' && 'bg-emerald-500',
+          employee.employment_status === 'on_leave' && 'bg-amber-500',
+          employee.employment_status === 'terminated' && 'bg-red-500',
+          employee.employment_status === 'suspended' && 'bg-slate-400',
+        )} />
         
-        {canEdit && (
-          <Button variant="outline" onClick={() => setPromotionDialogOpen(true)}>
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Promote
-          </Button>
-        )}
-      </div>
-      
-      {/* Quick Info Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-3">
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <Calendar className="h-3 w-3" />
-            Hire Date
-          </div>
-          <p className="font-medium text-sm">{format(new Date(employee.hire_date), 'MMM d, yyyy')}</p>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <TrendingUp className="h-3 w-3" />
-            Last Promotion
-          </div>
-          <p className="font-medium text-sm">
-            {lastPromotion ? format(new Date(lastPromotion.effective_from), 'MMM d, yyyy') : 'N/A'}
-          </p>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <Clock className="h-3 w-3" />
-            Last Increment
-          </div>
-          <p className="font-medium text-sm">
-            {lastIncrement ? format(new Date(lastIncrement.effective_from), 'MMM d, yyyy') : 'N/A'}
-          </p>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <Clock className="h-3 w-3" />
-            Current Shift
-          </div>
-          <p className="font-medium text-sm">{currentShift?.shift?.name || 'Not assigned'}</p>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="details" className="w-full">
-        <TabsList>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="salary">Salary</TabsTrigger>
-          <TabsTrigger value="shift">Shift</TabsTrigger>
-          <TabsTrigger value="leave">Leave</TabsTrigger>
-          <TabsTrigger value="education">Education</TabsTrigger>
-          <TabsTrigger value="experience">Experience</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="details" className="space-y-6 mt-4">
-          {/* Details Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Employee Number</label>
-              <p className="mt-1">{employee.employee_number}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Work Email</label>
-              <p className="mt-1">{employee.email}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Phone</label>
-              <p className="mt-1">{employee.phone || '-'}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Personal Email</label>
-              <p className="mt-1">{employee.personal_email || '-'}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Department</label>
-              <p className="mt-1">{employee.department?.name || '-'}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Manager</label>
-              <p className="mt-1">
-                {employee.manager 
-                  ? `${employee.manager.first_name} ${employee.manager.last_name}` 
-                  : '-'}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Hire Date</label>
-              <p className="mt-1">{format(new Date(employee.hire_date), 'MMM d, yyyy')}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Work Location</label>
-              <p className="mt-1">{employee.work_location || '-'}</p>
-            </div>
-          </div>
-
-          {employee.date_of_birth && (
-            <>
-              <Separator />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Date of Birth</label>
-                  <p className="mt-1">{format(new Date(employee.date_of_birth), 'MMM d, yyyy')}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Gender</label>
-                  <p className="mt-1">{employee.gender || '-'}</p>
+        <Card className="border-0 shadow-none bg-gradient-to-br from-muted/30 to-muted/10 pt-2">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-6">
+              {/* Large Avatar */}
+              <Avatar className="h-20 w-20 ring-4 ring-background shadow-lg">
+                <AvatarFallback className="text-2xl font-semibold bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
+                  {employee.first_name[0]}{employee.last_name[0]}
+                </AvatarFallback>
+              </Avatar>
+              
+              {/* Employee Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">
+                      {employee.first_name} {employee.last_name}
+                    </h2>
+                    <p className="text-muted-foreground text-lg">{employee.job_title || 'No title assigned'}</p>
+                    <div className="flex items-center gap-3 mt-3">
+                      <StatusIndicator status={employee.employment_status as EmployeeStatus} />
+                      <Badge variant="outline" className="font-normal capitalize">
+                        {employee.employment_type.replace('_', ' ')}
+                      </Badge>
+                      <Badge variant="secondary" className="font-mono text-xs">
+                        {employee.employee_number}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  {canEdit && (
+                    <Button onClick={() => setPromotionDialogOpen(true)} className="shrink-0">
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Promote
+                    </Button>
+                  )}
                 </div>
               </div>
-            </>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Quick Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="bg-card border-border/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 text-primary">
+                <Calendar className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hire Date</p>
+                <p className="font-semibold text-foreground">{format(new Date(employee.hire_date), 'MMM d, yyyy')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last Promotion</p>
+                <p className="font-semibold text-foreground">
+                  {lastPromotion ? format(new Date(lastPromotion.effective_from), 'MMM d, yyyy') : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-amber-500/10 text-amber-600">
+                <Wallet className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last Increment</p>
+                <p className="font-semibold text-foreground">
+                  {lastIncrement ? format(new Date(lastIncrement.effective_from), 'MMM d, yyyy') : 'N/A'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-500/10 text-blue-600">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current Shift</p>
+                <p className="font-semibold text-foreground">{currentShift?.shift?.name || 'Not assigned'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Enhanced Tabs */}
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList className="w-full justify-start bg-muted/50 p-1 h-auto flex-wrap">
+          <TabsTrigger value="details" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <User className="h-4 w-4" />
+            Details
+          </TabsTrigger>
+          <TabsTrigger value="salary" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Wallet className="h-4 w-4" />
+            Salary
+          </TabsTrigger>
+          <TabsTrigger value="shift" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Clock className="h-4 w-4" />
+            Shift
+          </TabsTrigger>
+          <TabsTrigger value="leave" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Calendar className="h-4 w-4" />
+            Leave
+            {leaveBalances && leaveBalances.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {leaveBalances.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="education" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <GraduationCap className="h-4 w-4" />
+            Education
+          </TabsTrigger>
+          <TabsTrigger value="experience" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Briefcase className="h-4 w-4" />
+            Experience
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="details" className="space-y-6 mt-6">
+          {/* Contact Information Card */}
+          <Card className="border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Mail className="h-4 w-4 text-primary" />
+                Contact Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Work Email</label>
+                  <p className="text-foreground">{employee.email}</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Personal Email</label>
+                  <p className="text-foreground">{employee.personal_email || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phone</label>
+                  <p className="text-foreground">{employee.phone || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Employee Number</label>
+                  <p className="text-foreground font-mono">{employee.employee_number}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Work Information Card */}
+          <Card className="border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                Work Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Department</label>
+                  <p className="text-foreground">{employee.department?.name || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Manager</label>
+                  <p className="text-foreground">
+                    {employee.manager 
+                      ? `${employee.manager.first_name} ${employee.manager.last_name}` 
+                      : '-'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Work Location</label>
+                  <p className="text-foreground">{employee.work_location || '-'}</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hire Date</label>
+                  <p className="text-foreground">{format(new Date(employee.hire_date), 'MMMM d, yyyy')}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Personal Information */}
+          {employee.date_of_birth && (
+            <Card className="border-border/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />
+                  Personal Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date of Birth</label>
+                    <p className="text-foreground">{format(new Date(employee.date_of_birth), 'MMMM d, yyyy')}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Gender</label>
+                    <p className="text-foreground capitalize">{employee.gender || '-'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Emergency Contact - Read Only */}
+          {/* Emergency Contact */}
           {employee.emergency_contact && Object.keys(employee.emergency_contact).length > 0 && (
-            <>
-              <Separator />
-              <EmergencyContactSection
-                value={employee.emergency_contact as EmergencyContact}
-                onChange={() => {}}
-                disabled
-              />
-            </>
+            <EmergencyContactSection
+              value={employee.emergency_contact as EmergencyContact}
+              onChange={() => {}}
+              disabled
+            />
           )}
 
-          {/* Bank Details - Read Only */}
+          {/* Bank Details */}
           {employee.bank_details && Object.keys(employee.bank_details).length > 0 && (
             <BankDetailsSection
               value={employee.bank_details as BankDetails}
@@ -212,15 +305,15 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
           )}
         </TabsContent>
 
-        <TabsContent value="salary" className="mt-4">
+        <TabsContent value="salary" className="mt-6">
           <SalarySection employeeId={employee.id} canEdit={canEdit} />
         </TabsContent>
 
-        <TabsContent value="shift" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <Clock className="h-4 w-4" />
+        <TabsContent value="shift" className="mt-6 space-y-4">
+          <Card className="border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
                 Current Shift
               </CardTitle>
               {canEdit && (
@@ -232,48 +325,55 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
             </CardHeader>
             <CardContent>
               {currentShift ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{currentShift.shift.name}</span>
+                    <span className="font-semibold text-foreground text-lg">{currentShift.shift.name}</span>
                     {currentShift.is_temporary && (
-                      <Badge variant="outline">Temporary</Badge>
+                      <Badge variant="outline" className="text-amber-600 border-amber-300">Temporary</Badge>
                     )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-muted-foreground">
                     {format(new Date(`2000-01-01T${currentShift.shift.start_time}`), 'h:mm a')} - {format(new Date(`2000-01-01T${currentShift.shift.end_time}`), 'h:mm a')}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    Break: {currentShift.shift.break_duration_minutes} min | Grace: {currentShift.shift.grace_period_minutes} min
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>Break: {currentShift.shift.break_duration_minutes} min</span>
+                    <span>Grace: {currentShift.shift.grace_period_minutes} min</span>
                   </div>
-                  <div className="flex gap-1 flex-wrap mt-2">
+                  <div className="flex gap-1.5 flex-wrap mt-3">
                     {(currentShift.shift.applicable_days as DayOfWeek[]).map((day) => (
-                      <Badge key={day} variant="secondary" className="text-xs">
+                      <Badge key={day} variant="secondary" className="text-xs font-normal">
                         {DAY_LABELS[day]}
                       </Badge>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">
                     Effective since {format(new Date(currentShift.effective_from), 'MMM d, yyyy')}
                     {currentShift.effective_to && ` until ${format(new Date(currentShift.effective_to), 'MMM d, yyyy')}`}
                   </p>
                 </div>
               ) : (
-                <p className="text-muted-foreground text-sm">No shift assigned</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No shift assigned</p>
+                </div>
               )}
             </CardContent>
           </Card>
 
           {shiftHistory && shiftHistory.length > 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-medium">Shift History</CardTitle>
+            <Card className="border-border/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  Shift History
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {shiftHistory.slice(1).map((assignment) => (
-                    <div key={assignment.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <div key={assignment.id} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
                       <div>
-                        <p className="font-medium text-sm">{assignment.shift.name}</p>
+                        <p className="font-medium text-foreground">{assignment.shift.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(assignment.effective_from), 'MMM d, yyyy')}
                           {assignment.effective_to && ` - ${format(new Date(assignment.effective_to), 'MMM d, yyyy')}`}
@@ -297,7 +397,7 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
           />
         </TabsContent>
 
-        <TabsContent value="leave" className="mt-4">
+        <TabsContent value="leave" className="mt-6">
           <LeaveBalanceCard 
             balances={leaveBalances} 
             isLoading={loadingBalances}
@@ -305,11 +405,11 @@ export function EmployeeDetail({ employee, canEdit = false }: EmployeeDetailProp
           />
         </TabsContent>
 
-        <TabsContent value="education" className="mt-4">
+        <TabsContent value="education" className="mt-6">
           <EducationSection employeeId={employee.id} canEdit={canEdit} />
         </TabsContent>
 
-        <TabsContent value="experience" className="mt-4">
+        <TabsContent value="experience" className="mt-6">
           <ExperienceSection employeeId={employee.id} canEdit={canEdit} />
         </TabsContent>
       </Tabs>

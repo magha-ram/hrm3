@@ -1,12 +1,13 @@
 import { useForm } from 'react-hook-form';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Scan, Clock, DollarSign, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Scan, Clock, DollarSign, Users, User, Briefcase, Shield, Building2, Phone, CreditCard } from 'lucide-react';
 import { useCreateEmployee, useUpdateEmployee, useEmployees, type Employee } from '@/hooks/useEmployees';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useNextEmployeeNumber } from '@/hooks/useEmployeeNumber';
@@ -15,6 +16,7 @@ import { useAddSalary } from '@/hooks/useSalaryHistory';
 import { DocumentScanDialog } from './DocumentScanDialog';
 import { EmergencyContactSection, type EmergencyContact } from './EmergencyContactSection';
 import { BankDetailsSection, type BankDetails } from './BankDetailsSection';
+import { AccordionFormSection, FormProgress } from './AccordionFormSection';
 import type { ExtractedData } from '@/hooks/useOCR';
 import { format } from 'date-fns';
 
@@ -101,6 +103,29 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
       salary_currency: 'USD',
     },
   });
+
+  const watchedValues = form.watch();
+
+  // Calculate section completion status
+  const sectionStatus = useMemo(() => {
+    return {
+      basic: !!(watchedValues.first_name && watchedValues.last_name && watchedValues.email && watchedValues.employee_number),
+      employment: !!(watchedValues.hire_date && watchedValues.employment_type),
+      personal: !!(watchedValues.phone || watchedValues.date_of_birth),
+      salary: !isEditing ? !!(watchedValues.initial_salary && watchedValues.initial_salary > 0) : true,
+      emergency: !!(emergencyContact.name && emergencyContact.phone),
+      bank: !!(bankDetails.account_holder && bankDetails.account_number),
+    };
+  }, [watchedValues, emergencyContact, bankDetails, isEditing]);
+
+  const sections = [
+    { id: 'basic', label: 'Basic Info', isComplete: sectionStatus.basic },
+    { id: 'employment', label: 'Employment', isComplete: sectionStatus.employment },
+    { id: 'personal', label: 'Personal', isComplete: sectionStatus.personal },
+    ...(!isEditing ? [{ id: 'salary', label: 'Salary', isComplete: sectionStatus.salary }] : []),
+    { id: 'emergency', label: 'Emergency', isComplete: sectionStatus.emergency },
+    { id: 'bank', label: 'Bank', isComplete: sectionStatus.bank },
+  ];
 
   // Pre-select default shift for new employees
   useEffect(() => {
@@ -198,428 +223,487 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* OCR Scan Button - Only for new employees */}
-          {!isEditing && (
-            <div className="flex justify-end">
+          {/* Progress indicator and OCR button */}
+          <div className="flex items-center justify-between gap-4 pb-2 border-b border-border/50">
+            <div className="flex-1">
+              <FormProgress sections={sections} />
+            </div>
+            {!isEditing && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setScanDialogOpen(true)}
+                className="shrink-0"
               >
                 <Scan className="h-4 w-4 mr-2" />
-                Scan ID Document
+                Scan ID
               </Button>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="first_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>First Name *</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="last_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Last Name *</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Work Email *</FormLabel>
-                  <FormControl>
-                    <Input type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="employee_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Employee Number *</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      readOnly={!isEditing}
-                      className={!isEditing ? 'bg-muted' : ''}
-                      placeholder={isLoadingNumber ? 'Generating...' : ''}
-                    />
-                  </FormControl>
-                  {!isEditing && (
-                    <p className="text-xs text-muted-foreground">Auto-generated based on company settings</p>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="hire_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Hire Date *</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="job_title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Job Title</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="department_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Department</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {departments?.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="manager_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Manager
-                  </FormLabel>
-                  <Select 
-                    onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)} 
-                    value={field.value || '__none__'}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select manager" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="__none__">
-                        <span className="text-muted-foreground">No Manager</span>
-                      </SelectItem>
-                      {potentialManagers.map((mgr) => (
-                        <SelectItem key={mgr.id} value={mgr.id}>
-                          {mgr.first_name} {mgr.last_name}
-                          {mgr.job_title && ` (${mgr.job_title})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <FormField
-            control={form.control}
-            name="employment_type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Employment Type *</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="full_time">Full Time</SelectItem>
-                    <SelectItem value="part_time">Part Time</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="intern">Intern</SelectItem>
-                    <SelectItem value="temporary">Temporary</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
             )}
-          />
+          </div>
 
-          {/* Shift Assignment - Only for new employees */}
-          {!isEditing && (
-            <FormField
-              control={form.control}
-              name="shift_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Default Shift
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select shift" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {shifts?.map((shift) => (
-                        <SelectItem key={shift.id} value={shift.id}>
-                          {shift.name} ({format(new Date(`2000-01-01T${shift.start_time}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shift.end_time}`), 'h:mm a')})
-                          {shift.is_default && ' (Default)'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    The employee will be assigned to this shift starting from their hire date.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-
-          {/* Initial Salary Section - Only for new employees */}
-          {!isEditing && (
-            <div className="space-y-4 border-t pt-4 mt-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <DollarSign className="h-4 w-4" />
-                Initial Salary (Optional)
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="initial_salary"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Base Salary</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="e.g., 50000"
-                          {...field}
-                          value={field.value || ''}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Monthly or annual base salary
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="salary_currency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Currency</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || 'USD'}>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {/* Basic Information Section */}
+            <AccordionFormSection
+              title="Basic Information"
+              icon={<User className="h-4 w-4" />}
+              defaultOpen={true}
+              isComplete={sectionStatus.basic}
+              badge={<Badge variant="secondary" className="text-xs">Required</Badge>}
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="first_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
+                          <Input {...field} placeholder="John" />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="GBP">GBP</SelectItem>
-                          <SelectItem value="PKR">PKR</SelectItem>
-                          <SelectItem value="INR">INR</SelectItem>
-                          <SelectItem value="AED">AED</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="last_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Doe" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Work Email <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} placeholder="john@company.com" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="employee_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Employee Number <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            readOnly={!isEditing}
+                            className={!isEditing ? 'bg-muted/50' : ''}
+                            placeholder={isLoadingNumber ? 'Generating...' : 'EMP-001'}
+                          />
+                        </FormControl>
+                        {!isEditing && (
+                          <FormDescription>Auto-generated based on company settings</FormDescription>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            </AccordionFormSection>
+
+            {/* Employment Details Section */}
+            <AccordionFormSection
+              title="Employment Details"
+              icon={<Briefcase className="h-4 w-4" />}
+              defaultOpen={true}
+              isComplete={sectionStatus.employment}
+              badge={<Badge variant="secondary" className="text-xs">Required</Badge>}
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="hire_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hire Date <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="job_title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Job Title</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Software Engineer" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="department_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Department</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select department" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {departments?.map((dept) => (
+                              <SelectItem key={dept.id} value={dept.id}>
+                                {dept.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="manager_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Manager
+                        </FormLabel>
+                        <Select 
+                          onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)} 
+                          value={field.value || '__none__'}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select manager" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="__none__">
+                              <span className="text-muted-foreground">No Manager</span>
+                            </SelectItem>
+                            {potentialManagers.map((mgr) => (
+                              <SelectItem key={mgr.id} value={mgr.id}>
+                                {mgr.first_name} {mgr.last_name}
+                                {mgr.job_title && ` (${mgr.job_title})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="employment_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Employment Type <span className="text-destructive">*</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="full_time">Full Time</SelectItem>
+                            <SelectItem value="part_time">Part Time</SelectItem>
+                            <SelectItem value="contract">Contract</SelectItem>
+                            <SelectItem value="intern">Intern</SelectItem>
+                            <SelectItem value="temporary">Temporary</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="employment_status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status <span className="text-destructive">*</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="on_leave">On Leave</SelectItem>
+                            <SelectItem value="suspended">Suspended</SelectItem>
+                            <SelectItem value="terminated">Terminated</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Shift Assignment - Only for new employees */}
+                {!isEditing && (
+                  <FormField
+                    control={form.control}
+                    name="shift_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Default Shift
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select shift" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {shifts?.map((shift) => (
+                              <SelectItem key={shift.id} value={shift.id}>
+                                {shift.name} ({format(new Date(`2000-01-01T${shift.start_time}`), 'h:mm a')} - {format(new Date(`2000-01-01T${shift.end_time}`), 'h:mm a')})
+                                {shift.is_default && ' (Default)'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          The employee will be assigned to this shift starting from their hire date.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="work_location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Work Location
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Office, Remote, Hybrid" />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-            </div>
-          )}
+            </AccordionFormSection>
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="employment_status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="on_leave">On Leave</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
-                      <SelectItem value="terminated">Terminated</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="work_location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Work Location</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Personal Information Section */}
+            <AccordionFormSection
+              title="Personal Information"
+              icon={<Phone className="h-4 w-4" />}
+              defaultOpen={false}
+              isComplete={sectionStatus.personal}
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input type="tel" {...field} placeholder="+1 234 567 8900" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="personal_email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Personal Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} placeholder="john.personal@email.com" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="national_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>National ID / CNIC</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="12345-1234567-1" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="date_of_birth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            </AccordionFormSection>
+
+            {/* Initial Salary Section - Only for new employees */}
+            {!isEditing && (
+              <AccordionFormSection
+                title="Initial Salary"
+                icon={<DollarSign className="h-4 w-4" />}
+                defaultOpen={false}
+                isComplete={sectionStatus.salary}
+                badge={<Badge variant="outline" className="text-xs">Optional</Badge>}
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="initial_salary"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Base Salary</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="e.g., 50000"
+                            {...field}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Monthly or annual base salary
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="salary_currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Currency</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || 'USD'}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="PKR">PKR</SelectItem>
+                            <SelectItem value="INR">INR</SelectItem>
+                            <SelectItem value="AED">AED</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </AccordionFormSection>
+            )}
+
+            {/* Emergency Contact Section */}
+            <AccordionFormSection
+              title="Emergency Contact"
+              icon={<Shield className="h-4 w-4" />}
+              defaultOpen={false}
+              isComplete={sectionStatus.emergency}
+              badge={<Badge variant="outline" className="text-xs">Optional</Badge>}
+            >
+              <EmergencyContactSection
+                value={emergencyContact}
+                onChange={setEmergencyContact}
+              />
+            </AccordionFormSection>
+
+            {/* Bank Details Section */}
+            <AccordionFormSection
+              title="Bank Details"
+              icon={<CreditCard className="h-4 w-4" />}
+              defaultOpen={false}
+              isComplete={sectionStatus.bank}
+              badge={<Badge variant="outline" className="text-xs">Optional</Badge>}
+            >
+              <BankDetailsSection
+                value={bankDetails}
+                onChange={setBankDetails}
+              />
+            </AccordionFormSection>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone</FormLabel>
-                  <FormControl>
-                    <Input type="tel" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="personal_email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Personal Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Additional fields from OCR */}
-          <div className="grid grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name="national_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>National ID / CNIC</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="e.g., 12345-1234567-1" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="date_of_birth"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date of Birth</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="gender"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Gender</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          {/* Emergency Contact Section */}
-          <EmergencyContactSection
-            value={emergencyContact}
-            onChange={setEmergencyContact}
-          />
-
-          {/* Bank Details Section */}
-          <BankDetailsSection
-            value={bankDetails}
-            onChange={setBankDetails}
-          />
-
-          <div className="flex justify-end gap-2 pt-4">
+          {/* Sticky Footer */}
+          <div className="flex justify-end gap-2 pt-4 border-t border-border/50 bg-background sticky bottom-0">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>

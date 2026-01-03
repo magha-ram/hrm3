@@ -26,27 +26,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Eye, Pencil, Trash2, Mail, Phone, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Eye, Pencil, Trash2, Mail, Phone, Loader2, Building2 } from 'lucide-react';
 import { WriteGate, PermGate } from '@/components/PermissionGate';
 import { usePermission } from '@/contexts/PermissionContext';
 import { type Employee } from '@/hooks/useEmployees';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { StatusIndicator, getStatusBarColor, type EmployeeStatus } from './StatusIndicator';
+import { cn } from '@/lib/utils';
 
 interface EmployeeCardProps {
   employee: Employee & { department?: { name: string } | null };
   onView: (employee: Employee) => void;
-  onEdit: (employee: Employee) => void;
-  onDelete: (employeeId: string) => void;
+  onEdit?: (employee: Employee) => void;
+  onDelete?: (employeeId: string) => void;
 }
-
-const statusColors: Record<string, string> = {
-  active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  on_leave: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  terminated: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  suspended: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
-};
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
@@ -60,12 +55,13 @@ export function EmployeeCard({ employee, onView, onEdit, onDelete }: EmployeeCar
   const queryClient = useQueryClient();
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   const updateStatus = useMutation({
     mutationFn: async (newStatus: string) => {
       const { error } = await supabase
         .from('employees')
-        .update({ employment_status: newStatus as 'active' | 'on_leave' | 'terminated' | 'suspended' })
+        .update({ employment_status: newStatus as EmployeeStatus })
         .eq('id', employee.id);
       
       if (error) throw error;
@@ -97,107 +93,156 @@ export function EmployeeCard({ employee, onView, onEdit, onDelete }: EmployeeCar
     setPendingStatus(null);
   };
 
+  const statusBarColor = getStatusBarColor(employee.employment_status as EmployeeStatus);
+
   return (
     <>
-      <Card className="hover:shadow-md transition-shadow">
-        <CardContent className="p-4">
+      <Card 
+        className={cn(
+          "group relative overflow-hidden transition-all duration-200 cursor-pointer",
+          "hover:shadow-lg hover:-translate-y-0.5 border-border/60",
+          isHovered && "ring-1 ring-primary/20"
+        )}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={() => onView(employee)}
+      >
+        {/* Status accent bar */}
+        <div className={cn("h-1 w-full", statusBarColor)} />
+        
+        <CardContent className="p-5">
+          {/* Header with Avatar and Actions */}
           <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarFallback className="bg-primary/10 text-primary font-medium">
+            <div className="flex flex-col items-center text-center flex-1">
+              <Avatar className="h-16 w-16 mb-3 ring-2 ring-background shadow-md">
+                <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground text-lg font-semibold">
                   {employee.first_name[0]}{employee.last_name[0]}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <h3 className="font-semibold">{employee.first_name} {employee.last_name}</h3>
-                <p className="text-sm text-muted-foreground">{employee.job_title || 'No title'}</p>
-              </div>
+              <h3 className="font-semibold text-foreground text-base leading-tight">
+                {employee.first_name} {employee.last_name}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {employee.job_title || 'No title assigned'}
+              </p>
+              <Badge variant="secondary" className="mt-2 text-xs font-normal">
+                {employee.employee_number}
+              </Badge>
             </div>
             
+            {/* Actions Menu */}
             {can('employees', 'read') && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={cn(
+                      "h-8 w-8 absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity",
+                      "bg-background/80 hover:bg-background shadow-sm"
+                    )}
+                  >
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(employee)}>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(employee); }}>
                     <Eye className="h-4 w-4 mr-2" />
-                    View
+                    View Details
                   </DropdownMenuItem>
-                  <PermGate module="employees" action="update">
-                    <WriteGate>
-                      <DropdownMenuItem onClick={() => onEdit(employee)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                    </WriteGate>
-                  </PermGate>
-                  <PermGate module="employees" action="delete">
-                    <WriteGate>
-                      <DropdownMenuItem 
-                        onClick={() => onDelete(employee.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </WriteGate>
-                  </PermGate>
+                  {onEdit && (
+                    <PermGate module="employees" action="update">
+                      <WriteGate>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(employee); }}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                      </WriteGate>
+                    </PermGate>
+                  )}
+                  {onDelete && (
+                    <PermGate module="employees" action="delete">
+                      <WriteGate>
+                        <DropdownMenuItem 
+                          onClick={(e) => { e.stopPropagation(); onDelete(employee.id); }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </WriteGate>
+                    </PermGate>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
 
-          <div className="space-y-2 mb-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Mail className="h-4 w-4 shrink-0" />
-              <span className="truncate">{employee.email}</span>
+          {/* Divider */}
+          <div className="border-t border-border/50 my-4" />
+
+          {/* Info Section */}
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2.5 text-sm">
+              <div className="flex items-center justify-center h-7 w-7 rounded-md bg-muted text-muted-foreground">
+                <Building2 className="h-3.5 w-3.5" />
+              </div>
+              <span className="text-foreground truncate">
+                {(employee as any).department?.name || 'No Department'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5 text-sm">
+              <div className="flex items-center justify-center h-7 w-7 rounded-md bg-muted text-muted-foreground">
+                <Mail className="h-3.5 w-3.5" />
+              </div>
+              <span className="text-muted-foreground truncate">{employee.email}</span>
             </div>
             {employee.phone && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-4 w-4 shrink-0" />
-                <span>{employee.phone}</span>
+              <div className="flex items-center gap-2.5 text-sm">
+                <div className="flex items-center justify-center h-7 w-7 rounded-md bg-muted text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-muted-foreground">{employee.phone}</span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <Badge variant="outline" className="text-xs">
-              {(employee as any).department?.name || 'No Department'}
+          {/* Footer with Status */}
+          <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-border/50">
+            <Badge variant="outline" className="text-xs font-normal capitalize">
+              {employee.employment_type.replace('_', ' ')}
             </Badge>
             
-            <PermGate module="employees" action="update">
-              <WriteGate fallback={
-                <Badge className={statusColors[employee.employment_status] || ''} variant="secondary">
-                  {employee.employment_status.replace('_', ' ')}
-                </Badge>
-              }>
-                <Select 
-                  value={employee.employment_status} 
-                  onValueChange={handleStatusChange}
-                  disabled={updateStatus.isPending}
-                >
-                  <SelectTrigger className="h-7 w-[110px] text-xs">
-                    {updateStatus.isPending ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <SelectValue />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <span className={option.value === 'terminated' ? 'text-destructive' : ''}>
-                          {option.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </WriteGate>
-            </PermGate>
+            <div onClick={(e) => e.stopPropagation()}>
+              <PermGate module="employees" action="update">
+                <WriteGate fallback={
+                  <StatusIndicator status={employee.employment_status as EmployeeStatus} />
+                }>
+                  <Select 
+                    value={employee.employment_status} 
+                    onValueChange={handleStatusChange}
+                    disabled={updateStatus.isPending}
+                  >
+                    <SelectTrigger className="h-7 w-[120px] text-xs border-0 bg-transparent hover:bg-muted">
+                      {updateStatus.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <StatusIndicator status={employee.employment_status as EmployeeStatus} />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <span className={option.value === 'terminated' ? 'text-destructive' : ''}>
+                            {option.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </WriteGate>
+              </PermGate>
+            </div>
           </div>
         </CardContent>
       </Card>
