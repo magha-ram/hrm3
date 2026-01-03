@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,10 +20,17 @@ import {
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { SalarySection } from '@/components/employees/SalarySection';
-import { ProfilePayslips } from '@/components/profile/ProfilePayslips';
-import { ProfileShiftAttendance } from '@/components/profile/ProfileShiftAttendance';
-import { ProfileDocuments } from '@/components/profile/ProfileDocuments';
 import { ProfilePhotoUpload } from '@/components/profile/ProfilePhotoUpload';
+import { 
+  ProfileDocumentsSkeleton, 
+  ProfilePayslipsSkeleton, 
+  ProfileShiftSkeleton 
+} from '@/components/profile/ProfileCardSkeleton';
+
+// Lazy load heavy tab components
+const ProfilePayslips = lazy(() => import('@/components/profile/ProfilePayslips').then(m => ({ default: m.ProfilePayslips })));
+const ProfileShiftAttendance = lazy(() => import('@/components/profile/ProfileShiftAttendance').then(m => ({ default: m.ProfileShiftAttendance })));
+const ProfileDocuments = lazy(() => import('@/components/profile/ProfileDocuments').then(m => ({ default: m.ProfileDocuments })));
 
 interface EmployeeRecord {
   id: string;
@@ -585,17 +592,23 @@ export default function ProfilePage() {
 
         {/* Shift & Attendance Tab */}
         <TabsContent value="shift">
-          <ProfileShiftAttendance employeeId={employee.id} />
+          <Suspense fallback={<ProfileShiftSkeleton />}>
+            <ProfileShiftAttendance employeeId={employee.id} />
+          </Suspense>
         </TabsContent>
 
         {/* Documents Tab */}
         <TabsContent value="documents">
-          <ProfileDocuments employeeId={employee.id} />
+          <Suspense fallback={<ProfileDocumentsSkeleton />}>
+            <ProfileDocuments employeeId={employee.id} />
+          </Suspense>
         </TabsContent>
 
         {/* Payslips Tab */}
         <TabsContent value="payslips">
-          <ProfilePayslips employeeId={employee.id} />
+          <Suspense fallback={<ProfilePayslipsSkeleton />}>
+            <ProfilePayslips employeeId={employee.id} />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </PageContainer>
