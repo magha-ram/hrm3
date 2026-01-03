@@ -275,7 +275,7 @@ export default function ProfilePage() {
           address,
           emergency_contact,
           bank_details,
-          department:departments(name),
+          department:departments!employees_department_id_fkey(name),
           manager:employees!employees_manager_id_fkey(first_name, last_name)
         `)
         .eq('id', employeeId)
