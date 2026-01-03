@@ -6,8 +6,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Scan, Clock, DollarSign } from 'lucide-react';
-import { useCreateEmployee, useUpdateEmployee, type Employee } from '@/hooks/useEmployees';
+import { Loader2, Scan, Clock, DollarSign, Users } from 'lucide-react';
+import { useCreateEmployee, useUpdateEmployee, useEmployees, type Employee } from '@/hooks/useEmployees';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useNextEmployeeNumber } from '@/hooks/useEmployeeNumber';
 import { useActiveShifts, useAssignShift, useDefaultShift, useEnsureDefaultShift } from '@/hooks/useShifts';
@@ -26,6 +26,7 @@ const employeeSchema = z.object({
   hire_date: z.string().min(1, 'Hire date is required'),
   job_title: z.string().optional(),
   department_id: z.string().optional(),
+  manager_id: z.string().optional(),
   shift_id: z.string().optional(),
   employment_type: z.enum(['full_time', 'part_time', 'contract', 'intern', 'temporary']),
   employment_status: z.enum(['active', 'on_leave', 'terminated', 'suspended']),
@@ -58,6 +59,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
   const assignShift = useAssignShift();
   const addSalary = useAddSalary();
   const { data: nextEmployeeNumber, isLoading: isLoadingNumber } = useNextEmployeeNumber();
+  const { data: allEmployees } = useEmployees();
   const [scanDialogOpen, setScanDialogOpen] = useState(false);
   const [emergencyContact, setEmergencyContact] = useState<EmergencyContact>(
     (employee?.emergency_contact as EmergencyContact) || {}
@@ -65,6 +67,11 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
   const [bankDetails, setBankDetails] = useState<BankDetails>(
     (employee?.bank_details as BankDetails) || {}
   );
+
+  // Get potential managers (all employees except the current one being edited)
+  const potentialManagers = allEmployees?.filter(e => 
+    e.id !== employee?.id && e.employment_status === 'active'
+  ) || [];
   
   const isEditing = !!employee;
   const isLoading = createEmployee.isPending || updateEmployee.isPending || assignShift.isPending || addSalary.isPending;
@@ -79,6 +86,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
       hire_date: employee?.hire_date || new Date().toISOString().split('T')[0],
       job_title: employee?.job_title || '',
       department_id: employee?.department_id || '',
+      manager_id: employee?.manager_id || '',
       shift_id: '',
       employment_type: employee?.employment_type || 'full_time',
       employment_status: employee?.employment_status || 'active',
@@ -135,6 +143,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
           id: employee.id, 
           ...employeeValues,
           department_id: employeeValues.department_id || null,
+          manager_id: employeeValues.manager_id || null,
           personal_email: employeeValues.personal_email || null,
           emergency_contact: emergencyContact as Record<string, string>,
           bank_details: bankDetails as Record<string, string>,
@@ -148,6 +157,7 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
           hire_date: employeeValues.hire_date,
           job_title: employeeValues.job_title || null,
           department_id: employeeValues.department_id || null,
+          manager_id: employeeValues.manager_id || null,
           employment_type: employeeValues.employment_type,
           employment_status: employeeValues.employment_status,
           phone: employeeValues.phone || null,
@@ -325,22 +335,26 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
             />
             <FormField
               control={form.control}
-              name="employment_type"
+              name="manager_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Employment Type *</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Manager
+                  </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select manager" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="full_time">Full Time</SelectItem>
-                      <SelectItem value="part_time">Part Time</SelectItem>
-                      <SelectItem value="contract">Contract</SelectItem>
-                      <SelectItem value="intern">Intern</SelectItem>
-                      <SelectItem value="temporary">Temporary</SelectItem>
+                      {potentialManagers.map((mgr) => (
+                        <SelectItem key={mgr.id} value={mgr.id}>
+                          {mgr.first_name} {mgr.last_name}
+                          {mgr.job_title && ` (${mgr.job_title})`}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -348,6 +362,31 @@ export function EmployeeForm({ employee, onSuccess, onCancel }: EmployeeFormProp
               )}
             />
           </div>
+
+          <FormField
+            control={form.control}
+            name="employment_type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Employment Type *</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="full_time">Full Time</SelectItem>
+                    <SelectItem value="part_time">Part Time</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="intern">Intern</SelectItem>
+                    <SelectItem value="temporary">Temporary</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           {/* Shift Assignment - Only for new employees */}
           {!isEditing && (

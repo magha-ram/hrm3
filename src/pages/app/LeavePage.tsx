@@ -19,6 +19,7 @@ import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
 import { LeaveBalanceTable } from '@/components/leave/LeaveBalanceTable';
 import { TeamLeaveRequestRow } from '@/components/leave/TeamLeaveRequestRow';
 import { LeaveCalendarView } from '@/components/leave/LeaveCalendarView';
+import { LeaveTypesManager } from '@/components/leave/LeaveTypesManager';
 import { format } from 'date-fns';
 
 const statusColors: Record<string, string> = {
@@ -92,6 +93,7 @@ export default function LeavePage() {
               <RoleGate role="hr_manager">
                 <TabsTrigger value="calendar" className="text-sm px-3 py-1.5">Calendar</TabsTrigger>
                 <TabsTrigger value="balances" className="text-sm px-3 py-1.5">All Balances</TabsTrigger>
+                <TabsTrigger value="settings" className="text-sm px-3 py-1.5">Settings</TabsTrigger>
               </RoleGate>
             </PermGate>
           </TabsList>
@@ -249,6 +251,12 @@ export default function LeavePage() {
           <TabsContent value="balances">
             <PermGate module="leave" action="read">
               <LeaveBalanceTable data={allBalances} isLoading={loadingAllBalances} />
+            </PermGate>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <PermGate module="leave" action="read">
+              <LeaveTypesManager />
             </PermGate>
           </TabsContent>
         </Tabs>
