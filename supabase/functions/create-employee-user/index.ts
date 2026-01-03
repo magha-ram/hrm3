@@ -211,6 +211,11 @@ serve(async (req) => {
     }
 
     // Add user to company_users table
+    // Note: invited_by must be a valid UUID, not an email
+    const invitedByUserId = authUser.id && authUser.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) 
+      ? authUser.id 
+      : null;
+
     const { error: companyUserError } = await supabaseAdmin
       .from('company_users')
       .insert({
@@ -219,7 +224,7 @@ serve(async (req) => {
         role: role,
         is_primary: true,
         is_active: true,
-        invited_by: authUser.id,
+        invited_by: invitedByUserId,
         invited_at: new Date().toISOString(),
         joined_at: new Date().toISOString(),
       });
