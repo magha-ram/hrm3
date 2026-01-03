@@ -14,7 +14,7 @@ import { usePermission } from '@/contexts/PermissionContext';
 import { ModuleGuard } from '@/components/ModuleGuard';
 import { useMyLeaveRequests, usePendingLeaveRequests, useApproveLeaveRequest, useRejectLeaveRequest, useCancelLeaveRequest } from '@/hooks/useLeave';
 import { useMyLeaveBalances, useAllEmployeeLeaveBalances } from '@/hooks/useLeaveBalances';
-import { LeaveRequestForm } from '@/components/leave/LeaveRequestForm';
+import { LeaveRequestFormV2 } from '@/components/leave/LeaveRequestFormV2';
 import { LeaveBalanceCard } from '@/components/leave/LeaveBalanceCard';
 import { LeaveBalanceTable } from '@/components/leave/LeaveBalanceTable';
 import { TeamLeaveRequestRow } from '@/components/leave/TeamLeaveRequestRow';
@@ -61,7 +61,7 @@ export default function LeavePage() {
             <DialogHeader>
               <DialogTitle>New Leave Request</DialogTitle>
             </DialogHeader>
-            <LeaveRequestForm onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
+            <LeaveRequestFormV2 onSuccess={() => setIsFormOpen(false)} onCancel={() => setIsFormOpen(false)} />
           </DialogContent>
         </Dialog>
       </WriteGate>
