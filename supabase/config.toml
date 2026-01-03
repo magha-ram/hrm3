@@ -101,3 +101,12 @@ verify_jwt = false
 
 [functions.use-company-link]
 verify_jwt = false
+
+[functions.cron-performance-reminders]
+verify_jwt = false
+
+[functions.cron-subscription-health]
+verify_jwt = false
+
+[functions.cron-document-expiry]
+verify_jwt = false
