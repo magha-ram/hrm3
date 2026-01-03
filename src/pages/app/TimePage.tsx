@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer } from 'lucide-react';
+import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer, X } from 'lucide-react';
 import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import {
   useMyTimeEntries,
   useTeamTimeEntries,
   useApproveTimeEntry,
+  useRejectTimeEntry,
   useActiveBreak,
   useStartBreak,
   useEndBreak,
@@ -146,6 +147,7 @@ export default function TimePage() {
   const startBreak = useStartBreak();
   const endBreak = useEndBreak();
   const approveEntry = useApproveTimeEntry();
+  const rejectEntry = useRejectTimeEntry();
   const { data: correctionRequests = [] } = usePendingTimeCorrectionRequests();
   const { data: myCorrectionRequests = [] } = useMyTimeCorrectionRequests();
   
@@ -547,16 +549,36 @@ export default function TimePage() {
                                 <Badge variant="secondary">Pending</Badge>
                               )}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="flex gap-2">
                               {!entry.is_approved && entry.total_hours && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => approveEntry.mutate(entry.id)}
-                                  disabled={approveEntry.isPending}
-                                >
-                                  Approve
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => approveEntry.mutate(entry.id)}
+                                    disabled={approveEntry.isPending || rejectEntry.isPending}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                      const reason = window.prompt('Enter rejection reason:');
+                                      if (reason) {
+                                        rejectEntry.mutate({ entryId: entry.id, reason });
+                                      }
+                                    }}
+                                    disabled={approveEntry.isPending || rejectEntry.isPending}
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              {entry.notes && !entry.is_approved && (
+                                <span className="text-xs text-destructive">Rejected: {entry.notes}</span>
                               )}
                             </TableCell>
                           </TableRow>

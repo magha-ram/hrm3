@@ -578,6 +578,37 @@ export function useApproveTimeEntry() {
   });
 }
 
+export function useRejectTimeEntry() {
+  const queryClient = useQueryClient();
+  const { employeeId } = useTenant();
+
+  return useMutation({
+    mutationFn: async ({ entryId, reason }: { entryId: string; reason: string }) => {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .update({
+          is_approved: false,
+          approved_by: employeeId,
+          approved_at: new Date().toISOString(),
+          notes: reason,
+        })
+        .eq('id', entryId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-entries'] });
+      toast.success('Time entry rejected');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to reject entry');
+    },
+  });
+}
+
 // Calculate time summaries
 export function useTimeSummary() {
   const now = new Date();
