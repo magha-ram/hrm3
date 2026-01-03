@@ -21,6 +21,8 @@ import { ReviewFormDialog } from '@/components/performance/ReviewFormDialog';
 import { ReviewDetailDialog } from '@/components/performance/ReviewDetailDialog';
 import { ReviewStatusBadge } from '@/components/performance/ReviewStatusBadge';
 import { GoalFormDialog } from '@/components/performance/GoalFormDialog';
+import { GoalProgressDialog } from '@/components/performance/GoalProgressDialog';
+import type { Goal } from '@/hooks/useGoals';
 
 export default function PerformancePage() {
   const { isHROrAbove, isManager } = useUserRole();
@@ -37,6 +39,8 @@ export default function PerformancePage() {
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [reviewDetailOpen, setReviewDetailOpen] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [goalProgressOpen, setGoalProgressOpen] = useState(false);
 
   const handleViewReview = (id: string) => {
     setSelectedReviewId(id);
@@ -45,6 +49,11 @@ export default function PerformancePage() {
 
   const handleEditReview = (id: string) => {
     setEditingReviewId(id);
+  };
+
+  const handleUpdateGoalProgress = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setGoalProgressOpen(true);
   };
 
   const reviewsToAcknowledge = myReviews.filter(r => r.status === 'completed');
@@ -271,7 +280,10 @@ export default function PerformancePage() {
                                 }>
                                   {goal.priority}
                                 </Badge>
-                                <Badge variant="outline">
+                                <Badge variant={
+                                  goal.status === 'completed' ? 'default' :
+                                  goal.status === 'in_progress' ? 'secondary' : 'outline'
+                                }>
                                   {goal.status.replace('_', ' ')}
                                 </Badge>
                               </div>
@@ -291,6 +303,16 @@ export default function PerformancePage() {
                                 </div>
                               </div>
                             </div>
+                            <WriteGate>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUpdateGoalProgress(goal)}
+                                disabled={goal.status === 'completed'}
+                              >
+                                Update Progress
+                              </Button>
+                            </WriteGate>
                           </div>
                         </CardContent>
                       </Card>
@@ -467,6 +489,13 @@ export default function PerformancePage() {
         open={reviewDetailOpen}
         onOpenChange={setReviewDetailOpen}
         reviewId={selectedReviewId}
+      />
+
+      {/* Goal Progress Dialog */}
+      <GoalProgressDialog
+        goal={selectedGoal}
+        open={goalProgressOpen}
+        onOpenChange={setGoalProgressOpen}
       />
     </ModuleGuard>
   );
