@@ -112,6 +112,7 @@ export function useCreateEmployee() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['employees-without-user', companyId] });
       toast.success('Employee created successfully');
     },
     onError: (error: Error) => {
@@ -166,6 +167,7 @@ export function useUpdateEmployee() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['employees', companyId] });
       queryClient.invalidateQueries({ queryKey: ['employee', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['employees-without-user', companyId] });
       toast.success('Employee updated successfully');
     },
     onError: (error: Error) => {
