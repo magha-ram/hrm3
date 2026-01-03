@@ -24,7 +24,7 @@ export interface TeamStats {
 }
 
 export function useMyTeam() {
-  const { companyId, employeeId } = useTenant();
+  const { companyId, employeeId, currentEmployee } = useTenant();
   const { user } = useAuth();
   const userId = user?.user_id;
 
@@ -33,7 +33,7 @@ export function useMyTeam() {
     queryFn: async (): Promise<TeamMember[]> => {
       if (!companyId) return [];
 
-      // Get current employee if not provided
+      // Use employeeId from context first, fallback to query
       let managerId = employeeId;
       if (!managerId && userId) {
         const { data: currentEmployee } = await supabase
@@ -41,7 +41,7 @@ export function useMyTeam() {
           .select('id')
           .eq('company_id', companyId)
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
         managerId = currentEmployee?.id;
       }
 
@@ -164,7 +164,7 @@ export function useTeamStats() {
         return { teamSize: 0, pendingApprovals: 0, outToday: 0, onLeaveToday: [] };
       }
 
-      // Get current employee
+      // Get current employee - use employeeId from context
       let managerId = employeeId;
       if (!managerId && userId) {
         const { data: currentEmployee } = await supabase
@@ -172,7 +172,7 @@ export function useTeamStats() {
           .select('id')
           .eq('company_id', companyId)
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
         managerId = currentEmployee?.id;
       }
 
@@ -277,7 +277,7 @@ export function useTeamLeaves() {
           .select('id')
           .eq('company_id', companyId)
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
         managerId = currentEmployee?.id;
       }
 
@@ -334,7 +334,7 @@ export function usePendingApprovalsCount() {
           .select('id')
           .eq('company_id', companyId)
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
         managerId = currentEmployee?.id;
       }
 

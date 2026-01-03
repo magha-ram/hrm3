@@ -58,8 +58,8 @@ export default function MyTeamPage() {
           <CardContent className="py-12 text-center">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No Direct Reports</h3>
-            <p className="text-muted-foreground">
-              You don't have any direct reports assigned to you.
+            <p className="text-muted-foreground max-w-md mx-auto">
+              You don't have any direct reports assigned to you. If you're a manager, make sure employees have you set as their manager, or that you're assigned as a department manager.
             </p>
           </CardContent>
         </Card>

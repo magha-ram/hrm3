@@ -2,7 +2,7 @@ import React, { createContext, useContext, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useImpersonation } from './ImpersonationContext';
 import { useCompany } from '@/hooks/useCompany';
-import { AppRole, hasMinimumRole, canManageUsers, canManageHR, canViewReports } from '@/types/auth';
+import { AppRole, hasMinimumRole, canManageUsers, canManageHR, canViewReports, CurrentEmployee } from '@/types/auth';
 import { ModuleId } from '@/config/modules';
 import { SubscriptionStatus } from '@/types/company';
 
@@ -16,6 +16,7 @@ interface TenantContextValue {
   // User role
   role: AppRole | null;
   employeeId: string | null;
+  currentEmployee: CurrentEmployee | null;
   
   // Role checks
   isOwner: boolean;
@@ -154,6 +155,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // User role
       role: effectiveRole,
       employeeId: isImpersonating ? null : (user?.current_employee_id || null),
+      currentEmployee: isImpersonating ? null : (user?.current_employee || null),
       
       // Role checks - when impersonating, grant view access
       isOwner: isImpersonating ? false : effectiveRole === 'super_admin',
@@ -194,6 +196,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     company, 
     effectiveRole, 
     user?.current_employee_id,
+    user?.current_employee,
     planModules,
     trialDaysRemaining,
     trialTotalDays,

@@ -12,6 +12,17 @@ export interface UserCompany {
   is_frozen?: boolean;
 }
 
+export interface CurrentEmployee {
+  id: string;
+  first_name: string;
+  last_name: string;
+  employee_number: string;
+  job_title: string | null;
+  department_id: string | null;
+  manager_id: string | null;
+  employment_status: string;
+}
+
 export interface UserContext {
   user_id: string;
   email: string;
@@ -22,6 +33,7 @@ export interface UserContext {
   current_company_id: string | null;
   current_role: AppRole | null;
   current_employee_id: string | null;
+  current_employee: CurrentEmployee | null;
   companies: UserCompany[] | null;
   is_platform_admin: boolean;
   platform_admin_role: PlatformAdminRole | null;
