@@ -34,6 +34,154 @@ export function useLeaveTypes() {
   });
 }
 
+export function useAllLeaveTypes() {
+  const { companyId } = useTenant();
+
+  return useQuery({
+    queryKey: ['leave-types', 'all', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+
+      const { data, error } = await supabase
+        .from('leave_types')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('name');
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+}
+
+export function useCreateLeaveType() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async (leaveType: {
+      name: string;
+      code: string;
+      description?: string;
+      color?: string;
+      default_days?: number;
+      is_paid?: boolean;
+      requires_approval?: boolean;
+      max_consecutive_days?: number;
+      notice_days_required?: number;
+    }) => {
+      if (!companyId) throw new Error('No company selected');
+      
+      const { data, error } = await supabase
+        .from('leave_types')
+        .insert({ ...leaveType, company_id: companyId })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await supabase.from('audit_logs').insert({
+        company_id: companyId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        table_name: 'leave_types',
+        action: 'create' as const,
+        record_id: data.id,
+        new_values: { name: data.name, code: data.code },
+      });
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-types'] });
+      toast.success('Leave type created');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create leave type: ${error.message}`);
+    },
+  });
+}
+
+export function useUpdateLeaveType() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: {
+      id: string;
+      name?: string;
+      description?: string;
+      color?: string;
+      default_days?: number;
+      is_paid?: boolean;
+      requires_approval?: boolean;
+      is_active?: boolean;
+      max_consecutive_days?: number;
+      notice_days_required?: number;
+    }) => {
+      const { data, error } = await supabase
+        .from('leave_types')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await supabase.from('audit_logs').insert({
+        company_id: companyId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        table_name: 'leave_types',
+        action: 'update' as const,
+        record_id: id,
+        new_values: updates,
+      });
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-types'] });
+      toast.success('Leave type updated');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update leave type: ${error.message}`);
+    },
+  });
+}
+
+export function useDeleteLeaveType() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Soft delete by setting is_active to false
+      const { error } = await supabase
+        .from('leave_types')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await supabase.from('audit_logs').insert({
+        company_id: companyId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        table_name: 'leave_types',
+        action: 'delete' as const,
+        record_id: id,
+        metadata: { soft_delete: true },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leave-types'] });
+      toast.success('Leave type removed');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to remove leave type: ${error.message}`);
+    },
+  });
+}
+
 export function useMyLeaveRequests() {
   const { companyId, employeeId } = useTenant();
 

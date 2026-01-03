@@ -40,17 +40,17 @@ const statusFlow = [
 ] as const;
 
 export default function CandidateDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { candidateId } = useParams<{ candidateId: string }>();
   const navigate = useNavigate();
   
   const [showAssignScreening, setShowAssignScreening] = useState(false);
   const [showScheduleInterview, setShowScheduleInterview] = useState(false);
   const [showCreateOffer, setShowCreateOffer] = useState(false);
   
-  const { data: candidate, isLoading } = useCandidate(id || null);
-  const { data: screenings } = useCandidateScreenings(id);
-  const { data: interviews } = useInterviews(id);
-  const { data: offers } = useOffers(id);
+  const { data: candidate, isLoading } = useCandidate(candidateId || null);
+  const { data: screenings } = useCandidateScreenings(candidateId);
+  const { data: interviews } = useInterviews(candidateId);
+  const { data: offers } = useOffers(candidateId);
   const updateStatus = useUpdateCandidateStatus();
   
   if (isLoading) {
