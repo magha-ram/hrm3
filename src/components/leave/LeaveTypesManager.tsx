@@ -23,7 +23,7 @@ const leaveTypeSchema = z.object({
   is_paid: z.boolean().default(true),
   requires_approval: z.boolean().default(true),
   max_consecutive_days: z.coerce.number().min(0).optional(),
-  notice_days_required: z.coerce.number().min(0).optional(),
+  min_notice_days: z.coerce.number().min(0).optional(),
 });
 
 type LeaveTypeFormValues = z.infer<typeof leaveTypeSchema>;
@@ -53,7 +53,7 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
       is_paid: true,
       requires_approval: true,
       max_consecutive_days: undefined,
-      notice_days_required: undefined,
+      min_notice_days: undefined,
     },
   });
 
@@ -68,7 +68,7 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
       is_paid: true,
       requires_approval: true,
       max_consecutive_days: undefined,
-      notice_days_required: undefined,
+      min_notice_days: undefined,
     });
     setIsDialogOpen(true);
   };
@@ -84,7 +84,7 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
       is_paid: leaveType.is_paid ?? true,
       requires_approval: leaveType.requires_approval ?? true,
       max_consecutive_days: leaveType.max_consecutive_days || undefined,
-      notice_days_required: leaveType.notice_days_required || undefined,
+      min_notice_days: leaveType.min_notice_days || undefined,
     });
     setIsDialogOpen(true);
   };
@@ -100,7 +100,7 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
         is_paid: values.is_paid,
         requires_approval: values.requires_approval,
         max_consecutive_days: values.max_consecutive_days,
-        notice_days_required: values.notice_days_required,
+        min_notice_days: values.min_notice_days,
       });
     } else {
       await createLeaveType.mutateAsync({
@@ -112,7 +112,7 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
         is_paid: values.is_paid,
         requires_approval: values.requires_approval,
         max_consecutive_days: values.max_consecutive_days,
-        notice_days_required: values.notice_days_required,
+        min_notice_days: values.min_notice_days,
       });
     }
     setIsDialogOpen(false);
@@ -239,7 +239,7 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
                   />
                   <FormField
                     control={form.control}
-                    name="notice_days_required"
+                    name="min_notice_days"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Notice Days Required</FormLabel>

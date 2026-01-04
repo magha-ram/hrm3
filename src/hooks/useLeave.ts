@@ -69,7 +69,7 @@ export function useCreateLeaveType() {
       is_paid?: boolean;
       requires_approval?: boolean;
       max_consecutive_days?: number;
-      notice_days_required?: number;
+      min_notice_days?: number;
     }) => {
       if (!companyId) throw new Error('No company selected');
       
@@ -117,7 +117,7 @@ export function useUpdateLeaveType() {
       requires_approval?: boolean;
       is_active?: boolean;
       max_consecutive_days?: number;
-      notice_days_required?: number;
+      min_notice_days?: number;
     }) => {
       const { data, error } = await supabase
         .from('leave_types')
