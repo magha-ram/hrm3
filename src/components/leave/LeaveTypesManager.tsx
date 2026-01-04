@@ -10,9 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, Download, Upload } from 'lucide-react';
 import { useAllLeaveTypes, useCreateLeaveType, useUpdateLeaveType, useDeleteLeaveType } from '@/hooks/useLeave';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { LeavePolicyImportDialog } from './LeavePolicyImportDialog';
+import { exportLeavePolicies } from '@/lib/leave-policy-utils';
+import { useTenant } from '@/contexts/TenantContext';
+import { useCompany } from '@/hooks/useCompany';
 
 const leaveTypeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -37,10 +41,20 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
   const createLeaveType = useCreateLeaveType();
   const updateLeaveType = useUpdateLeaveType();
   const deleteLeaveType = useDeleteLeaveType();
+  const { companyId } = useTenant();
+  const { data: company } = useCompany(companyId);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const handleExport = () => {
+    if (!leaveTypes || leaveTypes.length === 0) return;
+    exportLeavePolicies(leaveTypes, company?.name);
+  };
+
+  const existingCodes = leaveTypes?.map(lt => lt.code) || [];
 
   const form = useForm<LeaveTypeFormValues>({
     resolver: zodResolver(leaveTypeSchema),
@@ -134,13 +148,31 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
           <CardTitle>Leave Types</CardTitle>
           <CardDescription>Configure leave categories available to employees</CardDescription>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Leave Type
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setIsImportDialogOpen(true)}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleExport}
+            disabled={!leaveTypes || leaveTypes.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreateDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Leave Type
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingType ? 'Edit Leave Type' : 'Create Leave Type'}</DialogTitle>
@@ -291,7 +323,8 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
               </form>
             </Form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -383,6 +416,12 @@ export function LeaveTypesManager({ className }: LeaveTypesManagerProps) {
         onConfirm={handleDelete}
         isLoading={deleteLeaveType.isPending}
         variant="destructive"
+      />
+
+      <LeavePolicyImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        existingCodes={existingCodes}
       />
     </Card>
   );
