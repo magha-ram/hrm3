@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer, X, CheckCheck } from 'lucide-react';
+import { Clock, Play, Square, CheckCircle2, Loader2, Calendar, AlertCircle, Coffee, MapPin, Timer, X, CheckCheck, Upload } from 'lucide-react';
 import { PageContainer, PageHeader } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,8 @@ import {
   GeoLocation
 } from '@/hooks/useTimeTracking';
 import { AttendanceReportCard } from '@/components/attendance/AttendanceReportCard';
+import { AttendanceImportDialog } from '@/components/attendance/AttendanceImportDialog';
+import { AttendanceExportButton } from '@/components/attendance/AttendanceExportButton';
 import { WorkScheduleConfiguration } from '@/components/settings/WorkScheduleConfiguration';
 
 function formatHours(hours: number): string {
@@ -159,6 +161,7 @@ export default function TimePage() {
   const [breakElapsed, setBreakElapsed] = useState('00:00');
   const [entriesDisplayCount, setEntriesDisplayCount] = useState(20);
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const clockStatus = getClockStatus(todayEntry, activeBreak);
   const statusConfig = getStatusConfig(clockStatus);
@@ -514,23 +517,32 @@ export default function TimePage() {
                   <CardTitle>Team Time Entries</CardTitle>
                   <CardDescription>Review and approve team time entries</CardDescription>
                 </div>
-                {selectedEntries.size > 0 && (
-                  <Button
-                    onClick={() => {
-                      bulkApprove.mutate(Array.from(selectedEntries), {
-                        onSuccess: () => setSelectedEntries(new Set()),
-                      });
-                    }}
-                    disabled={bulkApprove.isPending}
-                  >
-                    {bulkApprove.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <CheckCheck className="h-4 w-4 mr-2" />
-                    )}
-                    Approve Selected ({selectedEntries.size})
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {selectedEntries.size > 0 && (
+                    <Button
+                      onClick={() => {
+                        bulkApprove.mutate(Array.from(selectedEntries), {
+                          onSuccess: () => setSelectedEntries(new Set()),
+                        });
+                      }}
+                      disabled={bulkApprove.isPending}
+                    >
+                      {bulkApprove.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCheck className="h-4 w-4 mr-2" />
+                      )}
+                      Approve Selected ({selectedEntries.size})
+                    </Button>
+                  )}
+                  <WriteGate>
+                    <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import
+                    </Button>
+                    <AttendanceExportButton />
+                  </WriteGate>
+                </div>
               </CardHeader>
               <CardContent>
                 {teamLoading ? (
@@ -660,6 +672,8 @@ export default function TimePage() {
             <WorkScheduleConfiguration />
           </TabsContent>
         </Tabs>
+
+        <AttendanceImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
       </PageContainer>
     </ModuleGuard>
   );
