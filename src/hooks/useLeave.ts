@@ -182,6 +182,144 @@ export function useDeleteLeaveType() {
   });
 }
 
+export interface BulkImportItem {
+  name: string;
+  code: string;
+  description?: string;
+  color?: string;
+  default_days?: number;
+  is_paid?: boolean;
+  requires_approval?: boolean;
+  requires_document?: boolean;
+  max_consecutive_days?: number;
+  min_notice_days?: number;
+  accrual_rate?: number;
+  carry_over_limit?: number;
+}
+
+export function useBulkImportLeaveTypes() {
+  const queryClient = useQueryClient();
+  const { companyId } = useTenant();
+
+  return useMutation({
+    mutationFn: async ({ 
+      items, 
+      updateExisting 
+    }: { 
+      items: BulkImportItem[]; 
+      updateExisting: boolean;
+    }) => {
+      if (!companyId) throw new Error('No company selected');
+
+      // Get existing leave types to check for duplicates
+      const { data: existing, error: fetchError } = await supabase
+        .from('leave_types')
+        .select('id, code')
+        .eq('company_id', companyId);
+
+      if (fetchError) throw fetchError;
+
+      const existingByCode = new Map(
+        (existing || []).map(lt => [lt.code.toLowerCase(), lt.id])
+      );
+
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+      const errors: Array<{ code: string; message: string }> = [];
+
+      for (const item of items) {
+        const existingId = existingByCode.get(item.code.toLowerCase());
+
+        try {
+          if (existingId) {
+            if (updateExisting) {
+              // Update existing
+              const { error } = await supabase
+                .from('leave_types')
+                .update({
+                  name: item.name,
+                  description: item.description,
+                  color: item.color,
+                  default_days: item.default_days,
+                  is_paid: item.is_paid,
+                  requires_approval: item.requires_approval,
+                  requires_document: item.requires_document,
+                  max_consecutive_days: item.max_consecutive_days,
+                  min_notice_days: item.min_notice_days,
+                  accrual_rate: item.accrual_rate,
+                  carry_over_limit: item.carry_over_limit,
+                  is_active: true,
+                })
+                .eq('id', existingId);
+
+              if (error) throw error;
+              updated++;
+            } else {
+              skipped++;
+            }
+          } else {
+            // Create new
+            const { error } = await supabase
+              .from('leave_types')
+              .insert({
+                company_id: companyId,
+                name: item.name,
+                code: item.code,
+                description: item.description,
+                color: item.color,
+                default_days: item.default_days,
+                is_paid: item.is_paid,
+                requires_approval: item.requires_approval,
+                requires_document: item.requires_document,
+                max_consecutive_days: item.max_consecutive_days,
+                min_notice_days: item.min_notice_days,
+                accrual_rate: item.accrual_rate,
+                carry_over_limit: item.carry_over_limit,
+              });
+
+            if (error) throw error;
+            created++;
+          }
+        } catch (err) {
+          errors.push({
+            code: item.code,
+            message: err instanceof Error ? err.message : 'Unknown error',
+          });
+        }
+      }
+
+      // Audit log for bulk import
+      await supabase.from('audit_logs').insert({
+        company_id: companyId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        table_name: 'leave_types',
+        action: 'create' as const,
+        metadata: { 
+          bulk_import: true,
+          created,
+          updated,
+          skipped,
+          errors: errors.length,
+        },
+      });
+
+      return { created, updated, skipped, errors };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['leave-types'] });
+      const messages: string[] = [];
+      if (result.created > 0) messages.push(`${result.created} created`);
+      if (result.updated > 0) messages.push(`${result.updated} updated`);
+      if (result.skipped > 0) messages.push(`${result.skipped} skipped`);
+      toast.success(`Leave types imported: ${messages.join(', ')}`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Import failed: ${error.message}`);
+    },
+  });
+}
+
 export function useMyLeaveRequests() {
   const { companyId, employeeId } = useTenant();
 
