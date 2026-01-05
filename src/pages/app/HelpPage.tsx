@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   HelpCircle,
   BookOpen,
@@ -18,15 +17,22 @@ import {
   Shield,
   Mail,
   Info,
+  Image,
+  Plus,
 } from 'lucide-react';
 import { HelpSearch } from '@/components/help/HelpSearch';
 import { FAQAccordion } from '@/components/help/FAQAccordion';
 import { VideoTutorialCard } from '@/components/help/VideoTutorialCard';
 import { QuickGuideCard } from '@/components/help/QuickGuideCard';
 import { KeyboardShortcuts } from '@/components/help/KeyboardShortcuts';
+import { ScreenshotGuideCard } from '@/components/help/ScreenshotGuideCard';
+import { ScreenshotGuideViewer } from '@/components/help/ScreenshotGuideViewer';
+import { GuideEditorDialog } from '@/components/help/GuideEditorDialog';
 import { FAQS, VIDEO_TUTORIALS, QUICK_GUIDES, FAQ_CATEGORIES } from '@/config/help-center';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useHelpGuides, useHelpGuide } from '@/hooks/useHelpGuides';
 import type { AppRole } from '@/types/auth';
+import type { HelpGuide } from '@/types/help-guides';
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   'getting-started': Rocket,
@@ -52,10 +58,32 @@ function canViewContent(userRole: AppRole | null, requiredRoles?: AppRole[]): bo
   });
 }
 
+function canViewGuide(userRole: AppRole | null, guideRoles?: string[]): boolean {
+  if (!guideRoles || guideRoles.length === 0) return true;
+  if (!userRole) return false;
+  
+  const roleHierarchy: AppRole[] = ['employee', 'manager', 'hr_manager', 'company_admin', 'super_admin'];
+  const userRoleIndex = roleHierarchy.indexOf(userRole);
+  
+  return guideRoles.some(requiredRole => {
+    const requiredIndex = roleHierarchy.indexOf(requiredRole as AppRole);
+    return userRoleIndex >= requiredIndex;
+  });
+}
+
 export default function HelpPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedGuideId, setSelectedGuideId] = useState<string | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingGuide, setEditingGuide] = useState<HelpGuide | null>(null);
+  
   const { role: userRole } = useUserRole();
+  const { data: screenshotGuides = [], isLoading: isLoadingGuides } = useHelpGuides();
+  const { data: selectedGuide } = useHelpGuide(selectedGuideId);
+  
+  const isAdminOrHR = userRole === 'company_admin' || userRole === 'hr_manager' || userRole === 'super_admin';
 
   // Filter FAQs based on search, category, and role
   const filteredFAQs = useMemo(() => {
@@ -90,6 +118,11 @@ export default function HelpPage() {
     return QUICK_GUIDES.filter((guide) => canViewContent(userRole, guide.roles));
   }, [userRole]);
 
+  // Filter screenshot guides based on role
+  const filteredScreenshotGuides = useMemo(() => {
+    return screenshotGuides.filter((guide) => canViewGuide(userRole, guide.roles || undefined));
+  }, [screenshotGuides, userRole]);
+
   // Group FAQs by category for the category view
   const faqsByCategory = useMemo(() => {
     const grouped: Record<string, typeof FAQS> = {};
@@ -98,6 +131,16 @@ export default function HelpPage() {
     });
     return grouped;
   }, [filteredFAQs]);
+
+  const handleOpenGuide = (guideId: string) => {
+    setSelectedGuideId(guideId);
+    setIsViewerOpen(true);
+  };
+
+  const handleCreateGuide = () => {
+    setEditingGuide(null);
+    setIsEditorOpen(true);
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -143,14 +186,18 @@ export default function HelpPage() {
 
       {/* Main Content */}
       <Tabs defaultValue="faqs" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-4 max-w-lg">
           <TabsTrigger value="faqs" className="flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
             <span className="hidden sm:inline">FAQs</span>
           </TabsTrigger>
           <TabsTrigger value="guides" className="flex items-center gap-2">
             <Rocket className="h-4 w-4" />
-            <span className="hidden sm:inline">Quick Guides</span>
+            <span className="hidden sm:inline">Guides</span>
+          </TabsTrigger>
+          <TabsTrigger value="screenshots" className="flex items-center gap-2">
+            <Image className="h-4 w-4" />
+            <span className="hidden sm:inline">Visual</span>
           </TabsTrigger>
           <TabsTrigger value="videos" className="flex items-center gap-2">
             <PlayCircle className="h-4 w-4" />
@@ -318,7 +365,72 @@ export default function HelpPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Screenshot Guides Tab */}
+        <TabsContent value="screenshots" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Visual Guides</CardTitle>
+                <CardDescription>
+                  Step-by-step screenshot guides with annotations
+                </CardDescription>
+              </div>
+              {isAdminOrHR && (
+                <Button onClick={handleCreateGuide}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Guide
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {isLoadingGuides ? (
+                <div className="text-center py-8 text-muted-foreground">Loading guides...</div>
+              ) : filteredScreenshotGuides.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredScreenshotGuides.map((guide) => (
+                    <ScreenshotGuideCard
+                      key={guide.id}
+                      guide={guide}
+                      onClick={() => handleOpenGuide(guide.id)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Image className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-lg font-medium">No visual guides yet</p>
+                  <p className="text-sm mt-1">
+                    {isAdminOrHR
+                      ? 'Create your first screenshot guide to help users.'
+                      : 'Check back later for visual guides.'}
+                  </p>
+                  {isAdminOrHR && (
+                    <Button className="mt-4" onClick={handleCreateGuide}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create First Guide
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Guide Viewer Dialog */}
+      <ScreenshotGuideViewer
+        guide={selectedGuide || null}
+        open={isViewerOpen}
+        onOpenChange={setIsViewerOpen}
+      />
+
+      {/* Guide Editor Dialog */}
+      <GuideEditorDialog
+        guide={editingGuide}
+        open={isEditorOpen}
+        onOpenChange={setIsEditorOpen}
+      />
     </div>
   );
 }

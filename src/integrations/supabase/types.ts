@@ -2395,6 +2395,103 @@ export type Database = {
           },
         ]
       }
+      help_guide_steps: {
+        Row: {
+          annotations: Json | null
+          created_at: string | null
+          description: string | null
+          guide_id: string | null
+          id: string
+          screenshot_url: string | null
+          step_number: number
+          title: string
+        }
+        Insert: {
+          annotations?: Json | null
+          created_at?: string | null
+          description?: string | null
+          guide_id?: string | null
+          id?: string
+          screenshot_url?: string | null
+          step_number: number
+          title: string
+        }
+        Update: {
+          annotations?: Json | null
+          created_at?: string | null
+          description?: string | null
+          guide_id?: string | null
+          id?: string
+          screenshot_url?: string | null
+          step_number?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_guide_steps_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "help_guides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      help_guides: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_platform_guide: boolean | null
+          module: string | null
+          roles: string[] | null
+          sort_order: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_platform_guide?: boolean | null
+          module?: string | null
+          roles?: string[] | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_platform_guide?: boolean | null
+          module?: string | null
+          roles?: string[] | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_guides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       impersonation_logs: {
         Row: {
           action: string
