@@ -8,3 +8,4 @@ export { AppFooter } from './AppFooter';
 export { AuthLayout } from './AuthLayout';
 export { FrozenBanner } from './FrozenBanner';
 export { TrialBanner } from './TrialBanner';
+export { BackendHealthBanner } from './BackendHealthBanner';
