@@ -188,7 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchCompany = async (companyId: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase.rpc('set_primary_company', {
-        _company_id: companyId,
+        p_company_id: companyId,
       });
       
       if (error) {

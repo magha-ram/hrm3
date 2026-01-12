@@ -171,8 +171,8 @@ export function useDocumentLimits(employeeId: string | null) {
       if (!companyId || !employeeId) return null;
 
       const { data, error } = await supabase.rpc('check_document_limits', {
-        _company_id: companyId,
-        _employee_id: employeeId,
+        p_company_id: companyId,
+        p_employee_id: employeeId,
       });
 
       if (error) throw error;
@@ -355,10 +355,8 @@ export function useVerifyDocument() {
       if (!employeeId) throw new Error('No employee context');
 
       const { data, error } = await supabase.rpc('verify_document', {
-        _document_id: id,
-        _status: status,
-        _verifier_employee_id: employeeId,
-        _rejection_reason: rejectionReason || null,
+        p_document_id: id,
+        p_verified_by: employeeId,
       });
 
       if (error) throw error;

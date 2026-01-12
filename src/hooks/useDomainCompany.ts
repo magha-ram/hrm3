@@ -106,7 +106,7 @@ export function useDomainCompany(): UseDomainCompanyResult {
       console.log('[useDomainCompany] Looking up company branding for:', lookupKey);
       
       const { data, error } = await supabase.rpc('get_company_branding_for_domain', {
-        hostname: lookupKey
+        p_domain: lookupKey
       });
 
       if (error) {
@@ -115,24 +115,30 @@ export function useDomainCompany(): UseDomainCompanyResult {
         return;
       }
 
-      if (data && data.length > 0) {
-        const companyData = data[0] as DomainCompany;
-        console.log('[useDomainCompany] Found company:', companyData.name);
-        setCompany(companyData);
+      if (data) {
+        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+        if (parsedData && parsedData.company_id) {
+          const companyData = parsedData as DomainCompany;
+          console.log('[useDomainCompany] Found company:', companyData.name);
+          setCompany(companyData);
+        }
       } else if (detectedSubdomain) {
         // If subdomain lookup failed, try full hostname for custom domains
         console.log('[useDomainCompany] Subdomain not found, trying full hostname:', hostname);
         
         const { data: customData, error: customError } = await supabase.rpc('get_company_branding_for_domain', {
-          hostname: hostname
+          p_domain: hostname
         });
 
         if (customError) {
           console.error('[useDomainCompany] Error looking up custom domain:', customError);
-        } else if (customData && customData.length > 0) {
-          const companyData = customData[0] as DomainCompany;
-          console.log('[useDomainCompany] Found company by custom domain:', companyData.name);
-          setCompany(companyData);
+        } else if (customData) {
+          const parsedCustomData = typeof customData === 'string' ? JSON.parse(customData) : customData;
+          if (parsedCustomData && parsedCustomData.company_id) {
+            const companyData = parsedCustomData as DomainCompany;
+            console.log('[useDomainCompany] Found company by custom domain:', companyData.name);
+            setCompany(companyData);
+          }
         } else {
           console.log('[useDomainCompany] No company found for hostname:', hostname);
         }

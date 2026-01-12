@@ -486,6 +486,7 @@ export type Database = {
           token: string
           trial_days: number | null
           updated_at: string
+          used_at: string | null
           used_by_company_id: string | null
           uses: number | null
         }
@@ -505,6 +506,7 @@ export type Database = {
           token: string
           trial_days?: number | null
           updated_at?: string
+          used_at?: string | null
           used_by_company_id?: string | null
           uses?: number | null
         }
@@ -524,6 +526,7 @@ export type Database = {
           token?: string
           trial_days?: number | null
           updated_at?: string
+          used_at?: string | null
           used_by_company_id?: string | null
           uses?: number | null
         }
@@ -909,34 +912,40 @@ export type Database = {
           acknowledged_at: string | null
           company_id: string
           created_at: string | null
+          days_until_expiry: number | null
           document_id: string
           employee_id: string
           id: string
           metadata: Json | null
           notification_type: string
           sent_at: string | null
+          sent_to: string | null
         }
         Insert: {
           acknowledged_at?: string | null
           company_id: string
           created_at?: string | null
+          days_until_expiry?: number | null
           document_id: string
           employee_id: string
           id?: string
           metadata?: Json | null
           notification_type: string
           sent_at?: string | null
+          sent_to?: string | null
         }
         Update: {
           acknowledged_at?: string | null
           company_id?: string
           created_at?: string | null
+          days_until_expiry?: number | null
           document_id?: string
           employee_id?: string
           id?: string
           metadata?: Json | null
           notification_type?: string
           sent_at?: string | null
+          sent_to?: string | null
         }
         Relationships: [
           {
@@ -1016,57 +1025,90 @@ export type Database = {
       }
       email_logs: {
         Row: {
+          attachments: Json | null
+          bcc_emails: string[] | null
           body: string | null
+          bounce_type: string | null
+          cc_emails: string[] | null
           clicked_at: string | null
           company_id: string | null
+          complaint_type: string | null
           created_at: string
           error_message: string | null
           from_email: string | null
+          html_body: string | null
           id: string
           metadata: Json | null
           opened_at: string | null
           provider: string | null
           provider_message_id: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          reply_to: string | null
           sent_at: string | null
           status: string
           subject: string
           template_id: string | null
+          template_type: string | null
+          text_body: string | null
           to_email: string
         }
         Insert: {
+          attachments?: Json | null
+          bcc_emails?: string[] | null
           body?: string | null
+          bounce_type?: string | null
+          cc_emails?: string[] | null
           clicked_at?: string | null
           company_id?: string | null
+          complaint_type?: string | null
           created_at?: string
           error_message?: string | null
           from_email?: string | null
+          html_body?: string | null
           id?: string
           metadata?: Json | null
           opened_at?: string | null
           provider?: string | null
           provider_message_id?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          reply_to?: string | null
           sent_at?: string | null
           status?: string
           subject: string
           template_id?: string | null
+          template_type?: string | null
+          text_body?: string | null
           to_email: string
         }
         Update: {
+          attachments?: Json | null
+          bcc_emails?: string[] | null
           body?: string | null
+          bounce_type?: string | null
+          cc_emails?: string[] | null
           clicked_at?: string | null
           company_id?: string | null
+          complaint_type?: string | null
           created_at?: string
           error_message?: string | null
           from_email?: string | null
+          html_body?: string | null
           id?: string
           metadata?: Json | null
           opened_at?: string | null
           provider?: string | null
           provider_message_id?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          reply_to?: string | null
           sent_at?: string | null
           status?: string
           subject?: string
           template_id?: string | null
+          template_type?: string | null
+          text_body?: string | null
           to_email?: string
         }
         Relationships: [
@@ -1238,6 +1280,198 @@ export type Database = {
           {
             foreignKeyName: "employee_documents_verified_by_fkey"
             columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_education: {
+        Row: {
+          certificate_url: string | null
+          company_id: string
+          created_at: string | null
+          degree: string | null
+          description: string | null
+          employee_id: string
+          end_date: string | null
+          field_of_study: string | null
+          grade: string | null
+          id: string
+          institution: string
+          is_current: boolean | null
+          metadata: Json | null
+          start_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          certificate_url?: string | null
+          company_id: string
+          created_at?: string | null
+          degree?: string | null
+          description?: string | null
+          employee_id: string
+          end_date?: string | null
+          field_of_study?: string | null
+          grade?: string | null
+          id?: string
+          institution: string
+          is_current?: boolean | null
+          metadata?: Json | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          certificate_url?: string | null
+          company_id?: string
+          created_at?: string | null
+          degree?: string | null
+          description?: string | null
+          employee_id?: string
+          end_date?: string | null
+          field_of_study?: string | null
+          grade?: string | null
+          id?: string
+          institution?: string
+          is_current?: boolean | null
+          metadata?: Json | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_education_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_education_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_emergency_contacts: {
+        Row: {
+          address: string | null
+          company_id: string
+          created_at: string | null
+          email: string | null
+          employee_id: string
+          id: string
+          is_primary: boolean | null
+          metadata: Json | null
+          name: string
+          phone: string | null
+          relationship: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          created_at?: string | null
+          email?: string | null
+          employee_id: string
+          id?: string
+          is_primary?: boolean | null
+          metadata?: Json | null
+          name: string
+          phone?: string | null
+          relationship?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          created_at?: string | null
+          email?: string | null
+          employee_id?: string
+          id?: string
+          is_primary?: boolean | null
+          metadata?: Json | null
+          name?: string
+          phone?: string | null
+          relationship?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_emergency_contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_emergency_contacts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_experience: {
+        Row: {
+          company_id: string
+          company_name: string
+          created_at: string | null
+          description: string | null
+          employee_id: string
+          end_date: string | null
+          id: string
+          is_current: boolean | null
+          job_title: string
+          location: string | null
+          metadata: Json | null
+          start_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          company_name: string
+          created_at?: string | null
+          description?: string | null
+          employee_id: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          job_title: string
+          location?: string | null
+          metadata?: Json | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          company_name?: string
+          created_at?: string | null
+          description?: string | null
+          employee_id?: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          job_title?: string
+          location?: string | null
+          metadata?: Json | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_experience_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_experience_employee_id_fkey"
+            columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
