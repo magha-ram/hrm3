@@ -15,17 +15,20 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, Building2, Users, ExternalLink, Plus, Link } from 'lucide-react';
+import { Search, Building2, Users, ExternalLink, Plus, Link, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
 import { CreateCompanyDialog, CreateLinkDialog } from '@/components/platform/CompanyOnboardingDialogs';
 import { CompanyLinksManager } from '@/components/platform/CompanyLinksManager';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function PlatformCompaniesPage() {
   const [search, setSearch] = useState('');
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [showCreateLink, setShowCreateLink] = useState(false);
   const [activeTab, setActiveTab] = useState('companies');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [companyToDelete, setCompanyToDelete] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -107,6 +110,25 @@ export default function PlatformCompaniesPage() {
     },
   });
 
+  const deleteCompanyMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      const { data, error } = await supabase.functions.invoke('delete-company', {
+        body: { company_id: companyId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Company deleted');
+      setDeleteDialogOpen(false);
+      setCompanyToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ['platform-companies'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete company');
+    },
+  });
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -143,6 +165,24 @@ export default function PlatformCompaniesPage() {
 
       <CreateCompanyDialog open={showCreateCompany} onOpenChange={setShowCreateCompany} />
       <CreateLinkDialog open={showCreateLink} onOpenChange={setShowCreateLink} />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setCompanyToDelete(null);
+        }}
+        title={companyToDelete ? `Delete ${companyToDelete.name}?` : 'Delete company?'}
+        description="This will permanently delete the company and all its data. This action cannot be undone."
+        confirmLabel="Delete company"
+        cancelLabel="Cancel"
+        variant="destructive"
+        isLoading={deleteCompanyMutation.isPending}
+        onConfirm={() => {
+          if (!companyToDelete) return;
+          deleteCompanyMutation.mutate(companyToDelete.id);
+        }}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -231,28 +271,40 @@ export default function PlatformCompaniesPage() {
                         {company.is_active ? 'Active' : 'Frozen'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/platform/companies/${company.id}`)}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleActiveMutation.mutate({ 
-                            companyId: company.id, 
-                            isActive: company.is_active 
-                          })}
-                        >
-                          {company.is_active ? 'Freeze' : 'Unfreeze'}
-                        </Button>
-                      </div>
-                    </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/platform/companies/${company.id}`)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleActiveMutation.mutate({
+                              companyId: company.id,
+                              isActive: company.is_active,
+                            })}
+                          >
+                            {company.is_active ? 'Freeze' : 'Unfreeze'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => {
+                              setCompanyToDelete({ id: company.id, name: company.name });
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
