@@ -46,7 +46,7 @@ export function useProfileAuth() {
         .single();
       
       if (error) throw error;
-      return data as ProfileAuthData;
+      return data as unknown as ProfileAuthData;
     },
     enabled: !!userId,
   });
@@ -85,7 +85,7 @@ export function useIsAccountLocked() {
       if (!userId) return false;
       
       const { data, error } = await supabase
-        .rpc('is_account_locked', { _user_id: userId });
+        .rpc('is_account_locked' as any, { p_user_id: userId });
       
       if (error) throw error;
       return data as boolean;
@@ -132,7 +132,7 @@ export function useRecordSuccessfulLogin() {
   return useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await supabase
-        .rpc('record_successful_login', { _user_id: userId });
+        .rpc('record_successful_login' as any, { p_user_id: userId });
       
       if (error) throw error;
     },
@@ -147,7 +147,7 @@ export function useRecordFailedLogin() {
   return useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await supabase
-        .rpc('record_failed_login', { _user_id: userId });
+        .rpc('record_failed_login' as any, { p_user_id: userId });
       
       if (error) throw error;
     },

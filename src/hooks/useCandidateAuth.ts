@@ -170,7 +170,7 @@ export function useMyCandidateApplications() {
       if (!candidateUser) return [];
 
       const { data, error } = await supabase
-        .from('candidates')
+        .from('candidates' as any)
         .select(`
           *,
           job:jobs(id, title, slug, company:companies(id, name, logo_url))
@@ -179,7 +179,7 @@ export function useMyCandidateApplications() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as unknown as any[];
     },
     enabled: !!candidateUser?.id,
   });

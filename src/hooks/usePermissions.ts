@@ -20,13 +20,13 @@ export function useAllPermissions() {
     queryKey: ['permissions'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('permissions')
+        .from('permissions' as any)
         .select('*')
         .order('module')
         .order('action');
       
       if (error) throw error;
-      return data as Permission[];
+      return (data as unknown as Permission[]) || [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour - permissions rarely change
   });
@@ -46,13 +46,13 @@ export function useMyPermissions() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
       
-      const { data, error } = await supabase.rpc('get_user_permissions', {
-        _user_id: user.id,
-        _company_id: companyId,
+      const { data, error } = await supabase.rpc('get_user_permissions' as any, {
+        p_user_id: user.id,
+        p_company_id: companyId,
       });
       
       if (error) throw error;
-      return data as UserPermission[];
+      return (data as unknown as UserPermission[]) || [];
     },
     enabled: !!companyId,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -124,13 +124,13 @@ export function useUserPermissions(userId: string | null) {
     queryFn: async () => {
       if (!companyId || !userId) return [];
       
-      const { data, error } = await supabase.rpc('get_user_permissions', {
-        _user_id: userId,
-        _company_id: companyId,
+      const { data, error } = await supabase.rpc('get_user_permissions' as any, {
+        p_user_id: userId,
+        p_company_id: companyId,
       });
       
       if (error) throw error;
-      return data as UserPermission[];
+      return (data as unknown as UserPermission[]) || [];
     },
     enabled: !!companyId && !!userId,
   });
@@ -147,13 +147,13 @@ export function useRolePermissions(role: AppRole | null) {
     queryFn: async () => {
       if (!companyId || !role) return [];
       
-      const { data, error } = await supabase.rpc('get_role_permissions', {
-        _company_id: companyId,
-        _role: role,
+      const { data, error } = await supabase.rpc('get_role_permissions' as any, {
+        p_company_id: companyId,
+        p_role: role,
       });
       
       if (error) throw error;
-      return data as RolePermission[];
+      return (data as unknown as RolePermission[]) || [];
     },
     enabled: !!companyId && !!role,
   });
@@ -180,12 +180,12 @@ export function useSetRolePermission() {
     }) => {
       if (!companyId) throw new Error('No company selected');
       
-      const { data, error } = await supabase.rpc('set_role_permission', {
-        _company_id: companyId,
-        _role: role,
-        _module: module as any, // Cast needed as DB enum may not include all app modules
-        _action: action,
-        _grant: grant,
+      const { data, error } = await supabase.rpc('set_role_permission' as any, {
+        p_company_id: companyId,
+        p_role: role,
+        p_module: module,
+        p_action: action,
+        p_grant: grant,
       });
       
       if (error) throw error;
@@ -224,12 +224,12 @@ export function useSetUserPermission() {
     }) => {
       if (!companyId) throw new Error('No company selected');
       
-      const { data, error } = await supabase.rpc('set_user_permission', {
-        _company_id: companyId,
-        _target_user_id: userId,
-        _module: module as any, // Cast needed as DB enum may not include all app modules
-        _action: action,
-        _granted: granted,
+      const { data, error } = await supabase.rpc('set_user_permission' as any, {
+        p_company_id: companyId,
+        p_target_user_id: userId,
+        p_module: module,
+        p_action: action,
+        p_granted: granted,
       });
       
       if (error) throw error;
@@ -269,10 +269,10 @@ export function useBatchSetUserPermissions() {
     }) => {
       if (!companyId) throw new Error('No company selected');
       
-      const { data, error } = await supabase.rpc('set_user_permissions_batch', {
-        _company_id: companyId,
-        _target_user_id: userId,
-        _permissions: permissions,
+      const { data, error } = await supabase.rpc('set_user_permissions_batch' as any, {
+        p_company_id: companyId,
+        p_target_user_id: userId,
+        p_permissions: permissions,
       });
       
       if (error) throw error;
@@ -302,14 +302,15 @@ export function useUsersWithOverrides() {
       
       // Get distinct users who have explicit permission overrides
       const { data: overrides, error: overridesError } = await supabase
-        .from('user_permissions')
+        .from('user_permissions' as any)
         .select('user_id')
         .eq('company_id', companyId);
       
       if (overridesError) throw overridesError;
       
       // Get unique user IDs
-      const uniqueUserIds = [...new Set(overrides?.map(o => o.user_id) || [])];
+      const overrideData = overrides as unknown as { user_id: string }[];
+      const uniqueUserIds = [...new Set(overrideData?.map(o => o.user_id) || [])];
       
       if (uniqueUserIds.length === 0) return [];
       
@@ -343,8 +344,8 @@ export function useInitializePermissions() {
     mutationFn: async () => {
       if (!companyId) throw new Error('No company selected');
       
-      const { error } = await supabase.rpc('initialize_company_permissions', {
-        _company_id: companyId,
+      const { error } = await supabase.rpc('initialize_company_permissions' as any, {
+        p_company_id: companyId,
       });
       
       if (error) throw error;
@@ -371,8 +372,8 @@ export function useResetRolePermissions() {
     mutationFn: async () => {
       if (!companyId) throw new Error('No company selected');
       
-      const { error } = await supabase.rpc('reset_role_permissions_to_defaults', {
-        _company_id: companyId,
+      const { error } = await supabase.rpc('reset_role_permissions_to_defaults' as any, {
+        p_company_id: companyId,
       });
       
       if (error) throw error;
