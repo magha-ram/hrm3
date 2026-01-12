@@ -139,20 +139,109 @@ Deno.serve(async (req) => {
       if (worstStatus === 2) status = 'critical';
       else if (worstStatus === 1) status = 'warning';
 
-      // Calculate metrics
-      const usageMetric = latestByMetric.get('usage_percent');
-      const errorRateMetric = latestByMetric.get('error_rate') || latestByMetric.get('error_rate_5xx');
-      const latencyMetric = latestByMetric.get('latency_avg') || latestByMetric.get('latency_p95');
-      const usedMetric = latestByMetric.get('storage_used') || latestByMetric.get('used_count');
+      // Get module-specific "used" value
+      const getUsedValue = (moduleName: string): number | null => {
+        switch(moduleName) {
+          case 'database': 
+            return latestByMetric.get('operations_1h')?.metric_value ?? 
+                   latestByMetric.get('query_count_1h')?.metric_value ?? null;
+          case 'backend': 
+            return latestByMetric.get('request_count_1h')?.metric_value ?? 
+                   latestByMetric.get('invocations_1h')?.metric_value ?? null;
+          case 'email': 
+            return latestByMetric.get('sent_count_1h')?.metric_value ?? 
+                   latestByMetric.get('emails_sent')?.metric_value ?? null;
+          case 'auth': 
+            return latestByMetric.get('login_success_1h')?.metric_value ?? 
+                   latestByMetric.get('active_sessions')?.metric_value ?? null;
+          case 'users': 
+            return latestByMetric.get('active_users_24h')?.metric_value ?? 
+                   latestByMetric.get('total_users')?.metric_value ?? null;
+          case 'storage': 
+            return latestByMetric.get('file_count')?.metric_value ?? 
+                   latestByMetric.get('storage_used')?.metric_value ?? null;
+          case 'logs': 
+            return latestByMetric.get('total_logs_1h')?.metric_value ?? null;
+          case 'notifications': 
+            return latestByMetric.get('sent_count_1h')?.metric_value ?? null;
+          case 'cron': 
+            return latestByMetric.get('runs_last_hour')?.metric_value ?? null;
+          case 'integrations': 
+            return latestByMetric.get('active_webhooks')?.metric_value ?? null;
+          default: 
+            return null;
+        }
+      };
+
+      // Get module-specific error rate
+      const getErrorRate = (moduleName: string): number | null => {
+        switch(moduleName) {
+          case 'backend': 
+            return latestByMetric.get('error_rate')?.metric_value ?? 
+                   latestByMetric.get('error_rate_5xx')?.metric_value ?? null;
+          case 'auth': 
+            return latestByMetric.get('login_failure_rate')?.metric_value ?? null;
+          case 'email': {
+            const rate = latestByMetric.get('delivery_rate')?.metric_value;
+            return rate !== undefined && rate !== null ? Math.round((100 - rate) * 100) / 100 : null;
+          }
+          case 'integrations': {
+            const rate = latestByMetric.get('webhook_success_rate')?.metric_value;
+            return rate !== undefined && rate !== null ? Math.round((100 - rate) * 100) / 100 : null;
+          }
+          case 'cron': {
+            const rate = latestByMetric.get('success_rate')?.metric_value;
+            return rate !== undefined && rate !== null ? Math.round((100 - rate) * 100) / 100 : null;
+          }
+          case 'database':
+            return latestByMetric.get('error_rate')?.metric_value ?? null;
+          default: 
+            return null;
+        }
+      };
+
+      // Get latency for applicable modules
+      const getLatency = (moduleName: string): number | null => {
+        if (moduleName === 'backend') {
+          return latestByMetric.get('latency_avg')?.metric_value ?? 
+                 latestByMetric.get('latency_p95')?.metric_value ?? null;
+        }
+        if (moduleName === 'database') {
+          return latestByMetric.get('avg_query_time')?.metric_value ?? null;
+        }
+        return null;
+      };
+
+      // Get usage percent for applicable modules
+      const getUsagePercent = (moduleName: string): number | null => {
+        const directUsage = latestByMetric.get('usage_percent')?.metric_value;
+        if (directUsage !== undefined && directUsage !== null) return directUsage;
+        
+        // For modules with success rates, show that as a "health" percentage
+        if (moduleName === 'cron' || moduleName === 'integrations') {
+          return latestByMetric.get('success_rate')?.metric_value ?? 
+                 latestByMetric.get('webhook_success_rate')?.metric_value ?? null;
+        }
+        if (moduleName === 'email') {
+          return latestByMetric.get('delivery_rate')?.metric_value ?? null;
+        }
+        return null;
+      };
+
+      const usedValue = getUsedValue(config.module);
+      const errorRateValue = getErrorRate(config.module);
+      const latencyValue = getLatency(config.module);
+      const usagePercent = getUsagePercent(config.module);
       
       // Count failures in last 1h and 24h
+      const failureMetricNames = ['error', 'failure', 'failed', 'error_count', 'failures'];
       const failures1h = moduleMetrics
-        .filter(m => m.metric_name.includes('error') || m.metric_name.includes('failure'))
+        .filter(m => failureMetricNames.some(name => m.metric_name.includes(name)))
         .filter(m => new Date(m.collected_at) >= new Date(oneHourAgo))
         .reduce((sum, m) => sum + (m.metric_value || 0), 0);
       
       const failures24h = moduleMetrics
-        .filter(m => m.metric_name.includes('error') || m.metric_name.includes('failure'))
+        .filter(m => failureMetricNames.some(name => m.metric_name.includes(name)))
         .reduce((sum, m) => sum + (m.metric_value || 0), 0);
 
       // Find last incident
@@ -183,8 +272,27 @@ Deno.serve(async (req) => {
       };
 
       const totalCapacity = config.capacity_total;
-      const usedValue = usedMetric?.metric_value;
-      const usagePercent = usageMetric?.metric_value;
+
+      // Format used value based on module type
+      const formatUsedValue = (): string | null => {
+        if (usedValue === null || usedValue === undefined) return null;
+        if (config.capacity_unit === 'bytes') return formatBytes(usedValue);
+        
+        // Add appropriate suffix based on module
+        switch(config.module) {
+          case 'database': return `${usedValue} ops`;
+          case 'backend': return `${usedValue} reqs`;
+          case 'email': return `${usedValue} sent`;
+          case 'auth': return `${usedValue} sessions`;
+          case 'users': return `${usedValue} active`;
+          case 'storage': return `${usedValue} files`;
+          case 'logs': return `${usedValue} entries`;
+          case 'notifications': return `${usedValue} sent`;
+          case 'cron': return `${usedValue} runs`;
+          case 'integrations': return `${usedValue} hooks`;
+          default: return `${usedValue}`;
+        }
+      };
 
       return {
         name: config.module,
@@ -194,14 +302,14 @@ Deno.serve(async (req) => {
         isEnabled: config.is_enabled,
         metrics: {
           totalCapacity: totalCapacity ? formatBytes(totalCapacity) : null,
-          used: usedValue ? (config.capacity_unit === 'bytes' ? formatBytes(usedValue) : `${usedValue}`) : null,
+          used: formatUsedValue(),
           remaining: (totalCapacity && usedValue) ? formatBytes(totalCapacity - usedValue) : null,
           usagePercent: usagePercent ?? null,
-          errorRate: errorRateMetric?.metric_value ?? null,
-          latencyMs: latencyMetric?.metric_value ?? null,
+          errorRate: errorRateValue,
+          latencyMs: latencyValue,
           failures1h: Math.round(failures1h),
           failures24h: Math.round(failures24h),
-          upgradeRecommended: (usagePercent && usagePercent > 80) || status === 'critical',
+          upgradeRecommended: (usagePercent !== null && usagePercent > 80) || status === 'critical',
           lastIncident,
         },
         trend,
