@@ -93,9 +93,12 @@ serve(async (req: Request): Promise<Response> => {
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
+      // Return success with skip flag - this is a non-critical background check
+      // Token may be expired or invalid during login race conditions
+      console.log('Auth failed for suspicious login check, skipping:', authError?.message);
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ suspicious: false, reason: 'Auth skipped', skipped: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
