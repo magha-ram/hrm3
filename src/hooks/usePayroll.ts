@@ -97,9 +97,10 @@ export function useCreatePayrollRun() {
       // Auto-generate attendance summaries if requested
       if (data.autoGenerateSummaries) {
         await supabase.rpc('generate_attendance_summary', {
-          _company_id: companyId,
-          _period_start: data.period_start,
-          _period_end: data.period_end,
+          p_company_id: companyId,
+          p_month: new Date(data.period_start).getMonth() + 1,
+          p_year: new Date(data.period_start).getFullYear(),
+          p_employee_id: null,
         });
       }
 

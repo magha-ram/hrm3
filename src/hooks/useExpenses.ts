@@ -178,6 +178,7 @@ export function useCreateExpense() {
         .from('expenses')
         .insert([{
           ...expense,
+          category: expense.description.substring(0, 50), // Use description as category fallback
           company_id: companyId,
           employee_id: employeeId,
           status: 'pending',

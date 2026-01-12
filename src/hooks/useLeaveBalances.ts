@@ -218,8 +218,8 @@ export function useAccrueLeaveBalances() {
       const targetYear = year || new Date().getFullYear();
 
       const { data, error } = await supabase.rpc('accrue_leave_balances', {
-        _company_id: companyId,
-        _year: targetYear,
+        p_company_id: companyId,
+        p_year: targetYear,
       });
 
       if (error) throw error;
@@ -241,6 +241,7 @@ export function useAccrueLeaveBalances() {
  */
 export function useAdjustLeaveBalance() {
   const queryClient = useQueryClient();
+  const { companyId } = useTenant();
 
   return useMutation({
     mutationFn: async ({ 
@@ -254,11 +255,14 @@ export function useAdjustLeaveBalance() {
       adjustmentDays: number;
       reason: string;
     }) => {
+      if (!companyId) throw new Error('No company selected');
+      
       const { data, error } = await supabase.rpc('adjust_leave_balance', {
-        _employee_id: employeeId,
-        _leave_type_id: leaveTypeId,
-        _adjustment_days: adjustmentDays,
-        _reason: reason,
+        p_company_id: companyId,
+        p_employee_id: employeeId,
+        p_leave_type_id: leaveTypeId,
+        p_adjustment_days: adjustmentDays,
+        p_reason: reason,
       });
 
       if (error) throw error;
@@ -278,6 +282,8 @@ export function useAdjustLeaveBalance() {
  * Check leave balance before submitting request
  */
 export function useCheckLeaveBalance() {
+  const { companyId } = useTenant();
+  
   return useMutation({
     mutationFn: async ({
       employeeId,
@@ -288,14 +294,17 @@ export function useCheckLeaveBalance() {
       leaveTypeId: string;
       days: number;
     }) => {
+      if (!companyId) throw new Error('No company selected');
+      
       const { data, error } = await supabase.rpc('check_leave_balance', {
-        _employee_id: employeeId,
-        _leave_type_id: leaveTypeId,
-        _days: days,
+        p_company_id: companyId,
+        p_employee_id: employeeId,
+        p_leave_type_id: leaveTypeId,
+        p_days_requested: days,
       });
 
       if (error) throw error;
-      return data?.[0] || { has_balance: false, available_days: 0, message: 'Unable to check balance' };
+      return data || { has_sufficient_balance: false, available_days: 0, message: 'Unable to check balance' };
     },
   });
 }

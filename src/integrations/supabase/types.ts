@@ -2544,6 +2544,73 @@ export type Database = {
           },
         ]
       }
+      leave_balances: {
+        Row: {
+          adjustment_days: number | null
+          allocated_days: number | null
+          carried_over_days: number | null
+          company_id: string
+          created_at: string | null
+          employee_id: string
+          id: string
+          leave_type_id: string
+          pending_days: number | null
+          updated_at: string | null
+          used_days: number | null
+          year: number
+        }
+        Insert: {
+          adjustment_days?: number | null
+          allocated_days?: number | null
+          carried_over_days?: number | null
+          company_id: string
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          leave_type_id: string
+          pending_days?: number | null
+          updated_at?: string | null
+          used_days?: number | null
+          year: number
+        }
+        Update: {
+          adjustment_days?: number | null
+          allocated_days?: number | null
+          carried_over_days?: number | null
+          company_id?: string
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          leave_type_id?: string
+          pending_days?: number | null
+          updated_at?: string | null
+          used_days?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_balances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balances_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "leave_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leave_request_days: {
         Row: {
           company_id: string
@@ -2796,6 +2863,84 @@ export type Database = {
           },
         ]
       }
+      notification_events: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          employee_id: string | null
+          error_message: string | null
+          event_data: Json | null
+          event_type: string
+          failed_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          notification_channels: string[] | null
+          read_at: string | null
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          employee_id?: string | null
+          error_message?: string | null
+          event_data?: Json | null
+          event_type: string
+          failed_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          notification_channels?: string[] | null
+          read_at?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          employee_id?: string | null
+          error_message?: string | null
+          event_data?: Json | null
+          event_type?: string
+          failed_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          notification_channels?: string[] | null
+          read_at?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           category: string | null
@@ -2842,6 +2987,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_logs: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          status: string | null
+          step: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          step?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
+          step?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_logs_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -3259,6 +3445,7 @@ export type Database = {
           first_name: string | null
           force_password_change: boolean | null
           id: string
+          is_first_login: boolean | null
           last_login_at: string | null
           last_name: string | null
           locale: string | null
@@ -3274,6 +3461,7 @@ export type Database = {
           first_name?: string | null
           force_password_change?: boolean | null
           id: string
+          is_first_login?: boolean | null
           last_login_at?: string | null
           last_name?: string | null
           locale?: string | null
@@ -3289,6 +3477,7 @@ export type Database = {
           first_name?: string | null
           force_password_change?: boolean | null
           id?: string
+          is_first_login?: boolean | null
           last_login_at?: string | null
           last_name?: string | null
           locale?: string | null
@@ -4075,12 +4264,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accrue_leave_balances: {
+        Args: { p_company_id: string; p_year?: number }
+        Returns: Json
+      }
+      adjust_leave_balance: {
+        Args: {
+          p_adjustment_days: number
+          p_company_id: string
+          p_employee_id: string
+          p_leave_type_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       calculate_payroll_from_attendance: {
         Args: { p_company_id: string; p_payroll_run_id: string }
         Returns: boolean
       }
       check_document_limits: {
         Args: { p_company_id: string; p_employee_id: string }
+        Returns: Json
+      }
+      check_leave_balance: {
+        Args: {
+          p_company_id: string
+          p_days_requested: number
+          p_employee_id: string
+          p_leave_type_id: string
+        }
         Returns: Json
       }
       generate_attendance_summary: {
@@ -4104,11 +4316,16 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: string
       }
+      get_documents_needing_expiry_notification: {
+        Args: { p_company_id: string }
+        Returns: Json
+      }
       get_expired_documents: { Args: { p_company_id: string }; Returns: Json }
       get_expiring_documents: {
         Args: { p_company_id: string; p_days_ahead?: number }
         Returns: Json
       }
+      get_registration_settings: { Args: never; Returns: Json }
       get_user_context: { Args: never; Returns: Json }
       has_company_role: {
         Args: {
@@ -4122,6 +4339,7 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: boolean
       }
+      is_account_locked: { Args: { p_user_id: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -4137,6 +4355,15 @@ export type Database = {
       lock_attendance_for_payroll: {
         Args: { p_company_id: string; p_month: number; p_year: number }
         Returns: boolean
+      }
+      mark_expiry_notification_sent: {
+        Args: { p_document_id: string; p_notification_type: string }
+        Returns: Json
+      }
+      record_failed_login: { Args: { p_email: string }; Returns: undefined }
+      record_successful_login: {
+        Args: { p_user_id: string }
+        Returns: undefined
       }
       set_primary_company: { Args: { p_company_id: string }; Returns: boolean }
       verify_document: {
