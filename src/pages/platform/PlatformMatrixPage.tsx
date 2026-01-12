@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { PlatformLayout } from '@/components/platform/PlatformLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SystemMatrixGrid, ActiveAlertsPanel } from '@/components/platform/matrix';
@@ -12,7 +11,7 @@ export default function PlatformMatrixPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
-    <PlatformLayout>
+    <div className="flex-1 space-y-6 p-6">
       <PageHeader
         title="System Matrix"
         description="Complete visibility, monitoring, and alerts for all system components"
@@ -56,6 +55,6 @@ export default function PlatformMatrixPage() {
           <MonitoringConfigPanel />
         </TabsContent>
       </Tabs>
-    </PlatformLayout>
+    </div>
   );
 }

@@ -16,12 +16,14 @@ import {
   Mail,
   Receipt,
   AlertTriangle,
+  LayoutGrid,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 const platformNavItems = [
   { name: 'Dashboard', path: '/platform/dashboard', icon: LayoutDashboard },
+  { name: 'System Matrix', path: '/platform/matrix', icon: LayoutGrid },
   { name: 'Companies', path: '/platform/companies', icon: Building2 },
   { name: 'Users', path: '/platform/users', icon: Users },
   { name: 'Platform Admins', path: '/platform/admins', icon: Shield },
