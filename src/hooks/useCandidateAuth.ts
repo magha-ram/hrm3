@@ -144,14 +144,14 @@ export function usePublicCandidateAuthConfig(companyId: string | null) {
 export function useCandidateUser() {
   return useQuery({
     queryKey: ['candidate-user'],
-    queryFn: async () => {
+    queryFn: async (): Promise<any> => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
       const { data, error } = await supabase
         .from('candidate_users')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -169,18 +169,18 @@ export function useMyCandidateApplications() {
     queryFn: async () => {
       if (!candidateUser) return [];
 
-      const { data, error } = await supabase
-        .from('candidates' as any)
+      const { data, error } = await (supabase
+        .from('candidates')
         .select(`
           *,
           job:jobs(id, title, slug, company:companies(id, name, logo_url))
         `)
-        .eq('candidate_user_id', candidateUser.id)
-        .order('created_at', { ascending: false });
+        .eq('candidate_user_id', (candidateUser as any).id)
+        .order('created_at', { ascending: false })) as any;
 
       if (error) throw error;
-      return data as unknown as any[];
+      return data as any[];
     },
-    enabled: !!candidateUser?.id,
+    enabled: !!(candidateUser as any)?.id,
   });
 }

@@ -24,7 +24,7 @@ export function useShifts() {
         .order('name');
       
       if (error) throw error;
-      return data as Shift[];
+      return data as unknown as Shift[];
     },
     enabled: !!companyId,
   });
@@ -47,7 +47,7 @@ export function useActiveShifts() {
         .order('name');
       
       if (error) throw error;
-      return data as Shift[];
+      return data as unknown as Shift[];
     },
     enabled: !!companyId,
   });
@@ -69,7 +69,7 @@ export function useShift(shiftId: string | null) {
         .single();
       
       if (error) throw error;
-      return data as Shift;
+      return data as unknown as Shift;
     },
     enabled: !!companyId && !!shiftId,
   });
@@ -94,7 +94,7 @@ export function useCreateShift() {
         .single();
       
       if (error) throw error;
-      return data as Shift;
+      return data as unknown as Shift;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shifts', companyId] });
@@ -126,7 +126,7 @@ export function useUpdateShift() {
         .single();
       
       if (error) throw error;
-      return data as Shift;
+      return data as unknown as Shift;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['shifts', companyId] });
@@ -188,7 +188,7 @@ export function useEmployeeShiftAssignments(employeeId: string | null) {
         .order('effective_from', { ascending: false });
       
       if (error) throw error;
-      return data as (EmployeeShiftAssignment & { shift: Shift })[];
+      return data as unknown as (EmployeeShiftAssignment & { shift: Shift })[];
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -218,7 +218,7 @@ export function useCurrentEmployeeShift(employeeId: string | null) {
         .maybeSingle();
       
       if (error) throw error;
-      return data as (EmployeeShiftAssignment & { shift: Shift }) | null;
+      return data as unknown as (EmployeeShiftAssignment & { shift: Shift }) | null;
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -243,7 +243,7 @@ export function useAllShiftAssignments() {
         .order('effective_from', { ascending: false });
       
       if (error) throw error;
-      return data as ShiftAssignmentWithEmployee[];
+      return data as unknown as ShiftAssignmentWithEmployee[];
     },
     enabled: !!companyId,
   });
@@ -274,7 +274,7 @@ export function useAssignShift() {
         .single();
       
       if (error) throw error;
-      return data as EmployeeShiftAssignment;
+      return data as unknown as EmployeeShiftAssignment;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['shift-assignments', companyId] });
@@ -304,7 +304,7 @@ export function useEndShiftAssignment() {
         .single();
       
       if (error) throw error;
-      return data as EmployeeShiftAssignment;
+      return data as unknown as EmployeeShiftAssignment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shift-assignments', companyId] });
@@ -363,7 +363,7 @@ export function useDefaultShift() {
         .maybeSingle();
       
       if (error) throw error;
-      return data as Shift | null;
+      return data as unknown as Shift | null;
     },
     enabled: !!companyId,
   });
@@ -407,7 +407,7 @@ export function useEnsureDefaultShift() {
         .single();
       
       if (error) throw error;
-      return data as Shift;
+      return data as unknown as Shift;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shifts', companyId] });

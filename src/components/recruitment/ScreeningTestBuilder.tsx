@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useCreateScreeningTest, useUpdateScreeningTest, ScreeningQuestion, ScreeningTest } from '@/hooks/useRecruitmentWorkflow';
+import { useCreateScreeningTest, useUpdateScreeningTest, ScreeningQuestion, ScreeningTest, ScreeningTestType } from '@/hooks/useRecruitmentWorkflow';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -26,7 +26,7 @@ const questionSchema = z.object({
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  test_type: z.enum(['questionnaire', 'coding', 'personality', 'skills']),
+  test_type: z.enum(['questionnaire', 'skills_test', 'coding_challenge', 'assessment']),
   duration_minutes: z.number().min(5).max(180),
   passing_score: z.number().min(0).max(100),
   is_template: z.boolean(),
@@ -50,12 +50,12 @@ export function ScreeningTestBuilder({ open, onOpenChange, editingTest, jobId }:
   const createTest = useCreateScreeningTest();
   const updateTest = useUpdateScreeningTest();
   
-  const form = useForm<FormValues>({
+const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: editingTest?.title || '',
       description: editingTest?.description || '',
-      test_type: editingTest?.test_type || 'questionnaire',
+      test_type: (editingTest?.test_type || 'questionnaire') as FormValues['test_type'],
       duration_minutes: editingTest?.duration_minutes || 60,
       passing_score: editingTest?.passing_score || 70,
       is_template: editingTest?.is_template || false,
@@ -86,7 +86,7 @@ export function ScreeningTestBuilder({ open, onOpenChange, editingTest, jobId }:
     const testData = {
       title: values.title,
       description: values.description,
-      test_type: values.test_type,
+      test_type: values.test_type as ScreeningTestType,
       duration_minutes: values.duration_minutes,
       passing_score: values.passing_score,
       is_template: values.is_template,
@@ -143,9 +143,9 @@ export function ScreeningTestBuilder({ open, onOpenChange, editingTest, jobId }:
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="questionnaire">Questionnaire</SelectItem>
-                        <SelectItem value="coding">Coding Test</SelectItem>
-                        <SelectItem value="personality">Personality Assessment</SelectItem>
-                        <SelectItem value="skills">Skills Test</SelectItem>
+                        <SelectItem value="coding_challenge">Coding Challenge</SelectItem>
+                        <SelectItem value="assessment">Assessment</SelectItem>
+                        <SelectItem value="skills_test">Skills Test</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

@@ -14,15 +14,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useScheduleInterview } from '@/hooks/useRecruitmentWorkflow';
+import { useScheduleInterview, InterviewType } from '@/hooks/useRecruitmentWorkflow';
 import { useEmployees } from '@/hooks/useEmployees';
-import { Database } from '@/integrations/supabase/types';
-
-type InterviewType = Database['public']['Enums']['interview_type'];
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  interview_type: z.enum(['phone', 'video', 'onsite', 'panel', 'technical']),
+  interview_type: z.enum(['phone', 'video', 'onsite', 'panel', 'technical', 'final']),
   round_number: z.number().min(1),
   scheduled_date: z.date(),
   scheduled_time: z.string().min(1, 'Time is required'),

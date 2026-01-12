@@ -11,13 +11,13 @@ export interface ReviewCycle {
   cycle_type: string;
   start_date: string;
   end_date: string;
-  review_period_start: string;
-  review_period_end: string;
-  reminder_days: number[];
-  escalation_days: number;
-  auto_create_reviews: boolean;
+  review_period_start?: string | null;
+  review_period_end?: string | null;
+  reminder_days?: number[];
+  escalation_days?: number | null;
+  auto_create_reviews?: boolean;
   status: string;
-  created_by: string | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -37,7 +37,7 @@ export function useReviewCycles() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as ReviewCycle[];
+      return data as unknown as ReviewCycle[];
     },
     enabled: !!companyId,
   });
@@ -64,7 +64,7 @@ export function useCreateReviewCycle() {
         .single();
 
       if (error) throw error;
-      return data as ReviewCycle;
+      return data as unknown as ReviewCycle;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['review-cycles'] });
@@ -90,15 +90,14 @@ export function useActivateReviewCycle() {
       if (updateError) throw updateError;
 
       // Auto-create reviews if enabled
-      const { data: cycle } = await supabase
+      const { data: cycle } = await (supabase
         .from('review_cycles')
-        .select('auto_create_reviews')
+        .select('*')
         .eq('id', cycleId)
-        .single();
+        .single()) as any;
 
       if (cycle?.auto_create_reviews) {
-        const { data: count, error: rpcError } = await supabase
-          .rpc('create_reviews_for_cycle', { _cycle_id: cycleId });
+        const { data: count, error: rpcError } = await (supabase.rpc as any)('create_reviews_for_cycle', { _cycle_id: cycleId });
 
         if (rpcError) throw rpcError;
         return { cycleId, reviewsCreated: count };
@@ -125,8 +124,8 @@ export function useReviewReminders() {
     queryFn: async () => {
       if (!companyId) return [];
 
-      const { data, error } = await supabase
-        .from('review_reminders')
+      const { data, error } = await (supabase
+        .from('review_reminders' as any)
         .select(`
           *,
           review:performance_reviews(
@@ -137,7 +136,7 @@ export function useReviewReminders() {
         `)
         .eq('company_id', companyId)
         .order('sent_at', { ascending: false })
-        .limit(100);
+        .limit(100)) as any;
 
       if (error) throw error;
       return data;
