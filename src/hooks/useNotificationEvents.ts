@@ -11,13 +11,19 @@ export interface NotificationEvent {
   employee_id: string | null;
   event_type: string;
   event_data: Record<string, unknown>;
-  notification_channels: string[];
-  status: 'pending' | 'sent' | 'failed';
-  scheduled_at: string;
-  sent_at: string | null;
-  error_message: string | null;
-  metadata: Record<string, unknown>;
+  notification_channels?: string[] | null;
+  status?: 'pending' | 'sent' | 'failed' | string | null;
+  scheduled_at?: string | null;
+  sent_at?: string | null;
+  failed_at?: string | null;
+  error_message?: string | null;
+  metadata?: Record<string, unknown> | null;
+  title?: string | null;
+  message?: string | null;
+  is_read?: boolean;
+  read_at?: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export type NotificationEventType = 
@@ -50,7 +56,7 @@ export function useMyNotifications() {
         .limit(50);
       
       if (error) throw error;
-      return data as NotificationEvent[];
+      return data as unknown as NotificationEvent[];
     },
     enabled: !!userId,
   });

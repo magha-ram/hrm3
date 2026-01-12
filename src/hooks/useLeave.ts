@@ -406,9 +406,10 @@ export function useCreateLeaveRequest() {
 
       // Check balance before creating request
       const { data: balanceCheck, error: balanceError } = await supabase.rpc('check_leave_balance', {
-        _employee_id: employeeId,
-        _leave_type_id: request.leave_type_id,
-        _days: request.total_days,
+        p_company_id: companyId,
+        p_employee_id: employeeId,
+        p_leave_type_id: request.leave_type_id,
+        p_days_requested: request.total_days,
       });
 
       if (balanceError) {
@@ -475,9 +476,10 @@ export function useApproveLeaveRequest() {
 
       // Verify balance is sufficient
       const { data: balanceCheck } = await supabase.rpc('check_leave_balance', {
-        _employee_id: request.employee_id,
-        _leave_type_id: request.leave_type_id,
-        _days: request.total_days,
+        p_company_id: companyId,
+        p_employee_id: request.employee_id,
+        p_leave_type_id: request.leave_type_id,
+        p_days_requested: request.total_days,
       });
 
       if (balanceCheck?.[0] && !balanceCheck[0].has_balance) {
