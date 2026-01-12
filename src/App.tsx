@@ -9,6 +9,7 @@ import { TenantProvider } from "@/contexts/TenantContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { LocalizationProvider } from "@/contexts/LocalizationContext";
 import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
+import { BackendHealthBanner } from "@/components/layout/BackendHealthBanner";
 import { lazy, Suspense } from "react";
 
 // Public pages (lazy loaded)
@@ -116,6 +117,7 @@ const App = () => (
             <ImpersonationProvider>
               <TenantProvider>
                 <LocalizationProvider>
+                <BackendHealthBanner />
                 <SessionTimeoutWarning />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
