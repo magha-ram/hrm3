@@ -3582,6 +3582,33 @@ export type Database = {
           },
         ]
       }
+      permissions: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          module: string
+          name: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          module: string
+          name: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          module?: string
+          name?: string
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
           created_at: string
@@ -3909,6 +3936,51 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_permissions: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_granted: boolean
+          permission_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_granted?: boolean
+          permission_id: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_granted?: boolean
+          permission_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
             referencedColumns: ["id"]
           },
         ]
@@ -4608,6 +4680,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          company_id: string
+          created_at: string
+          granted: boolean
+          id: string
+          permission_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          granted: boolean
+          id?: string
+          permission_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_schedules: {
         Row: {
           break_duration_minutes: number | null
@@ -4734,7 +4851,28 @@ export type Database = {
         Returns: Json
       }
       get_registration_settings: { Args: never; Returns: Json }
+      get_role_permissions: {
+        Args: { p_company_id: string; p_role: string }
+        Returns: {
+          action: string
+          is_granted: boolean
+          module: string
+          name: string
+          permission_id: string
+        }[]
+      }
       get_user_context: { Args: never; Returns: Json }
+      get_user_permissions: {
+        Args: { p_company_id: string; p_user_id: string }
+        Returns: {
+          action: string
+          has_permission: boolean
+          module: string
+          name: string
+          permission_id: string
+          source: string
+        }[]
+      }
       has_company_role: {
         Args: {
           _company_id: string
@@ -4742,6 +4880,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      initialize_company_permissions: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
       initialize_company_settings: {
         Args: { p_company_id: string }
@@ -4780,7 +4922,39 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      reset_role_permissions_to_defaults: {
+        Args: { p_company_id: string }
+        Returns: undefined
+      }
       set_primary_company: { Args: { p_company_id: string }; Returns: boolean }
+      set_role_permission: {
+        Args: {
+          p_action: string
+          p_company_id: string
+          p_grant: boolean
+          p_module: string
+          p_role: string
+        }
+        Returns: undefined
+      }
+      set_user_permission: {
+        Args: {
+          p_action: string
+          p_company_id: string
+          p_granted: boolean
+          p_module: string
+          p_target_user_id: string
+        }
+        Returns: undefined
+      }
+      set_user_permissions_batch: {
+        Args: {
+          p_company_id: string
+          p_permissions: Json
+          p_target_user_id: string
+        }
+        Returns: undefined
+      }
       verify_document: {
         Args: { p_document_id: string; p_verified_by: string }
         Returns: boolean
