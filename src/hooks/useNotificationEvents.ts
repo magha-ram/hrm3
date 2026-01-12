@@ -170,8 +170,8 @@ export function useDocumentsNeedingExpiryNotification(daysBefore = 30) {
     queryKey: ['documents-expiry-notifications', companyId, daysBefore],
     queryFn: async () => {
       const { data, error } = await supabase
-        .rpc('get_documents_needing_expiry_notification', { 
-          _days_before: daysBefore 
+        .rpc('get_documents_needing_expiry_notification' as any, { 
+          p_company_id: companyId 
         });
       
       if (error) throw error;
@@ -199,7 +199,7 @@ export function useMarkExpiryNotificationSent() {
   return useMutation({
     mutationFn: async (documentId: string) => {
       const { error } = await supabase
-        .rpc('mark_expiry_notification_sent', { _document_id: documentId });
+        .rpc('mark_expiry_notification_sent' as any, { p_document_id: documentId, p_notification_type: 'expiry_warning' });
       
       if (error) throw error;
     },

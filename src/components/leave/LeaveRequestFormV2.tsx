@@ -174,8 +174,9 @@ export function LeaveRequestFormV2({ onSuccess, onCancel }: LeaveRequestFormV2Pr
           leaveTypeId: selectedLeaveTypeId,
           days: totalDays,
         });
-        if (!result.has_balance) {
-          toast.error(result.message || 'Insufficient leave balance');
+        const balanceResult = result as unknown as { has_balance: boolean; message?: string };
+        if (!balanceResult.has_balance) {
+          toast.error(balanceResult.message || 'Insufficient leave balance');
           return;
         }
       } catch {

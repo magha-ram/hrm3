@@ -4,13 +4,13 @@ import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
-// Types from database
-type ScreeningTestType = Database['public']['Enums']['screening_test_type'];
-type ScreeningStatus = Database['public']['Enums']['screening_status'];
-type InterviewType = Database['public']['Enums']['interview_type'];
-type InterviewStatus = Database['public']['Enums']['interview_status'];
-type FeedbackRecommendation = Database['public']['Enums']['feedback_recommendation'];
-type OfferStatus = Database['public']['Enums']['offer_status'];
+// Types - defined locally since enums may not exist in database yet
+type ScreeningTestType = 'questionnaire' | 'skills_test' | 'coding_challenge' | 'assessment';
+type ScreeningStatus = 'pending' | 'in_progress' | 'completed' | 'passed' | 'failed' | 'expired';
+type InterviewType = 'phone' | 'video' | 'onsite' | 'technical' | 'panel' | 'final';
+type InterviewStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+type FeedbackRecommendation = 'strong_hire' | 'hire' | 'neutral' | 'no_hire' | 'strong_no_hire';
+type OfferStatus = 'draft' | 'pending' | 'sent' | 'accepted' | 'declined' | 'negotiating' | 'expired' | 'withdrawn';
 
 export interface ScreeningQuestion {
   id: string;
@@ -180,7 +180,7 @@ export function useScreeningTests(jobId?: string) {
     queryKey: ['screening-tests', companyId, jobId],
     queryFn: async () => {
       let query = supabase
-        .from('screening_tests')
+        .from('screening_tests' as any)
         .select('*')
         .eq('company_id', companyId!)
         .eq('is_active', true)
@@ -193,7 +193,8 @@ export function useScreeningTests(jobId?: string) {
       const { data, error } = await query;
       if (error) throw error;
       
-      return (data || []).map(item => ({
+      const testData = data as unknown as any[];
+      return (testData || []).map(item => ({
         ...item,
         questions: (item.questions as unknown as ScreeningQuestion[]) || [],
       })) as ScreeningTest[];
@@ -220,14 +221,14 @@ export function useCreateScreeningTest() {
       created_by?: string | null;
     }) => {
       const { data, error } = await supabase
-        .from('screening_tests')
+        .from('screening_tests' as any)
         .insert({
           company_id: companyId!,
           title: test.title,
           description: test.description,
           job_id: test.job_id,
           test_type: test.test_type || 'questionnaire',
-          questions: test.questions as unknown as Database['public']['Tables']['screening_tests']['Insert']['questions'],
+          questions: test.questions,
           duration_minutes: test.duration_minutes || 60,
           passing_score: test.passing_score || 70,
           is_template: test.is_template,
@@ -238,7 +239,7 @@ export function useCreateScreeningTest() {
         .single();
       
       if (error) throw error;
-      return data;
+      return data as unknown as ScreeningTest;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['screening-tests'] });
@@ -268,18 +269,18 @@ export function useUpdateScreeningTest() {
     }) => {
       const updateData: Record<string, unknown> = { ...updates };
       if (questions) {
-        updateData.questions = questions as unknown as Database['public']['Tables']['screening_tests']['Update']['questions'];
+        updateData.questions = questions;
       }
       
       const { data, error } = await supabase
-        .from('screening_tests')
+        .from('screening_tests' as any)
         .update(updateData)
         .eq('id', id)
         .select()
         .single();
       
       if (error) throw error;
-      return data;
+      return data as unknown as ScreeningTest;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['screening-tests'] });
@@ -301,7 +302,7 @@ export function useCandidateScreenings(candidateId?: string) {
     queryKey: ['candidate-screenings', companyId, candidateId],
     queryFn: async () => {
       let query = supabase
-        .from('candidate_screenings')
+        .from('candidate_screenings' as any)
         .select(`
           *,
           screening_test:screening_tests(*),
@@ -317,7 +318,8 @@ export function useCandidateScreenings(candidateId?: string) {
       const { data, error } = await query;
       if (error) throw error;
       
-      return (data || []).map(item => ({
+      const screeningData = data as unknown as any[];
+      return (screeningData || []).map(item => ({
         ...item,
         answers: (item.answers as unknown[]) || [],
         screening_test: item.screening_test ? {
@@ -345,7 +347,7 @@ export function useAssignScreening() {
       expiresAt: Date;
     }) => {
       const { data, error } = await supabase
-        .from('candidate_screenings')
+        .from('candidate_screenings' as any)
         .insert({
           company_id: companyId!,
           candidate_id: candidateId,
@@ -358,22 +360,24 @@ export function useAssignScreening() {
       
       if (error) throw error;
       
+      const insertedData = data as unknown as { id: string; access_token: string };
+      
       // Update candidate status to screening if currently applied
       await supabase
         .from('candidates')
-        .update({ status: 'screening' as const, current_stage_started_at: new Date().toISOString() })
+        .update({ status: 'screening' as const })
         .eq('id', candidateId)
         .eq('status', 'applied');
       
       // Add timeline event
-      await supabase.from('candidate_timeline').insert({
+      await supabase.from('candidate_timeline' as any).insert({
         company_id: companyId!,
         candidate_id: candidateId,
         event_type: 'screening_assigned',
         title: 'Screening Test Assigned',
         description: 'A screening test has been assigned',
         created_by: employeeId,
-        metadata: { screening_id: data.id, access_token: data.access_token },
+        metadata: { screening_id: insertedData.id, access_token: insertedData.access_token },
       });
       
       // Send notification email
@@ -382,15 +386,15 @@ export function useAssignScreening() {
           body: { 
             type: 'screening_assigned', 
             candidateId,
-            screeningId: data.id,
-            accessToken: data.access_token,
+            screeningId: insertedData.id,
+            accessToken: insertedData.access_token,
           },
         });
       } catch (e) {
         console.error('Failed to send notification email:', e);
       }
       
-      return data;
+      return insertedData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidate-screenings'] });
@@ -422,7 +426,7 @@ export function useEvaluateScreening() {
       evaluationNotes?: string;
     }) => {
       const { data, error } = await supabase
-        .from('candidate_screenings')
+        .from('candidate_screenings' as any)
         .update({
           score,
           status,
@@ -435,7 +439,7 @@ export function useEvaluateScreening() {
         .single();
       
       if (error) throw error;
-      return data;
+      return data as unknown as CandidateScreening;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidate-screenings'] });

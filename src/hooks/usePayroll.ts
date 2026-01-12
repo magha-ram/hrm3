@@ -301,9 +301,12 @@ export function useLockPayrollRun() {
       }
 
       // Lock attendance summaries when completing
-      if (action === 'complete') {
-        await supabase.rpc('lock_attendance_for_payroll', {
-          _payroll_run_id: runId,
+      if (action === 'complete' && run) {
+        const runDate = new Date(run.period_start);
+        await supabase.rpc('lock_attendance_for_payroll' as any, {
+          p_company_id: run.company_id,
+          p_month: runDate.getMonth() + 1,
+          p_year: runDate.getFullYear(),
         });
       }
 
