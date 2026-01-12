@@ -50,13 +50,13 @@ export function useRoleTemplates() {
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['role-templates'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('role_templates')
+      const { data, error } = await (supabase
+        .from('role_templates' as any)
         .select('*')
-        .order('sort_order');
+        .order('sort_order')) as any;
 
       if (error) throw error;
-      return data as RoleTemplate[];
+      return (data || []) as RoleTemplate[];
     },
   });
 
@@ -66,17 +66,17 @@ export function useRoleTemplates() {
     queryFn: async () => {
       if (!companyId) return [];
 
-      const { data, error } = await supabase
-        .from('company_roles')
+      const { data, error } = await (supabase
+        .from('company_roles' as any)
         .select(`
           *,
           template:role_templates(*)
         `)
         .eq('company_id', companyId)
-        .eq('is_active', true);
+        .eq('is_active', true)) as any;
 
       if (error) throw error;
-      return data as CompanyRole[];
+      return (data || []) as CompanyRole[];
     },
     enabled: !!companyId,
   });
@@ -109,15 +109,15 @@ export function useAdoptRoleTemplate() {
     mutationFn: async ({ templateId, customName }: { templateId: string; customName?: string }) => {
       if (!companyId) throw new Error('No company selected');
 
-      const { data, error } = await supabase
-        .from('company_roles')
+      const { data, error } = await (supabase
+        .from('company_roles' as any)
         .insert({
           company_id: companyId,
           template_id: templateId,
           custom_name: customName || null,
         })
         .select()
-        .single();
+        .single()) as any;
 
       if (error) throw error;
       return data;
@@ -153,11 +153,11 @@ export function useUpdateCompanyRole() {
       if (description !== undefined) updates.description = description;
       if (permissionOverrides !== undefined) updates.permission_overrides = permissionOverrides;
 
-      const { error } = await supabase
-        .from('company_roles')
+      const { error } = await (supabase
+        .from('company_roles' as any)
         .update(updates)
         .eq('id', roleId)
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)) as any;
 
       if (error) throw error;
     },
@@ -177,11 +177,11 @@ export function useRemoveCompanyRole() {
 
   return useMutation({
     mutationFn: async (roleId: string) => {
-      const { error } = await supabase
-        .from('company_roles')
+      const { error } = await (supabase
+        .from('company_roles' as any)
         .update({ is_active: false })
         .eq('id', roleId)
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)) as any;
 
       if (error) throw error;
     },

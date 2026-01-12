@@ -6,19 +6,21 @@ export interface Shift {
   id: string;
   company_id: string;
   name: string;
+  code?: string | null;
+  color?: string | null;
   start_time: string; // TIME format HH:MM:SS
   end_time: string;
   break_duration_minutes: number;
   grace_period_minutes: number;
-  min_hours_full_day: number;
-  min_hours_half_day: number;
-  overtime_after_minutes: number | null;
-  applicable_days: DayOfWeek[];
+  min_hours_full_day?: number | null;
+  min_hours_half_day?: number | null;
+  overtime_after_minutes?: number | null;
+  applicable_days?: DayOfWeek[];
   is_default: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  created_by: string | null;
+  created_by?: string | null;
 }
 
 export type ShiftInsert = Omit<Shift, 'id' | 'created_at' | 'updated_at' | 'created_by'>;
@@ -32,8 +34,11 @@ export interface EmployeeShiftAssignment {
   effective_from: string; // DATE format YYYY-MM-DD
   effective_to: string | null;
   is_temporary: boolean;
-  reason: string | null;
-  assigned_by: string | null;
+  is_active?: boolean;
+  reason?: string | null;
+  assigned_by?: string | null;
+  created_by?: string | null;
+  metadata?: unknown;
   created_at: string;
   updated_at: string;
 }

@@ -5,12 +5,12 @@ import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
 
 // Types - defined locally since enums may not exist in database yet
-type ScreeningTestType = 'questionnaire' | 'skills_test' | 'coding_challenge' | 'assessment';
-type ScreeningStatus = 'pending' | 'in_progress' | 'completed' | 'passed' | 'failed' | 'expired';
-type InterviewType = 'phone' | 'video' | 'onsite' | 'technical' | 'panel' | 'final';
-type InterviewStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
-type FeedbackRecommendation = 'strong_hire' | 'hire' | 'neutral' | 'no_hire' | 'strong_no_hire';
-type OfferStatus = 'draft' | 'pending' | 'sent' | 'accepted' | 'declined' | 'negotiating' | 'expired' | 'withdrawn';
+export type ScreeningTestType = 'questionnaire' | 'skills_test' | 'coding_challenge' | 'assessment';
+export type ScreeningStatus = 'pending' | 'in_progress' | 'completed' | 'passed' | 'failed' | 'expired';
+export type InterviewType = 'phone' | 'video' | 'onsite' | 'technical' | 'panel' | 'final';
+export type InterviewStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+export type FeedbackRecommendation = 'strong_hire' | 'hire' | 'neutral' | 'no_hire' | 'strong_no_hire';
+export type OfferStatus = 'draft' | 'pending' | 'sent' | 'accepted' | 'declined' | 'negotiating' | 'expired' | 'withdrawn';
 
 export interface ScreeningQuestion {
   id: string;
@@ -479,7 +479,7 @@ export function useInterviews(candidateId?: string) {
       
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as Interview[];
+      return (data || []) as unknown as Interview[];
     },
     enabled: !!companyId,
   });
@@ -491,8 +491,8 @@ export function useMyInterviews() {
   return useQuery({
     queryKey: ['my-interviews', employeeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('interview_panelists')
+      const { data, error } = await (supabase
+        .from('interview_panelists' as any)
         .select(`
           *,
           interview:interviews(
@@ -501,7 +501,7 @@ export function useMyInterviews() {
           )
         `)
         .eq('employee_id', employeeId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })) as any;
       
       if (error) throw error;
       return data;
@@ -539,9 +539,9 @@ export function useScheduleInterview() {
       panelists: { employeeId: string; role: string; isRequired: boolean }[];
     }) => {
       // Create interview
-      const { data: interview, error: interviewError } = await supabase
-        .from('interviews')
-        .insert({
+      const { data: interview, error: interviewError } = await (supabase
+        .from('interviews' as any)
+        .insert([{
           company_id: companyId!,
           candidate_id: candidateId,
           interview_type: interviewType,
@@ -553,16 +553,16 @@ export function useScheduleInterview() {
           location,
           meeting_link: meetingLink,
           created_by: employeeId,
-        })
+        }])
         .select()
-        .single();
+        .single()) as any;
       
       if (interviewError) throw interviewError;
       
       // Add panelists
       if (panelists.length > 0) {
-        const { error: panelistError } = await supabase
-          .from('interview_panelists')
+        const { error: panelistError } = await (supabase
+          .from('interview_panelists' as any)
           .insert(
             panelists.map((p) => ({
               interview_id: interview.id,
@@ -570,7 +570,7 @@ export function useScheduleInterview() {
               role: p.role,
               is_required: p.isRequired,
             }))
-          );
+          ) as any);
         
         if (panelistError) throw panelistError;
       }
@@ -583,7 +583,7 @@ export function useScheduleInterview() {
         .in('status', ['applied', 'screening']);
       
       // Add timeline event
-      await supabase.from('candidate_timeline').insert({
+      await (supabase.from('candidate_timeline' as any).insert({
         company_id: companyId!,
         candidate_id: candidateId,
         event_type: 'interview_scheduled',
@@ -591,7 +591,7 @@ export function useScheduleInterview() {
         description: `${interviewType} interview scheduled for ${scheduledAt.toLocaleDateString()}`,
         created_by: employeeId,
         metadata: { interview_id: interview.id },
-      });
+      }) as any);
       
       // Send notification emails
       try {
@@ -662,8 +662,8 @@ export function useInterviewFeedback(interviewId: string) {
   return useQuery({
     queryKey: ['interview-feedback', interviewId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('interview_feedback')
+      const { data, error } = await (supabase
+        .from('interview_feedback' as any)
         .select(`
           *,
           panelist:interview_panelists(
@@ -671,7 +671,7 @@ export function useInterviewFeedback(interviewId: string) {
             employee:employees(id, first_name, last_name, job_title)
           )
         `)
-        .eq('interview_id', interviewId);
+        .eq('interview_id', interviewId)) as any;
       
       if (error) throw error;
       return (data || []) as (InterviewFeedback & { panelist: InterviewPanelist })[];
@@ -685,19 +685,19 @@ export function useSubmitFeedback() {
   
   return useMutation({
     mutationFn: async (feedback: Omit<InterviewFeedback, 'id' | 'submitted_at'>) => {
-      const { data, error } = await supabase
-        .from('interview_feedback')
-        .insert(feedback)
+      const { data, error } = await (supabase
+        .from('interview_feedback' as any)
+        .insert([feedback])
         .select()
-        .single();
+        .single()) as any;
       
       if (error) throw error;
       
       // Mark panelist as feedback submitted
-      await supabase
-        .from('interview_panelists')
+      await (supabase
+        .from('interview_panelists' as any)
         .update({ feedback_submitted: true })
-        .eq('id', feedback.panelist_id);
+        .eq('id', feedback.panelist_id) as any);
       
       return data;
     },
@@ -721,15 +721,15 @@ export function useOffers(candidateId?: string) {
   return useQuery({
     queryKey: ['job-offers', companyId, candidateId],
     queryFn: async () => {
-      let query = supabase
-        .from('job_offers')
+      let query = (supabase
+        .from('job_offers' as any)
         .select(`
           *,
           candidate:candidates(id, first_name, last_name, email),
           job:jobs(id, title)
         `)
         .eq('company_id', companyId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })) as any;
       
       if (candidateId) {
         query = query.eq('candidate_id', candidateId);
@@ -779,11 +779,11 @@ export function useCreateOffer() {
         additional_terms: offer.additional_terms,
       };
       
-      const { data, error } = await supabase
-        .from('job_offers')
-        .insert(insertData as Database['public']['Tables']['job_offers']['Insert'])
+      const { data, error } = await (supabase
+        .from('job_offers' as any)
+        .insert([insertData])
         .select()
-        .single();
+        .single()) as any;
       
       if (error) throw error;
       
@@ -794,7 +794,7 @@ export function useCreateOffer() {
         .eq('id', offer.candidate_id);
       
       // Add timeline event
-      await supabase.from('candidate_timeline').insert({
+      await (supabase.from('candidate_timeline' as any).insert({
         company_id: companyId!,
         candidate_id: offer.candidate_id,
         event_type: 'offer_created',
@@ -802,7 +802,7 @@ export function useCreateOffer() {
         description: `Offer created with salary ${offer.salary_currency || 'USD'} ${offer.salary_offered}`,
         created_by: employeeId,
         metadata: { offer_id: data.id },
-      });
+      }) as any);
       
       // Send notification email to candidate (only if offer is sent, not draft)
       if (offer.status === 'sent') {
@@ -854,8 +854,8 @@ export function useUpdateOfferStatus() {
       respondedAt?: string;
       candidateResponse?: string;
     }) => {
-      const { data, error } = await supabase
-        .from('job_offers')
+      const { data, error } = await (supabase
+        .from('job_offers' as any)
         .update({
           status,
           sent_at: sentAt,
@@ -864,7 +864,7 @@ export function useUpdateOfferStatus() {
         })
         .eq('id', id)
         .select()
-        .single();
+        .single()) as any;
       
       if (error) throw error;
       
@@ -886,7 +886,7 @@ export function useUpdateOfferStatus() {
       }
       
       // Add timeline event
-      await supabase.from('candidate_timeline').insert({
+      await (supabase.from('candidate_timeline' as any).insert({
         company_id: companyId!,
         candidate_id: candidateId,
         event_type: 'offer_status_changed',
@@ -894,7 +894,7 @@ export function useUpdateOfferStatus() {
         description: `Offer status changed to ${status}`,
         created_by: employeeId,
         metadata: { offer_id: id, new_status: status },
-      });
+      }) as any);
       
       // Send notification email when offer is sent
       if (status === 'sent') {
@@ -941,7 +941,7 @@ export function useConvertCandidateToEmployee() {
       offerId: string;
       createLogin?: boolean;
     }) => {
-      const { data, error } = await supabase.rpc('convert_candidate_to_employee', {
+      const { data, error } = await (supabase.rpc as any)('convert_candidate_to_employee', {
         _candidate_id: candidateId,
         _offer_id: offerId,
         _create_login: createLogin,
@@ -977,7 +977,7 @@ export function useAcceptOffer() {
       accessToken: string;
       responseNotes?: string;
     }) => {
-      const { data, error } = await supabase.rpc('accept_job_offer', {
+      const { data, error } = await (supabase.rpc as any)('accept_job_offer', {
         _offer_id: offerId,
         _access_token: accessToken,
         _response_notes: responseNotes,
@@ -1007,7 +1007,7 @@ export function useDeclineOffer() {
       accessToken: string;
       reason?: string;
     }) => {
-      const { data, error } = await supabase.rpc('decline_job_offer', {
+      const { data, error } = await (supabase.rpc as any)('decline_job_offer', {
         _offer_id: offerId,
         _access_token: accessToken,
         _reason: reason,
@@ -1033,12 +1033,12 @@ export function useCandidateTimeline(candidateId: string) {
   return useQuery({
     queryKey: ['candidate-timeline', candidateId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('candidate_timeline')
+      const { data, error } = await (supabase
+        .from('candidate_timeline' as any)
         .select('*')
         .eq('candidate_id', candidateId)
         .eq('company_id', companyId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })) as any;
       
       if (error) throw error;
       return (data || []) as CandidateTimelineEvent[];
@@ -1075,11 +1075,11 @@ export function useAddTimelineEvent() {
         created_by: employeeId,
       };
       
-      const { data, error } = await supabase
-        .from('candidate_timeline')
-        .insert(insertData as Database['public']['Tables']['candidate_timeline']['Insert'])
+      const { data, error } = await (supabase
+        .from('candidate_timeline' as any)
+        .insert([insertData])
         .select()
-        .single();
+        .single()) as any;
       
       if (error) throw error;
       return data;

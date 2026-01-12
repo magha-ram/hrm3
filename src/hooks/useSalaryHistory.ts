@@ -8,12 +8,13 @@ export interface SalaryHistory {
   employee_id: string;
   company_id: string;
   base_salary: number;
-  salary_currency: string;
-  salary_structure: Record<string, number> | null;
-  effective_from: string;
-  effective_to: string | null;
-  reason: string | null;
-  created_by: string | null;
+  salary_currency?: string;
+  salary_structure?: Record<string, number> | null;
+  effective_from?: string;
+  effective_to?: string | null;
+  effective_date?: string;
+  reason?: string | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,7 +48,7 @@ export function useCurrentSalary(employeeId: string | null) {
         .maybeSingle();
       
       if (error) throw error;
-      return data as SalaryHistory | null;
+      return data as unknown as SalaryHistory | null;
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -70,7 +71,7 @@ export function useSalaryHistory(employeeId: string | null) {
         .order('effective_from', { ascending: false });
       
       if (error) throw error;
-      return data as SalaryHistory[];
+      return data as unknown as SalaryHistory[];
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -100,10 +101,11 @@ export function useAddSalary() {
       // Insert new salary record
       const { data, error } = await supabase
         .from('salary_history')
-        .insert({
+        .insert([{
           ...salary,
           company_id: companyId,
-        })
+          effective_date: salary.effective_from,
+        }])
         .select()
         .single();
       
