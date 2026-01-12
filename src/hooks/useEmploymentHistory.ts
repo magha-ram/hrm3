@@ -8,16 +8,18 @@ export interface EmploymentHistoryRecord {
   id: string;
   employee_id: string;
   company_id: string;
-  job_title: string;
+  job_title: string | null;
   department_id: string | null;
-  effective_from: string;
+  effective_from: string | null;
   effective_to: string | null;
-  change_type: string;
+  change_type: string | null;
   reason: string | null;
   notes: string | null;
   created_by: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at?: string | null;
+  event_date?: string;
+  event_type?: string;
   department?: { name: string } | null;
 }
 
@@ -40,7 +42,7 @@ export function useEmploymentHistory(employeeId: string | undefined) {
         .order('effective_from', { ascending: false });
 
       if (error) throw error;
-      return data as EmploymentHistoryRecord[];
+      return data as unknown as EmploymentHistoryRecord[];
     },
     enabled: !!employeeId && !!companyId,
   });
@@ -104,17 +106,18 @@ export function useCreatePromotion() {
       // 2. Create new employment history record
       const { error: historyError } = await supabase
         .from('employment_history')
-        .insert({
+        .insert([{
           employee_id: params.employee_id,
           company_id: companyId,
           job_title: params.new_job_title,
           department_id: params.new_department_id || null,
+          event_date: params.effective_from,
+          event_type: 'promotion',
           effective_from: params.effective_from,
           change_type: 'promotion',
-          reason: params.reason || null,
           notes: params.notes || null,
           created_by: user?.user_id || null,
-        });
+        }]);
 
       if (historyError) throw historyError;
 
@@ -159,15 +162,16 @@ export function useCreatePromotion() {
         // Create new salary record
         await supabase
           .from('salary_history')
-          .insert({
+          .insert([{
             employee_id: params.employee_id,
             company_id: companyId,
             base_salary: newSalary,
             salary_currency: params.salary_currency || currentSalary?.salary_currency || 'USD',
+            effective_date: params.effective_from,
             effective_from: params.effective_from,
             reason: 'Promotion',
             created_by: user?.user_id || null,
-          });
+          }]);
       }
 
       return { success: true };

@@ -1802,12 +1802,18 @@ export type Database = {
       }
       employment_history: {
         Row: {
+          change_type: string | null
           company_id: string
           created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          effective_from: string | null
+          effective_to: string | null
           employee_id: string
           event_date: string
           event_type: string
           id: string
+          job_title: string | null
           metadata: Json | null
           new_value: Json | null
           notes: string | null
@@ -1815,12 +1821,18 @@ export type Database = {
           processed_by: string | null
         }
         Insert: {
+          change_type?: string | null
           company_id: string
           created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
           employee_id: string
           event_date: string
           event_type: string
           id?: string
+          job_title?: string | null
           metadata?: Json | null
           new_value?: Json | null
           notes?: string | null
@@ -1828,12 +1840,18 @@ export type Database = {
           processed_by?: string | null
         }
         Update: {
+          change_type?: string | null
           company_id?: string
           created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
           employee_id?: string
           event_date?: string
           event_type?: string
           id?: string
+          job_title?: string | null
           metadata?: Json | null
           new_value?: Json | null
           notes?: string | null
@@ -1846,6 +1864,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employment_history_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
           {
@@ -2009,12 +2034,17 @@ export type Database = {
           due_date: string | null
           employee_id: string
           id: string
+          last_progress_update: string | null
           metadata: Json | null
           parent_goal_id: string | null
           priority: string | null
           progress: number | null
+          progress_notes: Json | null
+          progress_percentage: number | null
+          review_id: string | null
           start_date: string | null
           status: string
+          target_date: string | null
           target_value: number | null
           title: string
           unit: string | null
@@ -2030,12 +2060,17 @@ export type Database = {
           due_date?: string | null
           employee_id: string
           id?: string
+          last_progress_update?: string | null
           metadata?: Json | null
           parent_goal_id?: string | null
           priority?: string | null
           progress?: number | null
+          progress_notes?: Json | null
+          progress_percentage?: number | null
+          review_id?: string | null
           start_date?: string | null
           status?: string
+          target_date?: string | null
           target_value?: number | null
           title: string
           unit?: string | null
@@ -2051,12 +2086,17 @@ export type Database = {
           due_date?: string | null
           employee_id?: string
           id?: string
+          last_progress_update?: string | null
           metadata?: Json | null
           parent_goal_id?: string | null
           priority?: string | null
           progress?: number | null
+          progress_notes?: Json | null
+          progress_percentage?: number | null
+          review_id?: string | null
           start_date?: string | null
           status?: string
+          target_date?: string | null
           target_value?: number | null
           title?: string
           unit?: string | null
@@ -2084,19 +2124,108 @@ export type Database = {
             referencedRelation: "goals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "goals_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "review_cycles"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      help_guide_steps: {
+        Row: {
+          annotations: Json | null
+          created_at: string | null
+          description: string | null
+          guide_id: string | null
+          id: string
+          screenshot_url: string | null
+          step_number: number
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          annotations?: Json | null
+          created_at?: string | null
+          description?: string | null
+          guide_id?: string | null
+          id?: string
+          screenshot_url?: string | null
+          step_number: number
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          annotations?: Json | null
+          created_at?: string | null
+          description?: string | null
+          guide_id?: string | null
+          id?: string
+          screenshot_url?: string | null
+          step_number?: number
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_guide_steps_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "help_guides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      help_guides: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_platform_guide: boolean | null
+          sort_order: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_platform_guide?: boolean | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_platform_guide?: boolean | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       impersonation_logs: {
         Row: {
           action: string
           admin_user_id: string
           company_id: string | null
+          company_name: string | null
           created_at: string | null
           ended_at: string | null
           id: string
           ip_address: unknown
           metadata: Json | null
           reason: string | null
+          session_id: string | null
           started_at: string | null
           target_user_id: string
           user_agent: string | null
@@ -2105,12 +2234,14 @@ export type Database = {
           action: string
           admin_user_id: string
           company_id?: string | null
+          company_name?: string | null
           created_at?: string | null
           ended_at?: string | null
           id?: string
           ip_address?: unknown
           metadata?: Json | null
           reason?: string | null
+          session_id?: string | null
           started_at?: string | null
           target_user_id: string
           user_agent?: string | null
@@ -2119,12 +2250,14 @@ export type Database = {
           action?: string
           admin_user_id?: string
           company_id?: string | null
+          company_name?: string | null
           created_at?: string | null
           ended_at?: string | null
           id?: string
           ip_address?: unknown
           metadata?: Json | null
           reason?: string | null
+          session_id?: string | null
           started_at?: string | null
           target_user_id?: string
           user_agent?: string | null
@@ -3225,8 +3358,11 @@ export type Database = {
           base_salary: number | null
           company_id: string
           created_at: string | null
+          created_by: string | null
           currency: string | null
           effective_date: string
+          effective_from: string | null
+          effective_to: string | null
           employee_id: string
           id: string
           metadata: Json | null
@@ -3241,8 +3377,11 @@ export type Database = {
           base_salary?: number | null
           company_id: string
           created_at?: string | null
+          created_by?: string | null
           currency?: string | null
           effective_date: string
+          effective_from?: string | null
+          effective_to?: string | null
           employee_id: string
           id?: string
           metadata?: Json | null
@@ -3257,8 +3396,11 @@ export type Database = {
           base_salary?: number | null
           company_id?: string
           created_at?: string | null
+          created_by?: string | null
           currency?: string | null
           effective_date?: string
+          effective_from?: string | null
+          effective_to?: string | null
           employee_id?: string
           id?: string
           metadata?: Json | null
@@ -3642,6 +3784,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          attendance_status: string | null
           break_minutes: number | null
           clock_in: string | null
           clock_out: string | null
@@ -3662,6 +3805,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          attendance_status?: string | null
           break_minutes?: number | null
           clock_in?: string | null
           clock_out?: string | null
@@ -3682,6 +3826,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          attendance_status?: string | null
           break_minutes?: number | null
           clock_in?: string | null
           clock_out?: string | null

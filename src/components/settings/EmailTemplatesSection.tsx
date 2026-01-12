@@ -292,13 +292,14 @@ export function EmailTemplatesSection() {
       
       const { error } = await supabase
         .from('company_email_templates')
-        .upsert({
+        .upsert([{
           company_id: companyId,
           template_type: templateType,
           display_name: def?.name || templateType,
           description: def?.description || null,
           is_enabled: enabled,
-        }, {
+          subject: def?.defaultSubject || templateType,
+        }], {
           onConflict: 'company_id,template_type',
         });
 
@@ -321,7 +322,7 @@ export function EmailTemplatesSection() {
 
       const { error } = await supabase
         .from('company_email_templates')
-        .upsert({
+        .upsert([{
           company_id: companyId,
           template_type: editingTemplate.template_type,
           display_name: def?.name || editingTemplate.template_type,
@@ -329,10 +330,11 @@ export function EmailTemplatesSection() {
           is_enabled: editingTemplate.is_enabled,
           sender_email: editSenderEmail || null,
           sender_name: editSenderName || null,
+          subject: def?.defaultSubject || editingTemplate.template_type,
           subject_template: editSubject || null,
           html_template: editHtml || null,
           plain_text_template: editPlainText || null,
-        }, {
+        }], {
           onConflict: 'company_id,template_type',
         });
 

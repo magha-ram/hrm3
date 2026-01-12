@@ -296,6 +296,7 @@ export function usePromoteEmployee() {
           company_id: companyId,
           employee_id: employeeId,
           base_salary: newSalary,
+          effective_date: effectiveDate,
           effective_from: effectiveDate,
           reason,
         }]);

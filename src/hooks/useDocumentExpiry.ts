@@ -44,7 +44,7 @@ export function useExpiringDocuments(daysThreshold = 30) {
       
       // Parse the JSONB result
       const documents = Array.isArray(data) ? data : [];
-      return documents as ExpiringDocument[];
+      return documents as unknown as ExpiringDocument[];
     },
     enabled: !!companyId,
   });

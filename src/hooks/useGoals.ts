@@ -10,15 +10,23 @@ export interface Goal {
   title: string;
   description: string | null;
   target_date: string | null;
+  due_date?: string | null;
   progress_percentage: number;
   progress: number; // alias for progress_percentage
-  status: 'not_started' | 'in_progress' | 'at_risk' | 'completed' | 'cancelled';
-  priority?: 'low' | 'medium' | 'high';
-  progress_notes: { date: string; note: string; progress: number }[];
+  status: 'not_started' | 'in_progress' | 'at_risk' | 'completed' | 'cancelled' | string;
+  priority?: 'low' | 'medium' | 'high' | string | null;
+  progress_notes: unknown; // JSONB from DB
   last_progress_update: string | null;
   review_id: string | null;
   created_at: string;
   updated_at: string;
+  category?: string | null;
+  current_value?: number | null;
+  target_value?: number | null;
+  unit?: string | null;
+  parent_goal_id?: string | null;
+  start_date?: string | null;
+  created_by?: string | null;
   employee?: {
     id: string;
     first_name: string;
@@ -63,7 +71,7 @@ export function useMyGoals() {
         if (error.code === '42P01') return [];
         throw error;
       }
-      return data as Goal[];
+      return data as unknown as Goal[];
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -92,7 +100,7 @@ export function useGoals() {
         if (error.code === '42P01') return [];
         throw error;
       }
-      return data as Goal[];
+      return data as unknown as Goal[];
     },
     enabled: !!companyId,
   });
@@ -118,7 +126,7 @@ export function useEmployeeGoals(employeeId: string | null) {
         if (error.code === '42P01') return [];
         throw error;
       }
-      return data as Goal[];
+      return data as unknown as Goal[];
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -157,7 +165,7 @@ export function useTeamGoals() {
         if (error.code === '42P01') return [];
         throw error;
       }
-      return data as Goal[];
+      return data as unknown as Goal[];
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -177,17 +185,19 @@ export function useCreateGoal() {
 
       const { data, error } = await supabase
         .from('goals')
-        .insert({
+        .insert([{
           company_id: companyId,
           employee_id: targetEmployeeId,
           title: goal.title,
           description: goal.description || null,
+          due_date: goal.target_date || null,
           target_date: goal.target_date || null,
           review_id: goal.review_id || null,
+          progress: goal.progress ?? 0,
           progress_percentage: goal.progress ?? 0,
           status: goal.status || 'not_started',
           progress_notes: [],
-        })
+        }])
         .select()
         .single();
 
@@ -204,7 +214,7 @@ export function useCreateGoal() {
         new_values: { title: data.title, employee_id: targetEmployeeId },
       }]);
 
-      return data as Goal;
+      return data as unknown as Goal;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
@@ -310,7 +320,7 @@ export function useUpdateGoalProgress() {
         .single();
 
       if (error) throw error;
-      return data as Goal;
+      return data as unknown as Goal;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
