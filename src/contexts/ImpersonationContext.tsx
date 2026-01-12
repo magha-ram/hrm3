@@ -90,8 +90,9 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Log impersonation start to dedicated table
     try {
-      const { error: logError } = await supabase.from('impersonation_logs').insert({
+      const { error: logError } = await supabase.from('impersonation_logs').insert([{
         admin_user_id: authUser.id,
+        target_user_id: authUser.id,
         company_id: company.id,
         company_name: company.name,
         action: 'start',
@@ -100,7 +101,7 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
         metadata: {
           company_slug: company.slug,
         },
-      });
+      }]);
 
       if (logError) {
         console.error('Failed to log impersonation start:', logError);
@@ -122,8 +123,9 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
       // Log impersonation end
       if (authUser) {
         try {
-          const { error: logError } = await supabase.from('impersonation_logs').insert({
+          const { error: logError } = await supabase.from('impersonation_logs').insert([{
             admin_user_id: authUser.id,
+            target_user_id: authUser.id,
             company_id: impersonatedCompany.id,
             company_name: impersonatedCompany.name,
             action: 'end',
@@ -135,7 +137,7 @@ export const ImpersonationProvider: React.FC<{ children: React.ReactNode }> = ({
                 ? Math.floor((Date.now() - impersonationStartedAt.getTime()) / 1000) 
                 : null,
             },
-          });
+          }]);
 
           if (logError) {
             console.error('Failed to log impersonation end:', logError);

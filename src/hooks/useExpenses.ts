@@ -176,12 +176,12 @@ export function useCreateExpense() {
       
       const { data, error } = await supabase
         .from('expenses')
-        .insert({
+        .insert([{
           ...expense,
           company_id: companyId,
           employee_id: employeeId,
           status: 'pending',
-        })
+        }])
         .select()
         .single();
 
