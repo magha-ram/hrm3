@@ -157,7 +157,7 @@ export default function Auth() {
 
   const checkAccountLockout = async (userId: string): Promise<{ locked: boolean; minutesRemaining?: number }> => {
     try {
-      const { data, error } = await supabase.rpc('is_account_locked', { _user_id: userId });
+      const { data, error } = await (supabase.rpc as any)('is_account_locked', { p_user_id: userId });
       if (error) {
         console.error('Error checking lockout:', error);
         return { locked: false };
@@ -167,12 +167,13 @@ export default function Auth() {
         // Get lock expiry time
         const { data: profile } = await supabase
           .from('profiles')
-          .select('locked_until')
+          .select('metadata')
           .eq('id', userId)
           .single();
         
-        if (profile?.locked_until) {
-          const lockedUntil = new Date(profile.locked_until);
+        const locked_until = (profile?.metadata as any)?.locked_until;
+        if (locked_until) {
+          const lockedUntil = new Date(locked_until);
           const now = new Date();
           const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
           return { locked: true, minutesRemaining: Math.max(1, minutesRemaining) };
@@ -187,7 +188,7 @@ export default function Auth() {
 
   const recordFailedLogin = async (userId: string) => {
     try {
-      await supabase.rpc('record_failed_login', { _user_id: userId });
+      await (supabase.rpc as any)('record_failed_login', { p_user_id: userId });
     } catch (error) {
       console.error('Error recording failed login:', error);
     }
@@ -195,7 +196,7 @@ export default function Auth() {
 
   const recordSuccessfulLogin = async (userId: string) => {
     try {
-      await supabase.rpc('record_successful_login', { _user_id: userId });
+      await (supabase.rpc as any)('record_successful_login', { p_user_id: userId });
     } catch (error) {
       console.error('Error recording successful login:', error);
     }
@@ -258,31 +259,32 @@ export default function Auth() {
         companyId = domainCompany.id;
       } else {
         // Otherwise, look up company by slug using RPC (bypasses RLS)
-        const { data: foundCompanyId, error: companyError } = await supabase
-          .rpc('get_company_id_by_slug', { company_slug: companySlug.toLowerCase().trim() });
+        const { data: foundCompanyId, error: companyError } = await (supabase.rpc as any)(
+          'get_company_id_by_slug', 
+          { company_slug: companySlug.toLowerCase().trim() }
+        );
         
         if (companyError || !foundCompanyId) {
           toast.error('Company not found. Please check the company code.');
           setIsLoading(false);
           return;
         }
-        companyId = foundCompanyId;
+        companyId = foundCompanyId as string;
       }
       
       // Find employee using RPC (bypasses RLS)
-      const { data: employeeData, error: empError } = await supabase
-        .rpc('get_employee_login_info', { 
-          p_company_id: companyId, 
-          p_employee_number: employeeId.trim().toUpperCase() 
-        });
+      const { data: employeeData, error: empError } = await (supabase.rpc as any)(
+        'get_employee_login_info', 
+        { p_company_id: companyId, p_employee_number: employeeId.trim().toUpperCase() }
+      );
       
-      if (empError || !employeeData || employeeData.length === 0) {
+      if (empError || !employeeData || (employeeData as any[]).length === 0) {
         toast.error('Employee not found. Please check your Employee ID.');
         setIsLoading(false);
         return;
       }
       
-      const employee = employeeData[0];
+      const employee = (employeeData as any[])[0];
       
       if (!employee.user_id) {
         toast.error('No user account linked to this employee. Please contact your administrator.');

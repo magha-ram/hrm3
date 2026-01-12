@@ -441,10 +441,10 @@ class Logger {
 
     // Log to impersonation_logs table (already exists)
     const operation = (async () => {
-      const { error } = await supabase.from('impersonation_logs').insert({
+      const { error } = await (supabase.from('impersonation_logs') as any).insert({
         company_id: companyId,
         admin_user_id: grantedTo || grantedBy || '',
-        company_name: '', // Will be filled by trigger or join
+        target_user_id: grantedTo || '',
         action,
         metadata: {
           granted_by: grantedBy,
