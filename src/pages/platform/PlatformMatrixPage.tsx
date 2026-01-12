@@ -11,7 +11,7 @@ export default function PlatformMatrixPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="space-y-6">
       <PageHeader
         title="System Matrix"
         description="Complete visibility, monitoring, and alerts for all system components"

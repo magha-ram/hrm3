@@ -41,12 +41,12 @@ export function PlatformSidebar() {
   return (
     <aside 
       className={cn(
-        "flex flex-col border-r border-border bg-card transition-all duration-300",
+        "h-full flex flex-col border-r border-border bg-card transition-all duration-300 shrink-0 overflow-hidden",
         collapsed ? "w-16" : "w-64"
       )}
     >
       {/* Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-border">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
         {!collapsed && (
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
@@ -69,8 +69,8 @@ export function PlatformSidebar() {
         </Button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-2 space-y-1">
+      {/* Navigation - scrollable if needed */}
+      <nav className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden">
         {platformNavItems.map((item) => {
           const isActive = location.pathname === item.path || 
             (item.path !== '/platform/dashboard' && location.pathname.startsWith(item.path));
@@ -94,7 +94,6 @@ export function PlatformSidebar() {
           );
         })}
       </nav>
-
     </aside>
   );
 }
