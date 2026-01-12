@@ -14,6 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_history: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          condition: string
+          id: string
+          is_acknowledged: boolean | null
+          is_resolved: boolean | null
+          message: string | null
+          metadata: Json | null
+          metric_name: string
+          metric_value: number
+          module: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          rule_id: string | null
+          severity: string
+          threshold: number
+          triggered_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          condition: string
+          id?: string
+          is_acknowledged?: boolean | null
+          is_resolved?: boolean | null
+          message?: string | null
+          metadata?: Json | null
+          metric_name: string
+          metric_value: number
+          module: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_id?: string | null
+          severity: string
+          threshold: number
+          triggered_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          condition?: string
+          id?: string
+          is_acknowledged?: boolean | null
+          is_resolved?: boolean | null
+          message?: string | null
+          metadata?: Json | null
+          metric_name?: string
+          metric_value?: number
+          module?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_id?: string | null
+          severity?: string
+          threshold?: number
+          triggered_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_history_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_rules: {
+        Row: {
+          condition: string
+          cooldown_minutes: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_triggered_at: string | null
+          metric_name: string
+          module: string
+          name: string
+          notification_channels: Json | null
+          severity: string | null
+          threshold: number
+          updated_at: string | null
+        }
+        Insert: {
+          condition: string
+          cooldown_minutes?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          metric_name: string
+          module: string
+          name: string
+          notification_channels?: Json | null
+          severity?: string | null
+          threshold: number
+          updated_at?: string | null
+        }
+        Update: {
+          condition?: string
+          cooldown_minutes?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          metric_name?: string
+          module?: string
+          name?: string
+          notification_channels?: Json | null
+          severity?: string | null
+          threshold?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       attendance_summaries: {
         Row: {
           absent_days: number | null
@@ -2813,6 +2938,54 @@ export type Database = {
           },
         ]
       }
+      monitoring_config: {
+        Row: {
+          capacity_total: number | null
+          capacity_unit: string | null
+          collection_interval_seconds: number | null
+          created_at: string | null
+          display_name: string
+          icon: string | null
+          id: string
+          is_enabled: boolean | null
+          module: string
+          retention_days: number | null
+          settings: Json | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          capacity_total?: number | null
+          capacity_unit?: string | null
+          collection_interval_seconds?: number | null
+          created_at?: string | null
+          display_name: string
+          icon?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module: string
+          retention_days?: number | null
+          settings?: Json | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          capacity_total?: number | null
+          capacity_unit?: string | null
+          collection_interval_seconds?: number | null
+          created_at?: string | null
+          display_name?: string
+          icon?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          module?: string
+          retention_days?: number | null
+          settings?: Json | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       multi_company_requests: {
         Row: {
           company_id: string
@@ -3491,6 +3664,116 @@ export type Database = {
         }
         Relationships: []
       }
+      report_history: {
+        Row: {
+          content_summary: Json | null
+          error_message: string | null
+          id: string
+          recipients: Json
+          report_type: string
+          schedule_id: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string
+        }
+        Insert: {
+          content_summary?: Json | null
+          error_message?: string | null
+          id?: string
+          recipients: Json
+          report_type: string
+          schedule_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+        }
+        Update: {
+          content_summary?: Json | null
+          error_message?: string | null
+          id?: string
+          recipients?: Json
+          report_type?: string
+          schedule_id?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_history_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "report_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_schedules: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          day_of_month: number | null
+          day_of_week: number | null
+          description: string | null
+          id: string
+          include_alerts: boolean | null
+          include_modules: Json | null
+          include_recommendations: boolean | null
+          is_active: boolean | null
+          last_sent_at: string | null
+          name: string
+          next_run_at: string | null
+          recipients: Json
+          report_config: Json | null
+          schedule_times: Json | null
+          schedule_type: string | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          id?: string
+          include_alerts?: boolean | null
+          include_modules?: Json | null
+          include_recommendations?: boolean | null
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          name: string
+          next_run_at?: string | null
+          recipients?: Json
+          report_config?: Json | null
+          schedule_times?: Json | null
+          schedule_type?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          id?: string
+          include_alerts?: boolean | null
+          include_modules?: Json | null
+          include_recommendations?: boolean | null
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          recipients?: Json
+          report_config?: Json | null
+          schedule_times?: Json | null
+          schedule_type?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       review_cycles: {
         Row: {
           company_id: string
@@ -3971,6 +4254,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_metrics: {
+        Row: {
+          collected_at: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          metric_name: string
+          metric_unit: string | null
+          metric_value: number
+          module: string
+          status: string | null
+        }
+        Insert: {
+          collected_at?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          metric_name: string
+          metric_unit?: string | null
+          metric_value: number
+          module: string
+          status?: string | null
+        }
+        Update: {
+          collected_at?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          metric_name?: string
+          metric_unit?: string | null
+          metric_value?: number
+          module?: string
+          status?: string | null
+        }
+        Relationships: []
       }
       time_entries: {
         Row: {
