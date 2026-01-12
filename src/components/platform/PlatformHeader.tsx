@@ -28,7 +28,7 @@ export function PlatformHeader() {
     : '?';
 
   return (
-    <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
+    <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold text-foreground">Platform Administration</h1>
         {platformAdminRole && (

@@ -27,13 +27,18 @@ export function PlatformLayout() {
   }
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="h-screen flex w-full overflow-hidden bg-background">
       <PlatformSidebar />
-      <div className="flex-1 flex flex-col">
-        <PlatformHeader />
-        <main className="flex-1 overflow-auto p-6">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Fixed header */}
+        <div className="shrink-0">
+          <PlatformHeader />
+        </div>
+        {/* Scrollable main content */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 p-6">
           <Outlet />
         </main>
+        {/* Fixed footer */}
         <AppFooter showFooter={showFooter} />
       </div>
     </div>
