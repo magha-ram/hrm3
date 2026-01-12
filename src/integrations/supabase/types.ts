@@ -4820,6 +4820,10 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_company_cascade: {
+        Args: { _company_id: string }
+        Returns: undefined
+      }
       generate_attendance_summary: {
         Args: {
           p_company_id: string
