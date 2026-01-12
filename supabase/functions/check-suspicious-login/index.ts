@@ -1,5 +1,4 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EmailService } from "../_shared/email/index.ts";
 
 const corsHeaders = {
@@ -53,7 +52,6 @@ function parseOS(userAgent: string): string {
 }
 
 function getDeviceFingerprint(userAgent: string): string {
-  // Create a simple fingerprint from the user agent
   const os = parseOS(userAgent);
   const browser = parseUserAgent(userAgent);
   return `${os} - ${browser}`;
@@ -65,7 +63,7 @@ function getDeviceName(userAgent: string): string {
   return `${browser} on ${os}`;
 }
 
-serve(async (req: Request): Promise<Response> => {
+Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
