@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Loader2, Building2, Mail, Lock, User, Hash, IdCard, Phone } from 'lucide-react';
+import { Loader2, Building2, Mail, Lock, User, Hash, IdCard, Shield } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChange } from '@/components/security/ForcePasswordChange';
@@ -26,11 +26,16 @@ export default function Auth() {
   const { registrationSettings, isLoading: settingsLoading } = usePlatformSettings();
   
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'employee' | 'admin' | 'signup'>('admin');
+  const [activeTab, setActiveTab] = useState<'employee' | 'admin' | 'signup' | 'platform'>('admin');
   const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
   const [domainAuthTab, setDomainAuthTab] = useState<'employee' | 'admin'>('employee');
   const [lockoutMessage, setLockoutMessage] = useState<string | null>(null);
   const [failedAttempts, setFailedAttempts] = useState(0);
+  
+  // Platform admin login form states
+  const [platformEmail, setPlatformEmail] = useState('');
+  const [platformPassword, setPlatformPassword] = useState('');
+  const [platformErrors, setPlatformErrors] = useState<Record<string, string>>({});
   
   // Check if public signup is enabled
   const isSignupEnabled = registrationSettings?.open_registration ?? false;
@@ -368,6 +373,81 @@ export default function Auth() {
     toast.success('Password changed! Redirecting...');
   };
 
+  const validatePlatformForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    try {
+      emailSchema.parse(platformEmail);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        newErrors.email = e.errors[0].message;
+      }
+    }
+    
+    try {
+      passwordSchema.parse(platformPassword);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        newErrors.password = e.errors[0].message;
+      }
+    }
+    
+    setPlatformErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handlePlatformAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validatePlatformForm()) return;
+    
+    setIsLoading(true);
+    setLockoutMessage(null);
+    
+    const { error } = await signIn(platformEmail, platformPassword);
+    
+    if (error) {
+      setIsLoading(false);
+      if (error.message.includes('Invalid login credentials')) {
+        toast.error('Invalid email or password');
+      } else if (error.message.includes('Email not confirmed')) {
+        toast.error('Please confirm your email address before signing in');
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+    
+    // After successful auth, verify platform admin status
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    
+    if (authUser) {
+      // Check if user is a platform admin
+      const { data: isPlatformAdminResult } = await supabase
+        .rpc('is_platform_admin', { _user_id: authUser.id });
+      
+      if (!isPlatformAdminResult) {
+        // Sign out and show error - not a platform admin
+        await supabase.auth.signOut();
+        toast.error('This account is not a platform administrator');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Record successful login
+      await recordSuccessfulLogin(authUser.id);
+      
+      // Check if password change is required
+      const needsPasswordChange = await checkForcePasswordChange(authUser.id);
+      if (!needsPasswordChange) {
+        toast.success('Welcome, Platform Admin!');
+        await refreshUserContext();
+        navigate('/platform/dashboard', { replace: true });
+      }
+    }
+    
+    setIsLoading(false);
+  };
+
   // Show loading while auth is loading OR when authenticated but user context is still loading
   if (authLoading || domainLoading || settingsLoading || (isAuthenticated && user === null && !showForcePasswordChange)) {
     return (
@@ -558,9 +638,9 @@ export default function Auth() {
           </div>
 
           <Card className="border-border/50 shadow-xl">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'employee' | 'admin' | 'signup')}>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'employee' | 'admin' | 'signup' | 'platform')}>
               <CardHeader className="pb-4">
-                <TabsList className={`grid w-full ${isSignupEnabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                <TabsList className={`grid w-full ${isSignupEnabled ? 'grid-cols-4' : 'grid-cols-3'}`}>
                   <TabsTrigger value="employee" className="text-xs sm:text-sm">
                     <IdCard className="h-4 w-4 mr-1 hidden sm:inline" />
                     Employee
@@ -568,6 +648,10 @@ export default function Auth() {
                   <TabsTrigger value="admin" className="text-xs sm:text-sm">
                     <Mail className="h-4 w-4 mr-1 hidden sm:inline" />
                     Admin
+                  </TabsTrigger>
+                  <TabsTrigger value="platform" className="text-xs sm:text-sm">
+                    <Shield className="h-4 w-4 mr-1 hidden sm:inline" />
+                    Platform
                   </TabsTrigger>
                   {isSignupEnabled && (
                     <TabsTrigger value="signup" className="text-xs sm:text-sm">
@@ -692,6 +776,64 @@ export default function Auth() {
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Sign In
+                    </Button>
+                  </CardFooter>
+                </form>
+              </TabsContent>
+
+              {/* Platform Admin Login Tab */}
+              <TabsContent value="platform">
+                <form onSubmit={handlePlatformAdminLogin}>
+                  <CardContent className="space-y-4">
+                    <CardDescription className="text-center">
+                      Platform Administrator Sign In
+                    </CardDescription>
+                    
+                    {lockoutMessage && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{lockoutMessage}</AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="platform-email">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="platform-email"
+                          type="email"
+                          placeholder="admin@platform.com"
+                          value={platformEmail}
+                          onChange={(e) => setPlatformEmail(e.target.value)}
+                          className="pl-10"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      {platformErrors.email && <p className="text-sm text-destructive">{platformErrors.email}</p>}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="platform-password">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="platform-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={platformPassword}
+                          onChange={(e) => setPlatformPassword(e.target.value)}
+                          className="pl-10"
+                          disabled={isLoading}
+                        />
+                      </div>
+                      {platformErrors.password && <p className="text-sm text-destructive">{platformErrors.password}</p>}
+                    </div>
+                  </CardContent>
+                  
+                  <CardFooter>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Sign In to Platform
                     </Button>
                   </CardFooter>
                 </form>
