@@ -746,6 +746,86 @@ export type Database = {
           },
         ]
       }
+      company_email_settings: {
+        Row: {
+          api_key: string | null
+          aws_access_key_id: string | null
+          aws_region: string | null
+          aws_secret_access_key: string | null
+          company_id: string
+          created_at: string | null
+          from_email: string | null
+          from_name: string | null
+          id: string
+          is_verified: boolean | null
+          last_test_at: string | null
+          last_test_result: Json | null
+          provider: string | null
+          smtp_host: string | null
+          smtp_password: string | null
+          smtp_port: number | null
+          smtp_secure: boolean | null
+          smtp_username: string | null
+          updated_at: string | null
+          use_platform_default: boolean | null
+          verified_at: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          aws_access_key_id?: string | null
+          aws_region?: string | null
+          aws_secret_access_key?: string | null
+          company_id: string
+          created_at?: string | null
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_test_at?: string | null
+          last_test_result?: Json | null
+          provider?: string | null
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_username?: string | null
+          updated_at?: string | null
+          use_platform_default?: boolean | null
+          verified_at?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          aws_access_key_id?: string | null
+          aws_region?: string | null
+          aws_secret_access_key?: string | null
+          company_id?: string
+          created_at?: string | null
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_test_at?: string | null
+          last_test_result?: Json | null
+          provider?: string | null
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_username?: string | null
+          updated_at?: string | null
+          use_platform_default?: boolean | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_email_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_email_templates: {
         Row: {
           body_html: string | null
@@ -3509,6 +3589,7 @@ export type Database = {
           features: Json | null
           id: string
           is_active: boolean | null
+          is_public: boolean | null
           max_employees: number | null
           max_storage_gb: number | null
           name: string
@@ -3517,6 +3598,7 @@ export type Database = {
           sort_order: number | null
           trial_default_days: number | null
           trial_enabled: boolean | null
+          trial_restrictions: Json | null
           updated_at: string
         }
         Insert: {
@@ -3525,6 +3607,7 @@ export type Database = {
           features?: Json | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean | null
           max_employees?: number | null
           max_storage_gb?: number | null
           name: string
@@ -3533,6 +3616,7 @@ export type Database = {
           sort_order?: number | null
           trial_default_days?: number | null
           trial_enabled?: boolean | null
+          trial_restrictions?: Json | null
           updated_at?: string
         }
         Update: {
@@ -3541,6 +3625,7 @@ export type Database = {
           features?: Json | null
           id?: string
           is_active?: boolean | null
+          is_public?: boolean | null
           max_employees?: number | null
           max_storage_gb?: number | null
           name?: string
@@ -3549,6 +3634,7 @@ export type Database = {
           sort_order?: number | null
           trial_default_days?: number | null
           trial_enabled?: boolean | null
+          trial_restrictions?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -4662,6 +4748,10 @@ export type Database = {
         Returns: boolean
       }
       is_account_locked: { Args: { p_user_id: string }; Returns: boolean }
+      is_active_company_admin: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
