@@ -4355,6 +4355,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       lock_attendance_for_payroll: {
         Args: { p_company_id: string; p_month: number; p_year: number }
         Returns: boolean
