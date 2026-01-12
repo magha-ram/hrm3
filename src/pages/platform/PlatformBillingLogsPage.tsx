@@ -39,7 +39,7 @@ export default function PlatformBillingLogsPage() {
   const { data: logs, isLoading } = useQuery({
     queryKey: ['platform-billing-logs', search, eventFilter, page],
     queryFn: async () => {
-      let query = supabase
+      let query = (supabase as any)
         .from('billing_logs')
         .select(`
           *,
@@ -60,10 +60,10 @@ export default function PlatformBillingLogsPage() {
       if (error) throw error;
 
       // Filter by company name if search is provided
-      let filteredData = data || [];
+      let filteredData = (data as any[]) || [];
       if (search) {
-        filteredData = filteredData.filter(log => 
-          (log.companies as any)?.name?.toLowerCase().includes(search.toLowerCase())
+        filteredData = filteredData.filter((log: any) => 
+          log.companies?.name?.toLowerCase().includes(search.toLowerCase())
         );
       }
 
@@ -77,16 +77,17 @@ export default function PlatformBillingLogsPage() {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('billing_logs')
         .select('event_type')
         .gte('created_at', startOfMonth);
 
-      const frozen = data?.filter(e => e.event_type === 'company_frozen').length || 0;
-      const upgrades = data?.filter(e => e.event_type === 'subscription_upgraded' || e.event_type === 'subscription_created').length || 0;
-      const trials = data?.filter(e => e.event_type === 'trial_started').length || 0;
+      const logs = (data as any[]) || [];
+      const frozen = logs.filter((e: any) => e.event_type === 'company_frozen').length || 0;
+      const upgrades = logs.filter((e: any) => e.event_type === 'subscription_upgraded' || e.event_type === 'subscription_created').length || 0;
+      const trials = logs.filter((e: any) => e.event_type === 'trial_started').length || 0;
 
-      return { frozen, upgrades, trials, total: data?.length || 0 };
+      return { frozen, upgrades, trials, total: logs.length || 0 };
     },
   });
 

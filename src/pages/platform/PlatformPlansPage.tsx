@@ -427,8 +427,8 @@ export default function PlatformPlansPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={plan.is_public !== false ? 'default' : 'secondary'}>
-                          {plan.is_public !== false ? 'Public' : 'Private'}
+                        <Badge variant={(plan as any).is_public !== false ? 'default' : 'secondary'}>
+                          {(plan as any).is_public !== false ? 'Public' : 'Private'}
                         </Badge>
                       </TableCell>
                       <TableCell>

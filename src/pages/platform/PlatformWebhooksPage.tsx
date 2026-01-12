@@ -112,12 +112,12 @@ export default function PlatformWebhooksPage() {
   const { data: webhooks, isLoading } = useQuery({
     queryKey: ['webhooks'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('webhooks')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as WebhookData[];
+      return (data as WebhookData[]) || [];
     },
   });
 
@@ -125,21 +125,21 @@ export default function PlatformWebhooksPage() {
     queryKey: ['webhook-logs', selectedWebhookId],
     queryFn: async () => {
       if (!selectedWebhookId) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('webhook_logs')
         .select('*')
         .eq('webhook_id', selectedWebhookId)
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
-      return data as WebhookLog[];
+      return (data as WebhookLog[]) || [];
     },
     enabled: !!selectedWebhookId,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from('webhooks').insert({
+      const { error } = await (supabase as any).from('webhooks').insert({
         name: data.name,
         url: data.url,
         events: data.events,
@@ -159,7 +159,7 @@ export default function PlatformWebhooksPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<WebhookData> }) => {
-      const { error } = await supabase.from('webhooks').update(data).eq('id', id);
+      const { error } = await (supabase as any).from('webhooks').update(data).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -172,7 +172,7 @@ export default function PlatformWebhooksPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('webhooks').delete().eq('id', id);
+      const { error } = await (supabase as any).from('webhooks').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

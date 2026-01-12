@@ -57,7 +57,7 @@ export default function PlatformUsersPage() {
   const { data: users, isLoading } = useQuery({
     queryKey: ["platform-users", searchQuery],
     queryFn: async () => {
-      let query = supabase
+      let query = (supabase as any)
         .from("profiles")
         .select("id, email, first_name, last_name, max_companies")
         .order("email");
@@ -71,7 +71,7 @@ export default function PlatformUsersPage() {
       if (profilesError) throw profilesError;
       if (!profiles) return [];
 
-      const userIds = profiles.map((p) => p.id);
+      const userIds = (profiles as any[]).map((p: any) => p.id);
       const { data: companyUsers, error: companyError } = await supabase
         .from("company_users")
         .select(`
@@ -85,7 +85,7 @@ export default function PlatformUsersPage() {
 
       if (companyError) throw companyError;
 
-      const usersWithCounts: UserWithCompanyCount[] = profiles.map((profile) => {
+      const usersWithCounts: UserWithCompanyCount[] = (profiles as any[]).map((profile: any) => {
         const userCompanies = (companyUsers || []).filter(
           (cu) => cu.user_id === profile.id
         );
@@ -106,7 +106,7 @@ export default function PlatformUsersPage() {
 
   const updateMaxCompanies = useMutation({
     mutationFn: async ({ userId, maxCompanies }: { userId: string; maxCompanies: number }) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("profiles")
         .update({ max_companies: maxCompanies })
         .eq("id", userId);
@@ -126,7 +126,7 @@ export default function PlatformUsersPage() {
   const approveRequest = useMutation({
     mutationFn: async ({ requestId, userId, requestedCount }: { requestId: string; userId: string; requestedCount: number }) => {
       // Update user's max_companies
-      const { error: profileError } = await supabase
+      const { error: profileError } = await (supabase as any)
         .from("profiles")
         .update({ max_companies: requestedCount })
         .eq("id", userId);
