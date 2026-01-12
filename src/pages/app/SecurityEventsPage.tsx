@@ -209,8 +209,8 @@ export default function SecurityEventsPage() {
         e.event_type,
         e.severity || 'medium',
         e.description || '',
-        e.user_agent_truncated || e.user_agent || '',
-        e.ip_address_masked || '',
+        (e as any).user_agent_truncated || e.user_agent || '',
+        (e as any).ip_address_masked || '',
       ]);
 
       const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${cell}"`).join(','))].join('\n');
@@ -411,7 +411,7 @@ export default function SecurityEventsPage() {
                           {event.description || '-'}
                         </TableCell>
                         <TableCell className="font-mono text-sm">
-                          {event.ip_address_masked || '-'}
+                          {(event as any).ip_address_masked || '-'}
                         </TableCell>
                         <TableCell>
                           <Dialog>

@@ -42,15 +42,15 @@ export function useMyTimeCorrectionRequests() {
     queryFn: async () => {
       if (!companyId || !employeeId) return [];
 
-      const { data, error } = await supabase
-        .from('time_correction_requests')
+      const { data, error } = await (supabase
+        .from('time_correction_requests' as any)
         .select(`
           *,
           reviewer:employees!time_correction_requests_reviewed_by_fkey(id, first_name, last_name)
         `)
         .eq('company_id', companyId)
         .eq('employee_id', employeeId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any);
 
       if (error) throw error;
       return data as TimeCorrectionRequest[];
@@ -68,15 +68,15 @@ export function usePendingTimeCorrectionRequests() {
     queryFn: async () => {
       if (!companyId) return [];
 
-      const { data, error } = await supabase
-        .from('time_correction_requests')
+      const { data, error } = await (supabase
+        .from('time_correction_requests' as any)
         .select(`
           *,
           employee:employees!time_correction_requests_employee_id_fkey(id, first_name, last_name, employee_number)
         `)
         .eq('company_id', companyId)
         .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any);
 
       if (error) throw error;
       return data as TimeCorrectionRequest[];
@@ -94,15 +94,15 @@ export function useAllTimeCorrectionRequests(status?: string) {
     queryFn: async () => {
       if (!companyId) return [];
 
-      let query = supabase
-        .from('time_correction_requests')
+      let query = (supabase
+        .from('time_correction_requests' as any)
         .select(`
           *,
           employee:employees!time_correction_requests_employee_id_fkey(id, first_name, last_name, employee_number),
           reviewer:employees!time_correction_requests_reviewed_by_fkey(id, first_name, last_name)
         `)
         .eq('company_id', companyId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })) as any;
 
       if (status) {
         query = query.eq('status', status);
@@ -142,8 +142,8 @@ export function useCreateTimeCorrectionRequest() {
         .eq('date', request.correction_date)
         .maybeSingle();
 
-      const { data, error } = await supabase
-        .from('time_correction_requests')
+      const { data, error } = await (supabase
+        .from('time_correction_requests' as any)
         .insert({
           company_id: companyId,
           employee_id: employeeId,
@@ -157,7 +157,7 @@ export function useCreateTimeCorrectionRequest() {
           status: 'pending',
         })
         .select()
-        .single();
+        .single() as any);
 
       if (error) throw error;
 
@@ -195,90 +195,91 @@ export function useApproveTimeCorrectionRequest() {
       if (!companyId || !employeeId) throw new Error('Missing context');
 
       // Get the correction request
-      const { data: request, error: fetchError } = await supabase
-        .from('time_correction_requests')
+      const { data: request, error: fetchError } = await (supabase
+        .from('time_correction_requests' as any)
         .select('*')
         .eq('id', id)
-        .single();
+        .single() as any);
 
       if (fetchError) throw fetchError;
+      const req = request as TimeCorrectionRequest;
 
       // Update the correction request status
-      const { error: updateError } = await supabase
-        .from('time_correction_requests')
+      const { error: updateError } = await (supabase
+        .from('time_correction_requests' as any)
         .update({
           status: 'approved',
           reviewed_by: employeeId,
           reviewed_at: new Date().toISOString(),
           review_notes,
         })
-        .eq('id', id);
+        .eq('id', id) as any);
 
       if (updateError) throw updateError;
 
       // Apply the correction to the time entry
-      if (request.original_entry_id) {
+      if (req.original_entry_id) {
         // Get original entry to preserve values
         const { data: originalEntry } = await supabase
           .from('time_entries')
           .select('*')
-          .eq('id', request.original_entry_id)
+          .eq('id', req.original_entry_id)
           .single();
 
         if (originalEntry) {
           // Calculate total hours
           let totalHours = 0;
-          if (request.requested_clock_in && request.requested_clock_out) {
-            const clockIn = new Date(request.requested_clock_in);
-            const clockOut = new Date(request.requested_clock_out);
+          if (req.requested_clock_in && req.requested_clock_out) {
+            const clockIn = new Date(req.requested_clock_in);
+            const clockOut = new Date(req.requested_clock_out);
             const diffMinutes = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60);
-            totalHours = Math.max(0, (diffMinutes - (request.requested_break_minutes || 0)) / 60);
+            totalHours = Math.max(0, (diffMinutes - (req.requested_break_minutes || 0)) / 60);
           }
 
           // Update with original values preserved
           await supabase
             .from('time_entries')
             .update({
-              clock_in: request.requested_clock_in,
-              clock_out: request.requested_clock_out,
-              break_minutes: request.requested_break_minutes,
+              clock_in: req.requested_clock_in,
+              clock_out: req.requested_clock_out,
+              break_minutes: req.requested_break_minutes,
               total_hours: Math.round(totalHours * 100) / 100,
               is_corrected: true,
               correction_id: id,
-              original_clock_in: originalEntry.original_clock_in || originalEntry.clock_in,
-              original_clock_out: originalEntry.original_clock_out || originalEntry.clock_out,
+              original_clock_in: (originalEntry as any).original_clock_in || originalEntry.clock_in,
+              original_clock_out: (originalEntry as any).original_clock_out || originalEntry.clock_out,
               corrected_by: employeeId,
               corrected_at: new Date().toISOString(),
-              correction_reason: request.reason,
-            })
-            .eq('id', request.original_entry_id);
+              correction_reason: req.reason,
+            } as any)
+            .eq('id', req.original_entry_id);
         }
       } else {
         // Create a new time entry
         let totalHours = 0;
-        if (request.requested_clock_in && request.requested_clock_out) {
-          const clockIn = new Date(request.requested_clock_in);
-          const clockOut = new Date(request.requested_clock_out);
+        if (req.requested_clock_in && req.requested_clock_out) {
+          const clockIn = new Date(req.requested_clock_in);
+          const clockOut = new Date(req.requested_clock_out);
           const diffMinutes = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60);
-          totalHours = Math.max(0, (diffMinutes - (request.requested_break_minutes || 0)) / 60);
+          totalHours = Math.max(0, (diffMinutes - (req.requested_break_minutes || 0)) / 60);
         }
 
         await supabase
           .from('time_entries')
           .insert({
-            company_id: request.company_id,
-            employee_id: request.employee_id,
-            date: request.correction_date,
-            clock_in: request.requested_clock_in,
-            clock_out: request.requested_clock_out,
-            break_minutes: request.requested_break_minutes,
+            company_id: req.company_id,
+            employee_id: req.employee_id,
+            date: req.correction_date,
+            clock_in: req.requested_clock_in,
+            clock_out: req.requested_clock_out,
+            break_minutes: req.requested_break_minutes,
             total_hours: Math.round(totalHours * 100) / 100,
             is_corrected: true,
             correction_id: id,
             corrected_by: employeeId,
             corrected_at: new Date().toISOString(),
-            correction_reason: request.reason,
-          });
+            correction_reason: req.reason,
+          } as any);
       }
 
       // Add audit log
@@ -293,7 +294,7 @@ export function useApproveTimeCorrectionRequest() {
         metadata: { action_type: 'approve_time_correction' },
       }]);
 
-      return request;
+      return req;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time-correction-requests'] });
@@ -315,15 +316,15 @@ export function useRejectTimeCorrectionRequest() {
     mutationFn: async ({ id, review_notes }: { id: string; review_notes: string }) => {
       if (!employeeId) throw new Error('Missing context');
 
-      const { error } = await supabase
-        .from('time_correction_requests')
+      const { error } = await (supabase
+        .from('time_correction_requests' as any)
         .update({
           status: 'rejected',
           reviewed_by: employeeId,
           reviewed_at: new Date().toISOString(),
           review_notes,
         })
-        .eq('id', id);
+        .eq('id', id) as any);
 
       if (error) throw error;
 
@@ -358,15 +359,15 @@ export function useRequestClarification() {
     mutationFn: async ({ id, review_notes }: { id: string; review_notes: string }) => {
       if (!employeeId) throw new Error('Missing context');
 
-      const { error } = await supabase
-        .from('time_correction_requests')
+      const { error } = await (supabase
+        .from('time_correction_requests' as any)
         .update({
           status: 'clarification_needed',
           reviewed_by: employeeId,
           reviewed_at: new Date().toISOString(),
           review_notes,
         })
-        .eq('id', id);
+        .eq('id', id) as any);
 
       if (error) throw error;
 

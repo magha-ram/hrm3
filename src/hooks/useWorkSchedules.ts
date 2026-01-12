@@ -30,16 +30,16 @@ export function useCompanySchedule() {
     queryFn: async () => {
       if (!companyId) throw new Error('No company selected');
       
-      const { data, error } = await supabase
-        .from('work_schedules')
+      const { data, error } = await (supabase
+        .from('work_schedules' as any)
         .select('*')
         .eq('company_id', companyId)
         .is('employee_id', null)
         .eq('is_active', true)
-        .order('day_of_week');
+        .order('day_of_week') as any);
 
       if (error) throw error;
-      return data as WorkSchedule[];
+      return (data || []) as WorkSchedule[];
     },
     enabled: !!companyId,
   });
@@ -53,16 +53,16 @@ export function useEmployeeSchedule(employeeId: string | null) {
     queryFn: async () => {
       if (!companyId || !employeeId) throw new Error('No company or employee selected');
       
-      const { data, error } = await supabase
-        .from('work_schedules')
+      const { data, error } = await (supabase
+        .from('work_schedules' as any)
         .select('*')
         .eq('company_id', companyId)
         .eq('employee_id', employeeId)
         .eq('is_active', true)
-        .order('day_of_week');
+        .order('day_of_week') as any);
 
       if (error) throw error;
-      return data as WorkSchedule[];
+      return (data || []) as WorkSchedule[];
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -77,11 +77,11 @@ export function useSaveCompanySchedule() {
       if (!companyId) throw new Error('No company selected');
       
       // Delete existing company-wide schedules
-      await supabase
-        .from('work_schedules')
+      await (supabase
+        .from('work_schedules' as any)
         .delete()
         .eq('company_id', companyId)
-        .is('employee_id', null);
+        .is('employee_id', null) as any);
 
       // Insert new schedules
       const schedulesToInsert = schedules.map(s => ({
@@ -91,10 +91,10 @@ export function useSaveCompanySchedule() {
         is_active: true,
       }));
 
-      const { data, error } = await supabase
-        .from('work_schedules')
-        .insert(schedulesToInsert)
-        .select();
+      const { data, error } = await (supabase
+        .from('work_schedules' as any)
+        .insert(schedulesToInsert as any)
+        .select() as any);
 
       if (error) throw error;
       return data;

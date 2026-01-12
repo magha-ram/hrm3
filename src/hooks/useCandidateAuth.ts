@@ -170,13 +170,13 @@ export function useMyCandidateApplications() {
       if (!candidateUser) return [];
 
       const { data, error } = await (supabase
-        .from('candidates')
+        .from('candidates' as any)
         .select(`
           *,
           job:jobs(id, title, slug, company:companies(id, name, logo_url))
         `)
         .eq('candidate_user_id', (candidateUser as any).id)
-        .order('created_at', { ascending: false })) as any;
+        .order('created_at', { ascending: false }) as any);
 
       if (error) throw error;
       return data as any[];

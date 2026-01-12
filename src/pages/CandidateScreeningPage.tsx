@@ -56,8 +56,8 @@ export default function CandidateScreeningPage() {
       }
       
       try {
-        const { data, error: fetchError } = await supabase
-          .from('candidate_screenings')
+        const { data, error: fetchError } = await (supabase
+          .from('candidate_screenings' as any)
           .select(`
             id,
             status,
@@ -74,7 +74,7 @@ export default function CandidateScreeningPage() {
             candidate:candidates(first_name, last_name)
           `)
           .eq('access_token', token)
-          .single();
+          .single() as any);
         
         if (fetchError) throw fetchError;
         
@@ -82,30 +82,32 @@ export default function CandidateScreeningPage() {
           setError('Screening not found');
           return;
         }
+
+        const screeningData = data as any;
         
         // Check if expired
-        if (new Date(data.expires_at) < new Date()) {
+        if (new Date(screeningData.expires_at) < new Date()) {
           setError('This screening link has expired');
           return;
         }
         
         // Check if already completed
-        if (data.status === 'completed' || data.status === 'passed' || data.status === 'failed') {
+        if (screeningData.status === 'completed' || screeningData.status === 'passed' || screeningData.status === 'failed') {
           setIsCompleted(true);
         }
         
         setScreening({
-          ...data,
+          ...screeningData,
           screening_test: {
-            ...data.screening_test,
-            questions: (data.screening_test?.questions as unknown as ScreeningQuestion[]) || [],
+            ...screeningData.screening_test,
+            questions: (screeningData.screening_test?.questions as unknown as ScreeningQuestion[]) || [],
           },
         } as ScreeningData);
         
         // Calculate time remaining
-        if (data.started_at && data.screening_test) {
-          const startTime = new Date(data.started_at).getTime();
-          const durationMs = data.screening_test.duration_minutes * 60 * 1000;
+        if (screeningData.started_at && screeningData.screening_test) {
+          const startTime = new Date(screeningData.started_at).getTime();
+          const durationMs = screeningData.screening_test.duration_minutes * 60 * 1000;
           const endTime = startTime + durationMs;
           const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
           setTimeRemaining(remaining);
@@ -143,13 +145,13 @@ export default function CandidateScreeningPage() {
     if (!screening) return;
     
     try {
-      const { error } = await supabase
-        .from('candidate_screenings')
+      const { error } = await (supabase
+        .from('candidate_screenings' as any)
         .update({
           status: 'in_progress',
           started_at: new Date().toISOString(),
         })
-        .eq('id', screening.id);
+        .eq('id', screening.id) as any);
       
       if (error) throw error;
       
@@ -203,8 +205,8 @@ export default function CandidateScreeningPage() {
       const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
       const status = score >= screening.screening_test.passing_score ? 'passed' : 'completed';
       
-      const { error } = await supabase
-        .from('candidate_screenings')
+      const { error } = await (supabase
+        .from('candidate_screenings' as any)
         .update({
           status,
           score,
@@ -214,7 +216,7 @@ export default function CandidateScreeningPage() {
             answer,
           })),
         })
-        .eq('id', screening.id);
+        .eq('id', screening.id) as any);
       
       if (error) throw error;
       

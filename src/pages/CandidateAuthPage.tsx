@@ -59,11 +59,11 @@ export default function CandidateAuthPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         // Check if this user is a candidate
-        const { data: candidateUser } = await supabase
-          .from('candidate_users')
+        const { data: candidateUser } = await (supabase
+          .from('candidate_users' as any)
           .select('id')
           .eq('user_id', session.user.id)
-          .maybeSingle();
+          .maybeSingle() as any);
         
         if (candidateUser) {
           navigate(returnTo);
@@ -112,15 +112,16 @@ export default function CandidateAuthPage() {
 
       if (authData.user) {
         // Create candidate_users record
-        const { error: profileError } = await supabase
-          .from('candidate_users')
+        const { error: profileError } = await (supabase
+          .from('candidate_users' as any)
           .insert({
-            user_id: authData.user.id,
+            id: authData.user.id,
             email: data.email,
             first_name: data.first_name,
             last_name: data.last_name,
             phone: data.phone || null,
-          });
+            company_id: company?.id || '',
+          } as any) as any);
 
         if (profileError) {
           console.error('Failed to create candidate profile:', profileError);

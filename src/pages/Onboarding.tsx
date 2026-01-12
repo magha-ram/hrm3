@@ -84,7 +84,7 @@ export default function Onboarding() {
     try {
       const slug = generateSlug(companyName) + '-' + Date.now().toString(36);
       
-      const { data, error } = await supabase.rpc('create_company_with_admin', {
+      const { data, error } = await (supabase.rpc as any)('create_company_with_admin', {
         _name: companyName.trim(),
         _slug: slug,
         _industry: industry || null,

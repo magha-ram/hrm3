@@ -150,15 +150,15 @@ export function useActiveBreak() {
       if (!entry) return null;
 
       // Then get active break (no end time)
-      const { data: activeBreak, error } = await supabase
-        .from('time_entry_breaks')
+      const { data: activeBreak, error } = await (supabase
+        .from('time_entry_breaks' as any)
         .select('*')
         .eq('time_entry_id', entry.id)
         .is('break_end', null)
-        .maybeSingle();
+        .maybeSingle() as any);
 
       if (error) throw error;
-      return activeBreak;
+      return activeBreak as TimeBreak | null;
     },
     enabled: !!employeeId,
   });
@@ -184,14 +184,14 @@ export function useTodayBreaks() {
 
       if (!entry) return [];
 
-      const { data, error } = await supabase
-        .from('time_entry_breaks')
+      const { data, error } = await (supabase
+        .from('time_entry_breaks' as any)
         .select('*')
         .eq('time_entry_id', entry.id)
-        .order('break_start', { ascending: true });
+        .order('break_start', { ascending: true }) as any);
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as TimeBreak[];
     },
     enabled: !!employeeId,
   });
@@ -220,27 +220,27 @@ export function useWorkSchedule(dayOfWeek?: number) {
 
       // First try employee-specific schedule
       if (employeeId) {
-        const { data: empSchedule } = await supabase
-          .from('work_schedules')
+        const { data: empSchedule } = await (supabase
+          .from('work_schedules' as any)
           .select('*')
           .eq('company_id', companyId)
           .eq('employee_id', employeeId)
           .eq('day_of_week', currentDay)
           .eq('is_active', true)
-          .maybeSingle();
+          .maybeSingle() as any);
 
         if (empSchedule) return empSchedule;
       }
 
       // Fall back to company-wide schedule
-      const { data: companySchedule, error } = await supabase
-        .from('work_schedules')
+      const { data: companySchedule, error } = await (supabase
+        .from('work_schedules' as any)
         .select('*')
         .eq('company_id', companyId)
         .is('employee_id', null)
         .eq('day_of_week', currentDay)
         .eq('is_active', true)
-        .maybeSingle();
+        .maybeSingle() as any);
 
       if (error) throw error;
       return companySchedule;
@@ -345,35 +345,35 @@ export function useClockOut() {
       }
 
       // Check for active break - end it first
-      const { data: activeBreak } = await supabase
-        .from('time_entry_breaks')
+      const { data: activeBreak } = await (supabase
+        .from('time_entry_breaks' as any)
         .select('*')
         .eq('time_entry_id', entry.id)
         .is('break_end', null)
-        .maybeSingle();
+        .maybeSingle() as any);
 
       if (activeBreak) {
         // End the active break
         const breakEnd = new Date();
-        const breakStart = new Date(activeBreak.break_start);
+        const breakStart = new Date((activeBreak as TimeBreak).break_start);
         const duration = Math.round((breakEnd.getTime() - breakStart.getTime()) / (1000 * 60));
 
-        await supabase
-          .from('time_entry_breaks')
+        await (supabase
+          .from('time_entry_breaks' as any)
           .update({
             break_end: breakEnd.toISOString(),
             duration_minutes: duration,
           })
-          .eq('id', activeBreak.id);
+          .eq('id', (activeBreak as TimeBreak).id) as any);
       }
 
       // Calculate total break minutes from all breaks
-      const { data: allBreaks } = await supabase
-        .from('time_entry_breaks')
+      const { data: allBreaks } = await (supabase
+        .from('time_entry_breaks' as any)
         .select('duration_minutes')
-        .eq('time_entry_id', entry.id);
+        .eq('time_entry_id', entry.id) as any);
 
-      const totalBreakMinutes = (allBreaks || []).reduce(
+      const totalBreakMinutes = ((allBreaks || []) as TimeBreak[]).reduce(
         (sum, b) => sum + (b.duration_minutes || 0),
         0
       );
@@ -387,16 +387,16 @@ export function useClockOut() {
       const totalHours = Math.max(0, workMinutes / 60);
 
       // Get work schedule to calculate overtime
-      const { data: schedule } = await supabase
-        .from('work_schedules')
+      const { data: schedule } = await (supabase
+        .from('work_schedules' as any)
         .select('expected_hours')
         .eq('company_id', companyId)
         .is('employee_id', null)
         .eq('day_of_week', now.getDay())
         .eq('is_active', true)
-        .maybeSingle();
+        .maybeSingle() as any);
 
-      const overtimeHours = calculateOvertime(totalHours, schedule);
+      const overtimeHours = calculateOvertime(totalHours, schedule as { expected_hours: number } | null);
 
       const { data, error } = await supabase
         .from('time_entries')
@@ -451,12 +451,12 @@ export function useStartBreak() {
       }
 
       // Check for existing active break
-      const { data: existingBreak } = await supabase
-        .from('time_entry_breaks')
+      const { data: existingBreak } = await (supabase
+        .from('time_entry_breaks' as any)
         .select('id')
         .eq('time_entry_id', entry.id)
         .is('break_end', null)
-        .maybeSingle();
+        .maybeSingle() as any);
 
       if (existingBreak) {
         throw new Error('You are already on a break. End your current break first.');
@@ -464,8 +464,8 @@ export function useStartBreak() {
 
       const now = new Date().toISOString();
 
-      const { data, error } = await supabase
-        .from('time_entry_breaks')
+      const { data, error } = await (supabase
+        .from('time_entry_breaks' as any)
         .insert({
           time_entry_id: entry.id,
           company_id: companyId,
@@ -473,7 +473,7 @@ export function useStartBreak() {
           break_start: now,
         } as any)
         .select()
-        .single();
+        .single() as any);
 
       if (error) throw error;
       return data;
@@ -510,30 +510,30 @@ export function useEndBreak() {
       }
 
       // Get active break
-      const { data: activeBreak } = await supabase
-        .from('time_entry_breaks')
+      const { data: activeBreak } = await (supabase
+        .from('time_entry_breaks' as any)
         .select('*')
         .eq('time_entry_id', entry.id)
         .is('break_end', null)
-        .maybeSingle();
+        .maybeSingle() as any);
 
       if (!activeBreak) {
         throw new Error('No active break to end.');
       }
 
       const breakEnd = new Date();
-      const breakStart = new Date(activeBreak.break_start);
+      const breakStart = new Date((activeBreak as TimeBreak).break_start);
       const duration = Math.round((breakEnd.getTime() - breakStart.getTime()) / (1000 * 60));
 
-      const { data, error } = await supabase
-        .from('time_entry_breaks')
+      const { data, error } = await (supabase
+        .from('time_entry_breaks' as any)
         .update({
           break_end: breakEnd.toISOString(),
           duration_minutes: duration,
         })
-        .eq('id', activeBreak.id)
+        .eq('id', (activeBreak as TimeBreak).id)
         .select()
-        .single();
+        .single() as any);
 
       if (error) throw error;
       return data;

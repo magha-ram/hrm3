@@ -455,16 +455,16 @@ export default function TimePage() {
                               <TableCell>
                                 <div className="flex flex-col gap-1">
                                   <span>{entry.clock_in ? format(new Date(entry.clock_in), 'h:mm a') : '-'}</span>
-                                  {entry.clock_in_location && (
-                                    <LocationBadge location={entry.clock_in_location as unknown as GeoLocation} />
+                                  {(entry as any).clock_in_location && (
+                                    <LocationBadge location={(entry as any).clock_in_location as unknown as GeoLocation} />
                                   )}
                                 </div>
                               </TableCell>
                               <TableCell>
                                 <div className="flex flex-col gap-1">
                                   <span>{entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : '-'}</span>
-                                  {entry.clock_out_location && (
-                                    <LocationBadge location={entry.clock_out_location as unknown as GeoLocation} />
+                                  {(entry as any).clock_out_location && (
+                                    <LocationBadge location={(entry as any).clock_out_location as unknown as GeoLocation} />
                                   )}
                                 </div>
                               </TableCell>
