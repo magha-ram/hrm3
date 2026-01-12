@@ -115,6 +115,7 @@ export function useCompanyEmailSettings() {
       if (!companyId) throw new Error('No company selected');
 
       return invokeWithRetry('manage-email-settings', {
+        action: 'save',
         company_id: companyId,
         ...formData,
       });

@@ -4471,39 +4471,39 @@ export type Database = {
           created_at: string
           id: string
           reason: string | null
+          requested_by: string
           requested_days: number
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
           updated_at: string
-          user_id: string
         }
         Insert: {
           company_id: string
           created_at?: string
           id?: string
           reason?: string | null
+          requested_by: string
           requested_days?: number
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
           updated_at?: string
-          user_id: string
         }
         Update: {
           company_id?: string
           created_at?: string
           id?: string
           reason?: string | null
+          requested_by?: string
           requested_days?: number
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
           updated_at?: string
-          user_id?: string
         }
         Relationships: [
           {
@@ -4752,6 +4752,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_active_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -4765,6 +4766,7 @@ export type Database = {
         Returns: boolean
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_platform_owner: { Args: { _user_id: string }; Returns: boolean }
       lock_attendance_for_payroll: {
         Args: { p_company_id: string; p_month: number; p_year: number }
         Returns: boolean
