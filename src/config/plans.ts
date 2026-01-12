@@ -18,9 +18,9 @@ export interface Plan {
 
 export const PLAN_MODULES: Record<string, ModuleId[]> = {
   Free: ['employees', 'directory'],
-  Basic: ['employees', 'directory', 'leave', 'time_tracking'],
-  Pro: ['employees', 'directory', 'leave', 'time_tracking', 'documents', 'recruitment', 'performance'],
-  Enterprise: ['employees', 'directory', 'leave', 'time_tracking', 'documents', 'recruitment', 'performance', 'payroll', 'compliance', 'audit', 'integrations'], // Or uses 'all'
+  Basic: ['employees', 'directory', 'departments', 'leave', 'time_tracking'],
+  Pro: ['employees', 'directory', 'departments', 'leave', 'time_tracking', 'shifts', 'documents', 'recruitment', 'performance', 'expenses'],
+  Enterprise: ['employees', 'directory', 'departments', 'leave', 'time_tracking', 'shifts', 'documents', 'recruitment', 'performance', 'payroll', 'expenses', 'compliance', 'audit', 'integrations', 'my_team'], // Or uses 'all'
 };
 
 export const hasModuleAccess = (

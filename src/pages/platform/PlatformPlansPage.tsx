@@ -33,15 +33,19 @@ import { PLAN_MODULES } from '@/config/plans';
 const ALL_MODULES = [
   { id: 'employees', label: 'Employees' },
   { id: 'directory', label: 'Directory' },
+  { id: 'departments', label: 'Departments' },
   { id: 'leave', label: 'Leave Management' },
   { id: 'time_tracking', label: 'Time Tracking' },
+  { id: 'shifts', label: 'Shift Management' },
   { id: 'documents', label: 'Documents' },
   { id: 'recruitment', label: 'Recruitment' },
   { id: 'performance', label: 'Performance' },
   { id: 'payroll', label: 'Payroll' },
+  { id: 'expenses', label: 'Expenses' },
   { id: 'compliance', label: 'Compliance' },
   { id: 'audit', label: 'Audit' },
   { id: 'integrations', label: 'Integrations' },
+  { id: 'my_team', label: 'My Team' },
 ];
 
 interface PlanFormData {
