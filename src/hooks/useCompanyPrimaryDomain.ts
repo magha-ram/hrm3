@@ -23,7 +23,7 @@ export function useCompanyPrimaryDomain(companyId: string | null): PrimaryDomain
       setIsLoading(true);
       try {
         const { data, error } = await supabase
-          .rpc('get_company_primary_domain', { _company_id: companyId });
+          .rpc('get_company_primary_domain', { p_company_id: companyId });
 
         if (error) {
           console.error('Error fetching primary domain:', error);
@@ -32,9 +32,9 @@ export function useCompanyPrimaryDomain(companyId: string | null): PrimaryDomain
           return;
         }
 
-        if (data && data.length > 0 && data[0].domain_url) {
-          setDomainUrl(data[0].domain_url);
-          setDomainType(data[0].domain_type as 'subdomain' | 'custom');
+        if (data) {
+          setDomainUrl(data as string);
+          setDomainType('custom');
         } else {
           setDomainUrl(null);
           setDomainType(null);
@@ -58,13 +58,13 @@ export function useCompanyPrimaryDomain(companyId: string | null): PrimaryDomain
 export async function getCompanyPrimaryDomainUrl(companyId: string): Promise<string | null> {
   try {
     const { data, error } = await supabase
-      .rpc('get_company_primary_domain', { _company_id: companyId });
+      .rpc('get_company_primary_domain', { p_company_id: companyId });
 
-    if (error || !data || data.length === 0) {
+    if (error || !data) {
       return null;
     }
 
-    return data[0].domain_url || null;
+    return data as string || null;
   } catch {
     return null;
   }

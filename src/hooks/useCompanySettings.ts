@@ -169,7 +169,7 @@ export function useGenerateEmployeeNumber() {
       if (!companyId) throw new Error('No company context');
       
       const { data, error } = await supabase
-        .rpc('generate_employee_number', { _company_id: companyId });
+        .rpc('generate_employee_number', { p_company_id: companyId });
       
       if (error) throw error;
       return data as string;
@@ -187,7 +187,7 @@ export function useInitializeCompanySettings() {
       if (!companyId) throw new Error('No company context');
       
       const { error } = await supabase
-        .rpc('initialize_company_settings', { _company_id: companyId });
+        .rpc('initialize_company_settings', { p_company_id: companyId });
       
       if (error) throw error;
     },

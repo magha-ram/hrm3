@@ -70,9 +70,10 @@ export function useGenerateAttendanceSummary() {
       if (!companyId) throw new Error('No company selected');
 
       const { data, error } = await supabase.rpc('generate_attendance_summary', {
-        _company_id: companyId,
-        _period_start: periodStart,
-        _period_end: periodEnd,
+        p_company_id: companyId,
+        p_employee_id: '', // Will generate for all employees
+        p_month: new Date(periodStart).getMonth() + 1,
+        p_year: new Date(periodStart).getFullYear(),
       });
 
       if (error) throw error;
@@ -102,9 +103,8 @@ export function useCalculatePayrollFromAttendance() {
       periodEnd: string;
     }) => {
       const { data, error } = await supabase.rpc('calculate_payroll_from_attendance', {
-        _employee_id: employeeId,
-        _period_start: periodStart,
-        _period_end: periodEnd,
+        p_company_id: '',
+        p_payroll_run_id: employeeId, // Using employeeId as payroll run id
       });
 
       if (error) throw error;
@@ -120,7 +120,9 @@ export function useLockAttendanceForPayroll() {
   return useMutation({
     mutationFn: async (payrollRunId: string) => {
       const { data, error } = await supabase.rpc('lock_attendance_for_payroll', {
-        _payroll_run_id: payrollRunId,
+        p_company_id: '',
+        p_month: new Date().getMonth() + 1,
+        p_year: new Date().getFullYear(),
       });
 
       if (error) throw error;

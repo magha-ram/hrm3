@@ -38,12 +38,13 @@ export function useExpiringDocuments(daysThreshold = 30) {
       if (!companyId) return [];
 
       const { data, error } = await supabase
-        .rpc('get_expiring_documents', { _days_threshold: daysThreshold });
+        .rpc('get_expiring_documents', { p_company_id: companyId, p_days_ahead: daysThreshold });
 
       if (error) throw error;
       
-      // Filter to only this company
-      return (data as ExpiringDocument[]).filter(d => d.company_id === companyId);
+      // Parse the JSONB result
+      const documents = Array.isArray(data) ? data : [];
+      return documents as ExpiringDocument[];
     },
     enabled: !!companyId,
   });
