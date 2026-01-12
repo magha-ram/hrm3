@@ -267,7 +267,7 @@ export default function PlatformCompanyDetailPage() {
         if (error) throw error;
 
         // Log the plan change / trial conversion
-        await supabase.from('billing_logs').insert({
+        await (supabase as any).from('billing_logs').insert({
           company_id: companyId,
           event_type: wasTrialing && isPaidPlan ? 'trial_converted' : 'plan_changed',
           subscription_id: subscription.id,
@@ -296,7 +296,7 @@ export default function PlatformCompanyDetailPage() {
         if (error) throw error;
 
         // Log new subscription
-        await supabase.from('billing_logs').insert({
+        await (supabase as any).from('billing_logs').insert({
           company_id: companyId,
           event_type: 'subscription_created',
           subscription_id: newSub?.id,
@@ -337,7 +337,7 @@ export default function PlatformCompanyDetailPage() {
       if (error) throw error;
 
       // Log the trial extension event
-      await supabase.from('billing_logs').insert({
+      await (supabase as any).from('billing_logs').insert({
         company_id: companyId,
         event_type: 'trial_extended',
         subscription_id: subscription.id,
@@ -413,7 +413,7 @@ export default function PlatformCompanyDetailPage() {
         if (subError) throw subError;
 
         // Log the extension approval
-        await supabase.from('billing_logs').insert({
+        await (supabase as any).from('billing_logs').insert({
           company_id: companyId,
           event_type: 'trial_extension_approved',
           subscription_id: subscription.id,
@@ -427,7 +427,7 @@ export default function PlatformCompanyDetailPage() {
         });
       } else {
         // Log the extension rejection
-        await supabase.from('billing_logs').insert({
+        await (supabase as any).from('billing_logs').insert({
           company_id: companyId,
           event_type: 'trial_extension_rejected',
           subscription_id: subscription?.id,
@@ -700,7 +700,7 @@ export default function PlatformCompanyDetailPage() {
                       {request.requested_days} day extension requested
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Extension #{request.extension_number + 1} • Requested {format(new Date(request.created_at), 'MMM d, yyyy')}
+                      Extension #{((request as any).extension_number || 0) + 1} • Requested {format(new Date(request.created_at), 'MMM d, yyyy')}
                     </p>
                   </div>
                   <Badge variant="secondary">Pending</Badge>
@@ -1042,10 +1042,10 @@ function DomainManagementCard({
               <Badge variant="secondary">Pending</Badge>
             </div>
             
-            {pendingRequest.reason && (
+            {(pendingRequest as any).reason && (
               <div className="text-sm">
                 <p className="text-muted-foreground">Reason:</p>
-                <p className="mt-1">{pendingRequest.reason}</p>
+                <p className="mt-1">{(pendingRequest as any).reason}</p>
               </div>
             )}
 

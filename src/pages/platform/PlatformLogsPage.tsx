@@ -252,12 +252,12 @@ function BillingLogsTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['platform-billing-logs', eventFilter, page],
     queryFn: async () => {
-      let query = supabase.from('billing_logs').select(`*, companies:company_id (name), plans:plan_id (name)`, { count: 'exact' }).order('created_at', { ascending: false });
+      let query = (supabase as any).from('billing_logs').select(`*, companies:company_id (name), plans:plan_id (name)`, { count: 'exact' }).order('created_at', { ascending: false });
       if (eventFilter !== 'all') query = query.eq('event_type', eventFilter);
       query = query.range((page - 1) * pageSize, page * pageSize - 1);
       const { data: logs, count, error } = await query;
       if (error) throw error;
-      return { logs: logs || [], total: count || 0 };
+      return { logs: (logs as any[]) || [], total: count || 0 };
     },
   });
 
@@ -413,7 +413,7 @@ function ApplicationLogsTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['platform-application-logs', search, levelFilter, page],
     queryFn: async () => {
-      let query = supabase.from('application_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+      let query = (supabase as any).from('application_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false });
       if (levelFilter !== 'all') query = query.eq('level', levelFilter);
       if (search) query = query.ilike('message', `%${search}%`);
       query = query.range((page - 1) * pageSize, page * pageSize - 1);

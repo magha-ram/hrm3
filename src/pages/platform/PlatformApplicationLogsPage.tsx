@@ -98,20 +98,20 @@ export default function PlatformApplicationLogsPage() {
   const { data: services } = useQuery({
     queryKey: ['platform-app-log-services'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('application_logs')
         .select('service')
         .limit(1000);
 
-      const uniqueServices = [...new Set(data?.map(d => d.service))].sort();
-      return uniqueServices;
+      const uniqueServices = [...new Set((data as any[])?.map((d: any) => d.service))].sort();
+      return uniqueServices as string[];
     },
   });
 
   const { data: logs, isLoading } = useQuery({
     queryKey: ['platform-application-logs', search, levelFilter, serviceFilter, page],
     queryFn: async () => {
-      let query = supabase
+      let query = (supabase as any)
         .from('application_logs')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
@@ -133,7 +133,7 @@ export default function PlatformApplicationLogsPage() {
       const { data, error, count } = await query;
       if (error) throw error;
 
-      return { logs: data || [], total: count || 0 };
+      return { logs: (data as any[]) || [], total: count || 0 };
     },
   });
 
@@ -143,15 +143,16 @@ export default function PlatformApplicationLogsPage() {
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('application_logs')
         .select('level')
         .gte('created_at', startOfDay);
 
-      const errors = data?.filter(e => e.level === 'error' || e.level === 'critical').length || 0;
-      const warnings = data?.filter(e => e.level === 'warn').length || 0;
+      const logs = (data as any[]) || [];
+      const errors = logs.filter((e: any) => e.level === 'error' || e.level === 'critical').length || 0;
+      const warnings = logs.filter((e: any) => e.level === 'warn').length || 0;
 
-      return { total: data?.length || 0, errors, warnings };
+      return { total: logs.length || 0, errors, warnings };
     },
   });
 

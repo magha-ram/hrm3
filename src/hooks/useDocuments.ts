@@ -39,8 +39,8 @@ export function useMyDocuments() {
     queryFn: async () => {
       if (!companyId || !employeeId) return [];
 
-      const { data, error } = await supabase
-        .from('employee_documents')
+      const { data, error } = await (supabase
+        .from('employee_documents') as any)
         .select(`
           *,
           document_type:document_types(id, name, code)
@@ -50,7 +50,7 @@ export function useMyDocuments() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as any[];
     },
     enabled: !!companyId && !!employeeId,
   });
@@ -91,8 +91,8 @@ export function useAllDocuments() {
     queryFn: async () => {
       if (!companyId) return [];
 
-      const { data, error } = await supabase
-        .from('employee_documents')
+      const { data, error } = await (supabase
+        .from('employee_documents') as any)
         .select(`
           *,
           employee:employees!employee_documents_employee_id_fkey(id, first_name, last_name, email),
@@ -104,7 +104,7 @@ export function useAllDocuments() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as any[];
     },
     enabled: !!companyId && can('documents', 'read'),
   });
@@ -143,8 +143,8 @@ export function useTeamDocuments() {
       if (employeeIds.length === 0) return [];
 
       // Get documents for team members
-      const { data, error } = await supabase
-        .from('employee_documents')
+      const { data, error } = await (supabase
+        .from('employee_documents') as any)
         .select(`
           *,
           employee:employees!employee_documents_employee_id_fkey(id, first_name, last_name, email),
@@ -155,7 +155,7 @@ export function useTeamDocuments() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as any[];
     },
     enabled: !!companyId && !!userId,
   });
