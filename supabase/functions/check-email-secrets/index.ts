@@ -23,14 +23,19 @@ serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    // Use anon client with user auth for getting user
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
+    // Use service role client for admin check (bypasses RLS)
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
     // Verify user is authenticated
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -38,11 +43,14 @@ serve(async (req: Request) => {
       );
     }
 
-    // Check if user is a platform admin
-    const { data: isAdmin } = await supabase
-      .rpc('is_platform_admin', { _user_id: user.id });
+    // Check if user is a platform admin using service role to bypass RLS
+    const { data: platformAdmin } = await adminClient
+      .from('platform_admins')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-    if (!isAdmin) {
+    if (!platformAdmin) {
       return new Response(
         JSON.stringify({ error: 'Not a platform admin' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
